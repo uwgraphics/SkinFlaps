@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{50dc4134-5b3c-4fa7-8e82-f5a44422a1c5}</ProjectGuid>
+    <RootNamespace>SkinFlaps</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <UseInteloneTBB>true</UseInteloneTBB>
+    <InstrumentInteloneTBB>true</InstrumentInteloneTBB>
+    <UseILP64Interfaces1A>true</UseILP64Interfaces1A>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseInteloneTBB>true</UseInteloneTBB>
+    <InstrumentInteloneTBB>true</InstrumentInteloneTBB>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <UseILP64Interfaces1A>false</UseILP64Interfaces1A>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level1</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;WIN32;NOMINMAX;ENABLE_AVX_INSTRUCTION_SET;IMGUI_IMPL_OPENGL_LOADER_GL3W;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\SkinFlaps\src\CDT\include;$(INTEL_LIB)\tbb\2021.5.0\include;$(INTEL_LIB)\mkl\2022.0.0\include;..\..\PDTetPhysics\include;..\..\simd-numeric-kernels-new;$(Cuda_Path)\include;..\..\PhysBAM_subset\Public_Library;..\..\PhysBAM_subset\Common_Libraries\Common_Tools;..\..\PhysBAM_subset\Common_Libraries;..\..\PDTetPhysics\PDDeformer\include;..\..\gl3wGraphics;..\..\imgui_glfw_nfd_lib\extLibs\nfd\include;..\..\imgui_glfw_nfd_lib\extLibs\glfw\include;..\..\imgui_glfw_nfd_lib\extLibs\gl3w;..\..\imgui_glfw_nfd_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Intel\oneAPI\tbb\2021.5.0\lib\intel64\vc_mt;C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\lib\intel64;$(Cuda_Path)\lib\x64;..\..\PhysBAM_subset\x64\Debug;.\x64\Debug;..\..\imgui_glfw_nfd_lib\extLibs\glfw\lib-vc2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics.lib;cusparse.lib;cusolver.lib;cudart.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level1</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;NOMINMAX;ENABLE_AVX_INSTRUCTION_SET;IMGUI_IMPL_OPENGL_LOADER_GL3W;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\SkinFlaps\src\CDT\include;$(INTEL_LIB)\tbb\2021.5.0\include;$(INTEL_LIB)\mkl\2022.0.0\include;..\..\PDTetPhysics\include;..\..\simd-numeric-kernels-new;$(Cuda_Path)\include;..\..\PhysBAM_subset\Public_Library;..\..\PhysBAM_subset\Common_Libraries\Common_Tools;..\..\PhysBAM_subset\Common_Libraries;..\..\PDTetPhysics\PDDeformer\include;..\..\gl3wGraphics;..\..\imgui_glfw_nfd_lib\extLibs\nfd\include;..\..\imgui_glfw_nfd_lib\extLibs\glfw\include;..\..\imgui_glfw_nfd_lib\extLibs\gl3w;..\..\imgui_glfw_nfd_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Intel\oneAPI\tbb\2021.5.0\lib\intel64\vc_mt;C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\lib\intel64;$(Cuda_Path)\lib\x64;..\..\PhysBAM_subset\x64\Release;.\x64\Release;..\..\imgui_glfw_nfd_lib\extLibs\glfw\lib-vc2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics.lib;cusparse.lib;cusolver.lib;cudart.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\SkinFlaps\src\bccTetScene.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\deepCut.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\FacialFlapsGui.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\fence.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\hooks.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\json.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\main.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\remapTetPhysics.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\skinCutUndermineTets.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\surgicalActions.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\sutures.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\tetCollisions.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\tetSubset.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutterTbb.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetrahedra.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\SkinFlaps\src\bccTetScene.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\deepCut.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\delaunator.hpp" />
+    <ClInclude Include="..\..\SkinFlaps\src\FacialFlapsGui.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\fence.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\hooks.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\json.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\prettyPrintJSON.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\remapTetPhysics.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\skinCutUndermineTets.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\surgicalActions.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\sutures.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\tetCollisions.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\tetSubset.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutterTbb.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetrahedra.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

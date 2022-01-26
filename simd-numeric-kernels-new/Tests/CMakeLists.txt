@@ -1,0 +1,3 @@
+add_subdirectory(Matrix_Times_Transpose)
+add_subdirectory(Matrix_Times_Matrix)
+add_subdirectory(Singular_Value_Decomposition)

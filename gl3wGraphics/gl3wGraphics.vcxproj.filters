@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Bitmap.cpp" />
+    <ClCompile Include="GLmatrices.cpp" />
+    <ClCompile Include="materialTriangles.cpp" />
+    <ClCompile Include="textures.cpp" />
+    <ClCompile Include="trackball.cpp" />
+    <ClCompile Include="shapes.cpp" />
+    <ClCompile Include="lines.cpp" />
+    <ClCompile Include="lightsShaders.cpp" />
+    <ClCompile Include="surgGraphics.cpp" />
+    <ClCompile Include="staticTriangle.cpp" />
+    <ClCompile Include="gl3wGraphics.cpp" />
+    <ClCompile Include="sceneNode.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Bitmap.h" />
+    <ClInclude Include="boundingBox.h" />
+    <ClInclude Include="closestPointOnTriangle.h" />
+    <ClInclude Include="GLmatrices.h" />
+    <ClInclude Include="Mat2x2d.h" />
+    <ClInclude Include="Mat2x2f.h" />
+    <ClInclude Include="Mat3x3d.h" />
+    <ClInclude Include="Mat3x3f.h" />
+    <ClInclude Include="materialTriangles.h" />
+    <ClInclude Include="math3d.h" />
+    <ClInclude Include="sceneNode.h" />
+    <ClInclude Include="textures.h" />
+    <ClInclude Include="trackball.h" />
+    <ClInclude Include="Vec2d.h" />
+    <ClInclude Include="Vec2f.h" />
+    <ClInclude Include="Vec3d.h" />
+    <ClInclude Include="Vec3f.h" />
+    <ClInclude Include="shapes.h" />
+    <ClInclude Include="lines.h" />
+    <ClInclude Include="lightsShaders.h" />
+    <ClInclude Include="insidePolygon.h" />
+    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="surgGraphics.h" />
+    <ClInclude Include="gl3wGraphics.h" />
+    <ClInclude Include="staticTriangle.h" />
+    <ClInclude Include="clockwise.h" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <EXT_LIB>C:\Court\vsExternalLibraries</EXT_LIB>
+    <CLEFTSIM_DIR>$([System.IO.Directory]::GetParent($([System.IO.Directory]::GetParent($(ProjectDir)).ToString())))</CLEFTSIM_DIR>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup />
+  <ItemGroup>
+    <BuildMacro Include="EXT_LIB">
+      <Value>$(EXT_LIB)</Value>
+    </BuildMacro>
+    <BuildMacro Include="CLEFTSIM_DIR">
+      <Value>$(CLEFTSIM_DIR)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

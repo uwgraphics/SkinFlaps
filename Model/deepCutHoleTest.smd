@@ -1,0 +1,32 @@
+{
+    "dynamicObjects" : {
+        "deepCutHoleTest.obj" : {
+            "textureMaps": [
+                1,
+                2,
+                3,
+                4
+            ]
+        }
+    },
+    "textureFiles" : {
+        "diffuse2.jpg" : 1,
+        "normal.jpg" : 2,
+        "deepBedTexture.jpg" : 3,
+        "deepBedNormal.jpg" : 4
+    },
+    "tetrahedralProperties" : {
+        "minStrain" : 0.6,
+        "maxStrain" : 1.8,
+        "lowTetWeight" : 500.0,
+        "highTetWeight" : 1000.0,
+      "collisionWeight": 10000.0,
+      "selfCollisionWeight" :  1000.0,
+        "fixedWeight" : 10000.0,
+        "periferalWeight" : 1000.0,
+         "hookWeight" : 500.0,
+        "sutureWeight" : 1000.0,
+        "autoSutureSpacing" : 0.3,
+        "maxDimSubdivisions" : 80
+    }
+}

@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.902
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PDTetPhysics", "PDTetPhysics.vcxproj", "{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BC8CB5C6-ED1B-34D7-9309-51B38B185F19} = {BC8CB5C6-ED1B-34D7-9309-51B38B185F19}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Public_Library", "..\PhysBAMLib\Public_Library.vcxproj", "{BC8CB5C6-ED1B-34D7-9309-51B38B185F19}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x64.ActiveCfg = Debug|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x64.Build.0 = Debug|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x86.ActiveCfg = Debug|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x64.ActiveCfg = Release|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x64.Build.0 = Release|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x86.ActiveCfg = Release|x64
+		{BC8CB5C6-ED1B-34D7-9309-51B38B185F19}.Debug|x64.ActiveCfg = Debug|x64
+		{BC8CB5C6-ED1B-34D7-9309-51B38B185F19}.Debug|x64.Build.0 = Debug|x64
+		{BC8CB5C6-ED1B-34D7-9309-51B38B185F19}.Debug|x86.ActiveCfg = Debug|x64
+		{BC8CB5C6-ED1B-34D7-9309-51B38B185F19}.Release|x64.ActiveCfg = Release|x64
+		{BC8CB5C6-ED1B-34D7-9309-51B38B185F19}.Release|x64.Build.0 = Release|x64
+		{BC8CB5C6-ED1B-34D7-9309-51B38B185F19}.Release|x86.ActiveCfg = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D0B3632F-35B5-4EA0-B850-7FB29CA5F8A4}
+	EndGlobalSection
+EndGlobal

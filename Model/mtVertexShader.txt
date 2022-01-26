@@ -1,0 +1,30 @@
+#version 130
+in vec4 vVertex;
+in vec3 vTangent;
+in vec3 vNormal;
+in vec2 vTexture;
+uniform mat4   mvpMatrix;
+uniform mat4   mvMatrix;
+uniform mat3   normalMatrix;
+uniform vec3   vLightPosition;
+smooth out vec3 vLightDir;
+smooth out vec3 vEyeDir;
+smooth out vec2 vTexCoords;
+void main(void)
+{
+	vec3 n = normalize(normalMatrix * vNormal);
+	vec3 t = normalize(normalMatrix * vTangent);
+	vec3 b = cross(n,t);
+	vec3 v;
+	v.x = dot(vLightPosition,t);
+	v.y = dot(vLightPosition,b);
+	v.z = dot(vLightPosition,n);
+	vLightDir = normalize(v);
+	vEyeDir = vec3(mvMatrix * vVertex);
+	v.x = dot(vEyeDir,t);
+	v.y = dot(vEyeDir,b);
+	v.z = dot(vEyeDir,n);
+	vEyeDir = normalize(v);
+	vTexCoords = vTexture;
+	gl_Position = mvpMatrix * vVertex;
+}

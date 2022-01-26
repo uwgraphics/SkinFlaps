@@ -1,0 +1,833 @@
+#=================================================#
+#   Macros: Don't Touch If You Don't Understand!  #
+#=================================================#
+ifdef DEBUG
+NO_COLOR = 1
+endif
+
+.PHONY: UnitTest_Header UnitTests_Top SimdTest_Header SimdTests_Top StreamTest_Header \
+ StreamTests_Top KernelObj_Header KernelRefObj_Header KernelObj_Top KernelRefObj_Top \
+ ExtDepObj_Top ExtDepObj_Header InstallHeaders
+.SECONDEXPANSION:
+
+TPUT = tput
+CAT  = cat
+RM = rm
+MAKE = make
+BV= $$
+
+
+ifdef NO_COLOR
+tput		=
+else
+tput		= $(shell $(TPUT) $1)
+endif
+
+black	:= $(call tput,setaf 0)
+red	:= $(call tput,setaf 1)
+green	:= $(call tput,setaf 2)
+yellow	:= $(call tput,setaf 3)
+blue	:= $(call tput,setaf 4)
+magenta	:= $(call tput,setaf 5)
+cyan	:= $(call tput,setaf 6)
+white	:= $(call tput,setaf 7)
+bold	:= $(call tput,bold)
+uline	:= $(call tput,smul)
+rev	:= $(call tput,rev)
+reset	:= $(call tput,sgr0)
+
+OK_COLOR = $(green)
+ERROR_COLOR = $(bold)$(red)
+WARN_COLOR = $(yellow)
+CLEAR_COLOR = $(reset)
+HIGHLIGHT_COLOR = $(bold)$(yellow)
+BLUE_HIGHLIGHT_COLOR = $(bold)$(cyan)
+HEADER_COLOR_R=$(rev)$(bold)$(white)
+HEADER_COLOR=$(bold)$(white)
+
+
+OK_STRING=$(OK_COLOR)[OK]$(CLEAR_COLOR)
+ERROR_STRING=$(ERROR_COLOR)[ERRORS]$(CLEAR_COLOR)
+WARN_STRING=$(WARN_COLOR)[WARNINGS]$(CLEAR_COLOR)
+
+TEST_DIR = test
+ASM_DIR = asm
+
+PUBLIC_LIBRARY = ../default/PhysBAM-CS838/Public_Library/
+
+#################################
+# USE ARM FLAGS HERE!!!
+#################################
+ifeq ($(TOOLCHAIN),ARM)
+
+USE_ARM = 1
+NDK_KIT = /scratch/SOFTWARE/android_sdk/ndk
+PLATFORM_KIT = platforms/android-14
+ARM_TOOLCHAIN = $(NDK_KIT)/toolchains/arm-linux-androideabi-$(ARM_COMPILER)/prebuilt/linux-x86_64/bin
+
+ARM_COMPILER = 4.7
+
+ARM_INC = -I $(NDK_KIT)/$(PLATFORM_KIT)/arch-arm/usr/include \
+	  -I $(NDK_KIT)/sources/cxx-stl/gnu-libstdc++/$(ARM_COMPILER)/include \
+          -I $(NDK_KIT)/sources/cxx-stl/gnu-libstdc++/$(ARM_COMPILER)/libs/armeabi/include \
+	  -I $(NDK_KIT)/toolchains/arm-linux-androideabi-$(ARM_COMPILER)/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/$(ARM_COMPILER)/include
+
+ARM_LIB = $(NDK_KIT)/$(PLATFORM_KIT)/arch-arm/usr/lib
+ARM_STLLIB = $(NDK_KIT)/sources/cxx-stl/gnu-libstdc++/$(ARM_COMPILER)/libs/armeabi
+
+AR = $(ARM_TOOLCHAIN)/arm-linux-androideabi-ar
+AS = $(ARM_TOOLCHAIN)/arm-linux-androideabi-as
+CC = $(ARM_TOOLCHAIN)/arm-linux-androideabi-gcc
+CXX_REAL = $(ARM_TOOLCHAIN)/arm-linux-androideabi-g++
+LD = $(ARM_TOOLCHAIN)/arm-linux-androideabi-ld
+FILT =   $(ARM_TOOLCHAIN)/arm-linux-androideabi-c++filt
+
+COMMON_CFLAGS = -I ./Common -I ./TestDeps -I ./ExternalDeps -DENABLE_NEON_INSTRUCTION_SET $(ARM_INC)  -U__linux__ -D__ANDROID__ -mfloat-abi=softfp -mfpu=neon 
+
+ifdef DEBUG
+COMMON_CFLAGS += -g -O0
+else
+COMMON_CFLAGS += -O3
+endif
+
+ifdef FIB
+COMMON_CFLAGS += -DFORCE_IDENTICAL_BEHAVIOR=1
+endif
+
+ifdef FI
+COMMON_CFLAGS += -DFORCE_INLINE=1
+endif
+
+KERNEL_CFLAGS =  
+PHYSBAM_CFLAGS = -I $(PUBLIC_LIBRARY) -DCOMPILE_WITHOUT_ZLIB_SUPPORT
+CFLAGS = $(COMMON_CFLAGS) 
+LINKER = -nostdlib -fno-rtti -fno-exceptions \
+	$(ARM_LIB)/crtend_android.o $(ARM_LIB)/crtbegin_static.o \
+        -L$(ARM_LIB) -L$(ARM_STLLIB) $(ARM_STLLIB)/libsupc++.a $(ARM_LIB)/libc.a $(ARM_STLLIB)/libgnustl_static.a  -lc -lgcc -lm
+
+######################################
+# USE GCC FLAGS HERE
+######################################
+else ifeq ($(TOOLCHAIN),GCC)
+
+ICC=
+
+ifndef ICC
+CXX_REAL=gcc
+else
+CXX_REAL=$(ICC)
+endif
+
+COMMON_CFLAGS = -I ./Common -I ./TestDeps -I ./ExternalDeps -Wall -std=c++0x -fabi-version=6
+
+ifdef ENABLE_MIC
+COMMON_CFLAGS += -mmic -DENABLE_MIC_INSTRUCTION_SET
+else
+COMMON_CFLAGS += -DENABLE_SSE_INSTRUCTION_SET -DENABLE_AVX_INSTRUCTION_SET  -mavx2
+endif
+
+ifdef DEBUG
+COMMON_CFLAGS += -g -O0
+else
+COMMON_CFLAGS += -O3
+endif
+
+ifdef FIB
+COMMON_CFLAGS += -DFORCE_IDENTICAL_BEHAVIOR=1
+endif
+
+ifdef FI
+COMMON_CFLAGS += -DFORCE_INLINE=1
+endif
+
+
+KERNEL_CFLAGS =  
+PHYSBAM_CFLAGS = -I $(PUBLIC_LIBRARY) -DCOMPILE_WITHOUT_ZLIB_SUPPORT
+
+CFLAGS = $(COMMON_CFLAGS)  -fopenmp
+LINKER = -lpthread -fopenmp
+
+######################################
+# USE ICC FLAGS HERE
+######################################
+else
+
+ICC=
+
+ifndef ICC
+CXX_REAL=icc
+else
+CXX_REAL=$(ICC)
+endif
+
+COMMON_CFLAGS = -I ./Common -I ./TestDeps -I ./ExternalDeps -Wall -std=c++0x
+
+ifdef ENABLE_MIC
+COMMON_CFLAGS += -mmic -DENABLE_MIC_INSTRUCTION_SET
+else
+COMMON_CFLAGS += -DENABLE_SSE_INSTRUCTION_SET -DENABLE_AVX_INSTRUCTION_SET
+endif
+
+ifdef DEBUG
+COMMON_CFLAGS += -g -O0
+else
+COMMON_CFLAGS += -O3
+endif
+
+ifdef FIB
+COMMON_CFLAGS += -DFORCE_IDENTICAL_BEHAVIOR=1
+endif
+
+ifdef FI
+COMMON_CFLAGS += -DFORCE_INLINE=1
+endif
+
+
+KERNEL_CFLAGS =  -inline-forceinline
+PHYSBAM_CFLAGS = -I $(PUBLIC_LIBRARY) -DCOMPILE_WITHOUT_ZLIB_SUPPORT
+
+CFLAGS = $(COMMON_CFLAGS)  -static-intel -fp-model precise -fp-model source -fopenmp -inline-forceinline
+LINKER = -static-intel -lpthread -lsvml -fopenmp
+
+endif
+
+###################################
+# COMMON STUFF
+###################################
+
+ECHO=echo
+INDENT=indent -nut -bap -bli0 -cdw -nce -cli2 -cbi0 -ss -pcs -di16 -bls -blf -lp -l80
+
+
+EXTERNAL_DEPS =  $(PUBLIC_LIBRARY)/PhysBAM_Tools/Log/LOG.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Random_Numbers/RANDOM_NUMBERS.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Random_Numbers/MT19937.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Utilities/TIMER.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Log/LOG_ENTRY.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Read_Write/Utilities/FILE_UTILITIES.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Parsing/STRING_UTILITIES.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Log/DEBUG_UTILITIES.cpp \
+		 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Utilities/PROCESS_UTILITIES.cpp \
+	 	 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Utilities/EXCEPTIONS.cpp \
+	 	 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Matrices/SYMMETRIC_MATRIX_3X3.cpp \
+                 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Matrices/MATRIX_3X3.cpp \
+                 $(PUBLIC_LIBRARY)/PhysBAM_Tools/Matrices/ROTATION.cpp \
+                 ./TestDeps/PTHREAD_QUEUE.cpp \
+
+EXTERNAL_OBJS = $(addprefix $(BUILD_DIR)/,$(addsuffix .lo,$(basename $(notdir $(EXTERNAL_DEPS)))))
+
+TESTS=Stream Unit SIMD Thread
+
+KERNELS = $(notdir $(wildcard ./Kernels/*))
+KERNEL_OBJS = $(foreach KERNEL, $(KERNELS),$(BUILD_DIR)/$(KERNEL).lo)
+
+ifdef NO_CHECK_DEPS
+KERNEL_REF_OBJS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./References/$(KERNEL)/$(KERNEL)_Reference.cpp),$(BUILD_DIR)/$(KERNEL)_Reference.lo, ))
+else
+KERNEL_REF_OBJS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./References/$(KERNEL)/$(KERNEL)_Reference.cpp),$(BUILD_DIR)/$(KERNEL)_Reference.lo,$(warning $(ERROR_COLOR)No Reference Implementation found for kernel $(KERNEL)!$(CLEAR_COLOR))))
+endif
+
+KERNEL_HEADERS = $(foreach KERNEL, $(KERNELS),./Kernels/$(KERNEL)/$(KERNEL).h)
+
+COMMON_HEADERS = $(wildcard ./Common/*.h)
+COMMON_OBJS = $(foreach COMMON, $(basename $(notdir $(COMMON_HEADERS))),$(if $(wildcard ./Common/$(COMMON).cpp),$(BUILD_DIR)/$(COMMON).lo))
+
+
+ifdef NO_CHECK_DEPS
+KERNEL_UNIT_TESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/UnitTest.cpp),$(TEST_DIR)/$(KERNEL)_UnitTest, ))
+KERNEL_SIMD_TESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/SIMDTest.cpp),$(TEST_DIR)/$(KERNEL)_SIMDTest, ))
+KERNEL_STREAMTESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/StreamTest.cpp),$(TEST_DIR)/$(KERNEL)_StreamTest, ))
+KERNEL_THREADTESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/ThreadTest.cpp),$(TEST_DIR)/$(KERNEL)_ThreadTest, ))
+else
+KERNEL_UNIT_TESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/UnitTest.cpp),$(TEST_DIR)/$(KERNEL)_UnitTest,$(warning $(WARN_COLOR)No Unit Test found for kernel $(KERNEL)!$(CLEAR_COLOR))))
+KERNEL_SIMD_TESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/SIMDTest.cpp),$(TEST_DIR)/$(KERNEL)_SIMDTest,$(warning $(WARN_COLOR)No SIMD Test found for kernel $(KERNEL)!$(CLEAR_COLOR))))
+KERNEL_STREAMTESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/StreamTest.cpp),$(TEST_DIR)/$(KERNEL)_StreamTest,$(warning $(WARN_COLOR)No Stream Test found for kernel $(KERNEL)!$(CLEAR_COLOR))))
+KERNEL_THREADTESTS = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Tests/$(KERNEL)/ThreadTest.cpp),$(TEST_DIR)/$(KERNEL)_ThreadTest,$(warning $(WARN_COLOR)No Thread Test found for kernel $(KERNEL)!$(CLEAR_COLOR))))
+endif
+
+KERNEL_ASSEMBLY = $(foreach KERNEL, $(KERNELS),$(if $(wildcard ./Kernels/$(KERNEL)/$(KERNEL).cpp),$(ASM_DIR)/$(KERNEL).S))
+KERNEL_ALLTESTS = $(KERNEL_UNITTESTS) $(KERNEL_SIMDTESTS) $(KERNEL_STREAMTESTS) $(KERNEL_THREADTESTS)
+
+
+#=================================================#
+#   Macro: Fancy Top Level Targets                #
+#=================================================#
+
+KernelObj_Header:
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)            ....Kernels....                               $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+
+KernelObj_Top: KernelObj_Header
+	@$(MAKE) -j 1 $(KERNEL_OBJS)
+
+
+KernelRefObj_Header:
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)           ....Kernel Reference....                       $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+
+KernelRefObj_Top: KernelRefObj_Header
+	@$(MAKE) -j 32 $(KERNEL_REF_OBJS)
+
+
+ExtDepObj_Header:
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)           ....External Deps....                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+
+ExtDepObj_Top: ExtDepObj_Header
+	@$(MAKE) -j 32 $(EXTERNAL_OBJS)
+
+
+
+UnitTest_Header:
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)            ....Unit Tests....                            $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+
+UnitTests_Top: KernelObj_Top KernelRefObj_Top ExtDepObj_Top UnitTest_Header
+	@$(MAKE) -j 32 $(KERNEL_UNIT_TESTS)
+
+
+
+SimdTest_Header:
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)            ....SIMD Tests....                            $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+
+SimdTests_Top: KernelObj_Top KernelRefObj_Top ExtDepObj_Top SimdTest_Header
+	@$(MAKE) -j 32 $(KERNEL_SIMD_TESTS)
+
+
+
+StreamTest_Header:
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)            ....Stream Tests....                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+
+StreamTests_Top: KernelObj_Top KernelRefObj_Top ExtDepObj_Top StreamTest_Header
+	@$(MAKE) -j 32 $(KERNEL_STREAMTESTS)
+
+
+ThreadTest_Header:
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)            ....Thread Tests....                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R) $(reset)                                                          $(HEADER_COLOR_R) $(reset)"
+	@$(ECHO) "$(HEADER_COLOR_R)                                                            $(reset)"
+
+ThreadTests_Top: KernelObj_Top KernelRefObj_Top ExtDepObj_Top ThreadTest_Header
+	@$(MAKE) -j 32 $(KERNEL_THREADTESTS)
+#=================================================#
+#   Macro: Create Test Targets                    #
+#=================================================#
+
+ifdef FI
+TEST_REQUIRED_OBJECTS = $(EXTERNAL_OBJS) $(COMMON_OBJS) $(KERNEL_OBJS)
+else
+TEST_REQUIRED_OBJECTS = $(EXTERNAL_OBJS) $(COMMON_OBJS)
+endif
+
+TEST_BUILD_CMD= libtool --tag=CXX --mode=link $(CXX_REAL) -o $(TEST_DIR)/$(1)_$(2)Test $(CFLAGS) -I ./Kernels/$(1) -I ./References/$(1) $(sort $(TEST_REQUIRED_OBJECTS) $(BUILD_DIR)/$(1).lo) $(LINKER) Tests/$(1)/$(2)Test.cpp $(BUILD_DIR)/$(1)_Reference.lo $(LIBTOOL_TYPE_FLAG);
+
+ifdef NO_COLOR
+define MAKE_TEST
+$(TEST_DIR)/$(1)_$(2)Test : $(COMMON_HEADERS) $(TEST_REQUIRED_OBJECTS) $(BUILD_DIR)/$(1).lo $(BUILD_DIR)/$(1)_Reference.lo Tests/$(1)/$(2)Test.cpp 
+	@mkdir -p $(TEST_DIR)
+	@$(call TEST_BUILD_CMD,$(1),$(2))
+endef
+
+else
+
+define MAKE_TEST
+$(TEST_DIR)/$(1)_$(2)Test : $(COMMON_HEADERS) $(TEST_REQUIRED_OBJECTS) $(BUILD_DIR)/$(1).lo $(BUILD_DIR)/$(1)_Reference.lo Tests/$(1)/$(2)Test.cpp 
+	@mkdir -p $(TEST_DIR)
+	@$(ECHO) "Compiling Kernel $(HIGHLIGHT_COLOR)$(1)'s$(CLEAR_COLOR) $(BLUE_HIGHLIGHT_COLOR)$(2)$(CLEAR_COLOR) Test ... "
+	@error=$(value BV)( { $(call TEST_BUILD_CMD,$(1),$(2)) } 2>&1 ); \
+	code=$(value BV)?; \
+        if [ $(value BV)code -ne 0 ]; \
+        then \
+          echo "$(ERROR_STRING)"; $(call TEST_BUILD_CMD,$(1),$(2)) \
+        fi;
+
+endef
+
+endif
+
+
+$(foreach KERNEL,$(KERNELS),$(foreach TEST,$(TESTS),$(eval $(call MAKE_TEST,$(KERNEL),$(TEST)))))
+
+
+#=================================================#
+#   Macro: Create Dependencies                    #
+#=================================================#
+ifdef USE_ARM
+
+define CREATE_DEPEND
+$(1)_depends = $(wildcard $(sort $(shell $(CXX_REAL) -mfloat-abi=softfp -mfpu=neon -MM $(CFLAGS) Kernels/$(1)/$(1).cpp | sed -n "H;$ {g;s@.*:\(.*\)@\1@;p}")))
+endef
+
+else
+
+define CREATE_DEPEND
+$(1)_depends = $(wildcard $(sort $(shell $(CXX_REAL) -MM $(CFLAGS) Kernels/$(1)/$(1).cpp | sed -n "H;$ {g;s@.*:\(.*\)@\1@;p}")))
+endef
+
+endif
+
+$(foreach KERNEL,$(KERNELS),$(eval $(call CREATE_DEPEND,$(KERNEL))))
+
+#$(foreach KERNEL,$(KERNELS),$(info $($(KERNEL)_depends)))
+
+#=================================================#
+#   Macro: Create Obj Targets                    #
+#=================================================#
+
+
+KERNEL_BUILD_CMD= libtool --tag=CXX --mode=compile $(CXX_REAL) -o $$(BUILD_DIR)/$(1).lo $$(CFLAGS) $$(KERNEL_CFLAGS) -c  Kernels/$(1)/$(1).cpp $$(LIBTOOL_TYPE_FLAG);
+REFERENCE_BUILD_CMD= libtool --tag=CXX --mode=compile $(CXX_REAL) -o $(BUILD_DIR)/$(1)_Reference.lo $(PHYSBAM_CFLAGS) $(CFLAGS) -c  References/$(1)/$(1)_Reference.cpp $(LIBTOOL_TYPE_FLAG);
+COMMON_BUILD_CMD=libtool --tag=CXX --mode=compile $(CXX_REAL) -o $(BUILD_DIR)/$(1).lo $(CFLAGS) Common/$(1).cpp $(LIBTOOL_TYPE_FLAG)
+
+
+ifdef NO_COLOR
+define MAKE_OBJ
+$(BUILD_DIR)/$(1).lo : $($(1)_depends)
+	@mkdir -p $(BUILD_DIR)
+	@$(call KERNEL_BUILD_CMD,$(1))
+endef
+
+else
+
+define MAKE_OBJ
+$(BUILD_DIR)/$(1).lo : $($(1)_depends) 
+	@mkdir -p $(BUILD_DIR)
+	@$(ECHO) "Compiling Kernel $(HIGHLIGHT_COLOR)$(1)$(CLEAR_COLOR) ... "
+	@error=$(value BV)( { $(call KERNEL_BUILD_CMD,$(1)) } 2>&1 ); \
+	code=$(value BV)?; \
+        if [ $(value BV)code -ne 0 ]; \
+        then \
+          echo "$(ERROR_STRING)"; $(call KERNEL_BUILD_CMD,$(1)) \
+        fi;
+
+endef
+
+endif
+
+
+
+ifdef NO_COLOR
+define MAKE_OBJ_REF
+$(BUILD_DIR)/$(1)_Reference.lo : $(COMMON_HEADERS) References/$(1)/$(1)_Reference.cpp 
+	@mkdir -p $(BUILD_DIR)
+	@$(call REFERENCE_BUILD_CMD,$(1))
+endef
+
+else
+
+define MAKE_OBJ_REF
+$(BUILD_DIR)/$(1)_Reference.lo : $(COMMON_HEADERS) References/$(1)/$(1)_Reference.cpp 
+	@mkdir -p $(BUILD_DIR)
+	@$(ECHO) "Compiling Kernel $(HIGHLIGHT_COLOR)$(1)$(CLEAR_COLOR) Reference... "
+	@error=$(value BV)( { $(call REFERENCE_BUILD_CMD,$(1)) } 2>&1 ); \
+	code=$(value BV)?; \
+        if [ $(value BV)code -ne 0 ]; \
+        then \
+          echo "$(ERROR_STRING)"; $(call REFERENCE_BUILD_CMD,$(1)) \
+        fi;
+
+endef
+
+endif
+
+
+ifdef NO_COLOR
+define MAKE_COBJ
+$(BUILD_DIR)/$(1).lo : $(COMMON_HEADERS) Common/$(1).cpp 
+	@mkdir -p $(BUILD_DIR)
+	@$(call COMMON_BUILD_CMD,$(1))
+endef
+
+else
+
+define MAKE_COBJ
+$(BUILD_DIR)/$(1).lo : $(COMMON_HEADERS) Common/$(1).cpp 
+	@mkdir -p $(BUILD_DIR)
+	@$(ECHO) "Compiling Library Component $(HIGHLIGHT_COLOR)$(1)$(CLEAR_COLOR) ... "
+	@error=$(value BV)( { $(call COMMON_BUILD_CMD,$(1)) } 2>&1 ); \
+	code=$(value BV)?; \
+        if [ $(value BV)code -ne 0 ]; \
+        then \
+          echo "$(ERROR_STRING)"; $(call COMMON_BUILD_CMD,$(1)) \
+        fi;
+
+endef
+
+endif
+
+
+
+
+$(foreach KERNEL,$(KERNELS),$(eval $(call MAKE_OBJ,$(KERNEL))))
+$(foreach KERNEL,$(KERNELS),$(eval $(call MAKE_OBJ_REF,$(KERNEL))))
+$(foreach COMMON, $(basename $(notdir $(COMMON_HEADERS))),$(eval $(call MAKE_COBJ,$(COMMON))))
+
+#=================================================#
+#   Macro: Create External Dep Obj Targets        #
+#=================================================#
+
+EXTERNAL_BUILD_CMD= libtool --tag=CXX --mode=compile $(CXX_REAL) -o $(BUILD_DIR)/$(basename $(notdir $(1))).lo $(PHYSBAM_CFLAGS) $(CFLAGS) -c $(1) $(LIBTOOL_TYPE_FLAG);
+
+ifdef NO_COLOR
+define MAKE_EOBJ
+$(BUILD_DIR)/$(basename $(notdir $(1))).lo : $(1) 
+	@mkdir -p $(BUILD_DIR)
+	@$(call EXTERNAL_BUILD_CMD,$(1))
+endef
+
+else
+
+define MAKE_EOBJ
+$(BUILD_DIR)/$(basename $(notdir $(1))).lo : $(1) 
+	@mkdir -p $(BUILD_DIR)
+	@$(ECHO) "Compiling External Dependency $(HIGHLIGHT_COLOR)$(notdir $(1))$(CLEAR_COLOR) ... "
+	@error=$(value BV)( { $(call EXTERNAL_BUILD_CMD,$(1)) } 2>&1 ); \
+	code=$(value BV)?; \
+        if [ $(value BV)code -ne 0 ]; \
+        then \
+          echo "$(ERROR_STRING)"; $(call EXTERNAL_BUILD_CMD,$(1)) \
+        fi;
+
+endef
+
+endif
+
+
+$(foreach EXDEP,$(EXTERNAL_DEPS),$(eval $(call MAKE_EOBJ,$(EXDEP))))
+
+
+#=================================================#
+#   Macro: Create Assembly Targets                #
+#=================================================#
+
+ifdef NO_COLOR
+define MAKE_ASM
+$(ASM_DIR)/$(1).S : $(COMMON_HEADERS) Kernels/$(1)/$(1).cpp 
+	@mkdir -p $(ASM_DIR)
+	$(CXX_REAL) -o $(ASM_DIR)/$(1).S -S -fverbose-asm -O3 $(CFLAGS) $(KERNEL_CFLAGS) -c  Kernels/$(1)/$(1).cpp 
+endef
+
+else
+
+define MAKE_ASM
+$(ASM_DIR)/$(1).S : $(COMMON_HEADERS) Kernels/$(1)/$(1).cpp 
+	@mkdir -p $(ASM_DIR)
+	@$(RM) -f temp.errors temp.log
+	@$(ECHO) -n "Generating Kernel $(HIGHLIGHT_COLOR)$(1)$(CLEAR_COLOR) Assembly... "
+	@$(CXX_REAL) -o $(ASM_DIR)/$(1).S $(CFLAGS) $(KERNEL_CFLAGS) -c -S -fverbose-asm  -O3 Kernels/$(1)/$(1).cpp 2> temp.log || touch temp.errors
+	@if test -e temp.errors; then $(ECHO) "$(ERROR_STRING)" && $(CAT) temp.log; elif test -s temp.log; then $(ECHO) "$(WARN_STRING)" && $(CAT) temp.log; else $(ECHO) "$(OK_STRING)"; fi;
+	@$(RM) -f temp.errors temp.log
+
+endef
+
+endif
+
+$(foreach KERNEL,$(KERNELS),$(eval $(call MAKE_ASM,$(KERNEL))))
+
+
+#=================================================#
+#   Macro: Create Library Target                  #
+#=================================================#
+
+#TODO!
+
+REAL_KERNEL_HEADERS=$(shell find Kernel_Wrappers -name "*.h") $(KERNEL_HEADERS)
+
+InstallHeaders: $(INSTALL_DIR)/libSIMD_Optimized_Kernels.la
+	@for header_dir in $(dir $(REAL_KERNEL_HEADERS)); do \
+            mkdir -p $(INCLUDE_INSTALL_DIR)/$$header_dir; \
+        done 
+	@for header in $(REAL_KERNEL_HEADERS); do \
+            install $$header $(INCLUDE_INSTALL_DIR)/$$header; \
+        done 
+
+ifdef USE_MPI
+
+ifeq ($(LIBTOOL_TYPE_FLAG),-static)
+STATIC_LIBRARY_NAME=libSIMD_Optimized_Kernels-mpi.a
+LIBRARY_DEPS= -lpthread -lsvml
+else
+SHARED_LIBRARY_NAME=libSIMD_Optimized_Kernels-mpi.so.0
+SHARED_LIBRARY_NAMES=libSIMD_Optimized_Kernels-mpi.so libSIMD_Optimized_Kernels-mpi.so.0 libSIMD_Optimized_Kernels-mpi.so.0.0.0
+LIBRARY_DEPS= -lpthread
+endif
+
+else
+
+ifeq ($(LIBTOOL_TYPE_FLAG),-static)
+STATIC_LIBRARY_NAME=libSIMD_Optimized_Kernels.a
+LIBRARY_DEPS= -lpthread -lsvml
+else
+SHARED_LIBRARY_NAME=libSIMD_Optimized_Kernels.so.0
+SHARED_LIBRARY_NAMES=libSIMD_Optimized_Kernels.so libSIMD_Optimized_Kernels.so.0 libSIMD_Optimized_Kernels.so.0.0.0
+LIBRARY_DEPS= -lpthread
+endif
+
+endif
+
+define LA_TEMPLATE
+# libSIMD_Optimized_Kernels.la - a libtool library file
+# Generated by ltmain.sh (GNU libtool) 2.2.6b
+#
+# Please DO NOT delete this file!
+# It is necessary for linking the library.
+
+# The name that we can dlopen(3).
+dlname='$(SHARED_LIBRARY_NAME)'
+
+# Names of this library.
+library_names='$(SHARED_LIBRARY_NAMES)'
+
+# The name of the static archive.
+old_library='$(STATIC_LIBRARY_NAME)'
+
+# Linker flags that can not go in dependency_libs.
+inherited_linker_flags=''
+
+# Libraries that this one depends upon.
+dependency_libs='$(LIBRARY_DEPS)'
+
+# Names of additional weak libraries provided by this library
+weak_library_names=''
+
+# Version information for libSIMD_Optimized_Kernels.
+current=0
+age=0
+revision=0
+
+# Is this an already installed library?
+installed=$(1)
+
+# Should we warn about portability when linking against -modules?
+shouldnotlink=no
+
+# Files to dlopen/dlpreopen
+dlopen=''
+dlpreopen=''
+
+# Directory that this library needs to be installed in:
+libdir='$(INSTALL_DIR)'
+
+endef
+
+LA_TEMPLATE_NOT_INSTALLED = $(call LA_TEMPLATE,no)
+LA_TEMPLATE_INSTALLED = $(call LA_TEMPLATE,yes)
+
+export LA_TEMPLATE_INSTALLED
+export LA_TEMPLATE_NOT_INSTALLED
+
+target:  KernelObj_Top $(COMMON_OBJS)
+
+$(INSTALL_DIR)/libSIMD_Optimized_Kernels.la: KernelObj_Top $(COMMON_OBJS)
+ifeq ($(LIBTOOL_TYPE_FLAG),-static)
+	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/.libs
+	@mkdir -p $(INCLUDE_INSTALL_DIR)
+	@mkdir -p $(INSTALL_DIR)
+	@rm -rf $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Number.h > $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Vector3.h >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#ifndef __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#define __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@for header in $(KERNEL_HEADERS); do cat $$header >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h; echo " " >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h;  done
+	@echo "#endif" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@ar cru $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels.a $(foreach KERNEL, $(KERNELS),$(BUILD_DIR)/$(KERNEL).o)
+	@ranlib $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels.a
+	@echo > $(BUILD_DIR)/libSIMD_Optimized_Kernels.la "$$LA_TEMPLATE_NOT_INSTALLED" 
+	@echo > $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels.lai "$$LA_TEMPLATE_INSTALLED" 
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels.la"; ln -s "../libSIMD_Optimized_Kernels.la" "libSIMD_Optimized_Kernels.la";
+	@libtool --silent --mode=install install --backup=none -c $(BUILD_DIR)/libSIMD_Optimized_Kernels.la $(realpath $(INSTALL_DIR))/libSIMD_Optimized_Kernels.la
+else
+	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/.libs
+	@mkdir -p $(INCLUDE_INSTALL_DIR)
+	@mkdir -p $(INSTALL_DIR)
+	@rm -rf $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Number.h > $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Vector3.h >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#ifndef __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#define __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@for header in $(KERNEL_HEADERS); do cat $$header >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h; echo " " >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h;  done
+	@echo "#endif" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@icc -shared $(foreach KERNEL, $(KERNELS),$(BUILD_DIR)/.libs/$(KERNEL).o) -Wl,-soname -Wl,libSIMD_Optimized_Kernels.so.0 $(LINKER) -o $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels.so.0.0.0
+	@echo > $(BUILD_DIR)/libSIMD_Optimized_Kernels.la "$$LA_TEMPLATE_NOT_INSTALLED" 
+	@echo > $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels.lai "$$LA_TEMPLATE_INSTALLED" 
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels.so.0"; ln -s "libSIMD_Optimized_Kernels.so.0.0.0" "libSIMD_Optimized_Kernels.so.0"
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels.so"; ln -s "libSIMD_Optimized_Kernels.so.0.0.0" "libSIMD_Optimized_Kernels.so"
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels.la"; ln -s "../libSIMD_Optimized_Kernels.la" "libSIMD_Optimized_Kernels.la";
+	@libtool --silent --mode=install install --backup=none -c $(BUILD_DIR)/libSIMD_Optimized_Kernels.la $(realpath $(INSTALL_DIR))/libSIMD_Optimized_Kernels.la
+endif
+
+
+$(INSTALL_DIR)/libSIMD_Optimized_Kernels-mpi.la: KernelObj_Top $(COMMON_OBJS)
+ifeq ($(LIBTOOL_TYPE_FLAG),-static)
+	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/.libs
+	@mkdir -p $(INCLUDE_INSTALL_DIR)
+	@mkdir -p $(INSTALL_DIR)
+	@rm -rf $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Number.h > $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Vector3.h >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#ifndef __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#define __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@for header in $(KERNEL_HEADERS); do cat $$header >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h; echo " " >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h;  done
+	@echo "#endif" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@ar cru $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels-mpi.a $(foreach KERNEL, $(KERNELS),$(BUILD_DIR)/$(KERNEL).o)
+	@ranlib $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels-mpi.a
+	@echo > $(BUILD_DIR)/libSIMD_Optimized_Kernels-mpi.la "$$LA_TEMPLATE_NOT_INSTALLED" 
+	@echo > $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels-mpi.lai "$$LA_TEMPLATE_INSTALLED" 
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels-mpi.la"; ln -s "../libSIMD_Optimized_Kernels-mpi.la" "libSIMD_Optimized_Kernels-mpi.la";
+	@libtool --silent --mode=install install --backup=none -c $(BUILD_DIR)/libSIMD_Optimized_Kernels-mpi.la $(realpath $(INSTALL_DIR))/libSIMD_Optimized_Kernels-mpi.la
+else
+	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/.libs
+	@mkdir -p $(INCLUDE_INSTALL_DIR)
+	@mkdir -p $(INSTALL_DIR)
+	@rm -rf $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Number.h > $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@cat ./Common/Vector3.h >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#ifndef __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@echo "#define __KERNEL_SPECIFIC_HEADERS_" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@for header in $(KERNEL_HEADERS); do cat $$header >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h; echo " " >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h;  done
+	@echo "#endif" >> $(INCLUDE_INSTALL_DIR)/VectorKernels.h
+	@icc -shared $(foreach KERNEL, $(KERNELS),$(BUILD_DIR)/.libs/$(KERNEL).o) -Wl,-soname -Wl,libSIMD_Optimized_Kernels-mpi.so.0 $(LINKER) -o $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels-mpi.so.0.0.0
+	@echo > $(BUILD_DIR)/libSIMD_Optimized_Kernels-mpi.la "$$LA_TEMPLATE_NOT_INSTALLED" 
+	@echo > $(BUILD_DIR)/.libs/libSIMD_Optimized_Kernels-mpi.lai "$$LA_TEMPLATE_INSTALLED" 
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels-mpi.so.0"; ln -s "libSIMD_Optimized_Kernels-mpi.so.0.0.0" "libSIMD_Optimized_Kernels-mpi.so.0"
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels-mpi.so"; ln -s "libSIMD_Optimized_Kernels-mpi.so.0.0.0" "libSIMD_Optimized_Kernels-mpi.so"
+	@cd "$(BUILD_DIR)/.libs"; rm -f "libSIMD_Optimized_Kernels-mpi.la"; ln -s "../libSIMD_Optimized_Kernels-mpi.la" "libSIMD_Optimized_Kernels-mpi.la";
+	@libtool --mode=install install --backup=none -c $(BUILD_DIR)/libSIMD_Optimized_Kernels-mpi.la $(realpath $(INSTALL_DIR))/libSIMD_Optimized_Kernels-mpi.la
+endif
+
+
+#=================================================#
+#   Macro: Generate Basic Test Skeletons          #
+#=================================================#
+
+RegenerateTestsPre:
+	@rm -rf ./Tests
+	@mkdir ./Tests
+
+ifdef KERNEL
+gen_unittest:
+	@if [ -e "./Tests/$(KERNEL)/UnitTest.cpp" ]; then                                \
+	   echo "UnitTest already exists. Not overwriting.";                               \
+	elif [ -e "./Kernels/$(KERNEL)/.NO_UNITTEST" ]; then                                \
+           echo "Kernel $(KERNEL) does not support Unit Testing, skipping.";                \
+	elif [ ! -e "./References/$(KERNEL)/$(KERNEL)_Reference.h" ]; then                                \
+           echo "Kernel $(KERNEL) does not have reference code, skipping.";                \
+	else                                                                               \
+           echo "$(BLUE_HIGHLIGHT_COLOR) Generating Unit Test for $(OK_COLOR)$(KERNEL)$(reset)..."; mkdir -p ./Tests/$(KERNEL)/; python GenerateUnitTest.py $(KERNEL) | indent -nut -l80 > ./Tests/$(KERNEL)/UnitTest.cpp;        \
+	fi
+
+gen_simdtest:
+	@if [ -e "./Tests/$(KERNEL)/SIMDTest.cpp" ]; then                                \
+	   echo "SIMDTest already exists. Not overwriting.";                               \
+	elif [ -e "./Kernels/$(KERNEL)/.NO_SIMDTEST" ]; then                                \
+           echo "Kernel $(KERNEL) does not support SIMD Testing, skipping.";                \
+	elif [ ! -e "./References/$(KERNEL)/$(KERNEL)_Reference.h" ]; then                                \
+           echo "Kernel $(KERNEL) does not have reference code, skipping.";                \
+	else                                                                               \
+           echo "$(BLUE_HIGHLIGHT_COLOR) Generating SIMD Test for $(OK_COLOR)$(KERNEL)$(reset)..."; mkdir -p ./Tests/$(KERNEL)/; python GenerateSIMDTest.py $(KERNEL) | indent -nut -l80 > ./Tests/$(KERNEL)/SIMDTest.cpp;        \
+	fi 
+
+gen_streamtest:
+	@if [ -e "./Tests/$(KERNEL)/StreamTest.cpp" ]; then                                \
+	   echo "StreamTest already exists. Not overwriting.";                               \
+	elif [ -e "./Kernels/$(KERNEL)/.NO_STREAMTEST" ]; then                                \
+           echo "Kernel $(KERNEL) does not support Stream Testing, skipping.";                \
+	elif [ ! -e "./References/$(KERNEL)/$(KERNEL)_Reference.h" ]; then                                \
+           echo "Kernel $(KERNEL) does not have reference code, skipping.";                \
+	else                                                                               \
+           echo "$(BLUE_HIGHLIGHT_COLOR) Generating Stream Test for $(OK_COLOR)$(KERNEL)$(reset)..."; mkdir -p ./Tests/$(KERNEL)/; python GenerateStreamTest.py $(KERNEL) | indent -nut -l80 > ./Tests/$(KERNEL)/StreamTest.cpp;        \
+	fi    
+
+gen_threadtest:
+	@if [ -e "./Tests/$(KERNEL)/ThreadTest.cpp" ]; then                                \
+	   echo "ThreadTest already exists. Not overwriting.";                               \
+	elif [ -e "./Kernels/$(KERNEL)/.NO_THREADTEST" ]; then                                \
+           echo "Kernel $(KERNEL) does not support Thread Testing, skipping.";                \
+	elif [ ! -e "./References/$(KERNEL)/$(KERNEL)_Reference.h" ]; then                                \
+           echo "Kernel $(KERNEL) does not have reference code, skipping.";                \
+	else                                                                               \
+           echo "$(BLUE_HIGHLIGHT_COLOR) Generating Thread Test for $(OK_COLOR)$(KERNEL)$(reset)..."; mkdir -p ./Tests/$(KERNEL)/; python GenerateThreadTest.py $(KERNEL) | indent -nut -l80 > ./Tests/$(KERNEL)/ThreadTest.cpp;        \
+	fi                                                                             
+else
+gen_unittest:
+	@for K in $(KERNELS);                                                                            \
+	do                                                                                              \
+	   if [ -e "./Tests/$$K/UnitTest.cpp" ]; then                                                \
+	   	echo "$$K UnitTest already exists. Not overwriting.";                                   \
+	elif [ -e "./Kernels/$$K/.NO_UNITTEST" ]; then                                \
+           echo "Kernel $$K does not support Unit Testing, skipping.";                \
+	elif [ ! -e "./References/$$K/$${K}_Reference.h" ]; then                                \
+           echo "Kernel $$K does not have reference code, skipping.";                \
+	   else                                                                                         \
+                echo "$(BLUE_HIGHLIGHT_COLOR) Generating Unit Test for $(OK_COLOR)$${K}$(reset)..."; mkdir -p ./Tests/$$K/; python GenerateUnitTest.py $$K | indent -nut -l80 > ./Tests/$$K/UnitTest.cpp;         \
+	   fi                                                                                           \
+	done
+
+gen_simdtest:
+	@for K in $(KERNELS);                                                                            \
+	do                                                                                              \
+	   if [ -e "./Tests/$$K/SIMDTest.cpp" ]; then                                                \
+	   	echo "$$K SIMDTest already exists. Not overwriting.";                                   \
+	elif [ -e "./Kernels/$$K/.NO_SIMDTEST" ]; then                                \
+           echo "Kernel $$K does not support SIMD Testing, skipping.";                \
+	elif [ ! -e "./References/$$K/$${K}_Reference.h" ]; then                                \
+           echo "Kernel $$K does not have reference code, skipping.";                \
+	   else                                                                                         \
+                echo "$(BLUE_HIGHLIGHT_COLOR) Generating SIMD Test for $(OK_COLOR)$${K}$(reset)..."; mkdir -p ./Tests/$$K/; python GenerateSIMDTest.py $$K | $(INDENT) > ./Tests/$$K/SIMDTest.cpp;         \
+	   fi                                                                                           \
+	done
+
+gen_streamtest:
+	@for K in $(KERNELS);                                                                            \
+	do                                                                                              \
+	   if [ -e "./Tests/$$K/StreamTest.cpp" ]; then                                                \
+	   	echo "$$K StreamTest already exists. Not overwriting.";                                   \
+	elif [ -e "./Kernels/$$K/.NO_STREAMTEST" ]; then                                \
+           echo "Kernel $$K does not support Stream Testing, skipping.";                \
+	elif [ ! -e "./References/$$K/$${K}_Reference.h" ]; then                                \
+           echo "Kernel $$K does not have reference code, skipping.";                \
+	   else                                                                                         \
+                echo "$(BLUE_HIGHLIGHT_COLOR) Generating Stream Test for $(OK_COLOR)$${K}$(reset)..."; mkdir -p ./Tests/$$K/; python GenerateStreamTest.py $$K | indent -nut -l80 > ./Tests/$$K/StreamTest.cpp;         \
+	   fi                                                                                           \
+	done
+
+gen_threadtest:
+	@for K in $(KERNELS);                                                                            \
+	do                                                                                              \
+	   if [ -e "./Tests/$$K/ThreadTest.cpp" ]; then                                                \
+	   	echo "$$K ThreadTest already exists. Not overwriting.";                                   \
+	elif [ -e "./Kernels/$$K/.NO_THREADTEST" ]; then                                \
+           echo "Kernel $$K does not support Thread Testing, skipping.";                \
+	elif [ ! -e "./References/$$K/$${K}_Reference.h" ]; then                                \
+           echo "Kernel $$K does not have reference code, skipping.";                \
+	   else                                                                                         \
+                echo "$(BLUE_HIGHLIGHT_COLOR) Generating Thread Test for $(OK_COLOR)$${K}$(reset)..."; mkdir -p ./Tests/$$K/; python GenerateThreadTest.py $$K | indent -nut -l80 > ./Tests/$$K/ThreadTest.cpp;         \
+	   fi                                                                                           \
+	done
+endif

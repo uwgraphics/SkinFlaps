@@ -1,0 +1,721 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{deb9c50e-c72f-42af-a881-66ed5d9654a9}</ProjectGuid>
+    <RootNamespace>PhysBAMsubset</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)\StackWalker;$(ProjectDir)\Public_Library;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <SDLCheck>
+      </SDLCheck>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>Default</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)\StackWalker;$(ProjectDir)\Public_Library;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\BOUNDED_HORIZONTAL_PLANE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\BOX.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\CONICAL_FRUSTUM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\CYLINDER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\ELLIPSE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\ELLIPSOID.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\HEXAHEDRON.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\ORIENTED_BOX.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\PLANE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\POLYGON.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\RAY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\RING.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\SEGMENT_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\SEGMENT_3D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\SPHERE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\TETRAHEDRON.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\TRIANGLE_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\TRIANGLE_3D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_LINE_2D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_PLANE_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_POINT_SIMPLEX_1D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_SEGMENT_2D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_TRIANGLE_3D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_BOX_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_ORIENTED_BOX_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_PLANE_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_POINT_SIMPLEX_1D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_SEGMENT_2D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_SPHERE_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_TRIANGLE_3D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\SEGMENT_2D_SEGMENT_2D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\SEGMENT_3D_TRIANGLE_3D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISION_GEOMETRY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISION_GEOMETRY_COLLECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions\POINT_REPULSION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY_1D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY_3D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions_And_Grids\GRID_BASED_COLLISION_GEOMETRY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collisions_And_Grids\OBJECTS_IN_CELL.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Collision_Detection\COLLISION_GEOMETRY_SPATIAL_PARTITION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Continuous_Collision_Detection\EDGE_EDGE_COLLISION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Continuous_Collision_Detection\POINT_FACE_COLLISION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Geometry_Particles\GEOMETRY_PARTICLES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Geometry_Particles\RIGID_GEOMETRY_PARTICLES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Collisions\GRID_BASED_COLLISION_GEOMETRY_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Computations\LEVELSET_MAKER_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Computations\RIGID_GEOMETRY_RASTERIZATION_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Interpolation_Collidable\LINEAR_INTERPOLATION_COLLIDABLE_CELL_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\EXTRAPOLATION_HIGHER_ORDER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\EXTRAPOLATION_PDE_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\EXTRAPOLATION_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\FAST_LEVELSET.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\FAST_MARCHING_METHOD_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_1D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_3D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_MULTIPLE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_MULTIPLE_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Implicit_Objects\ANALYTIC_IMPLICIT_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Implicit_Objects\IMPLICIT_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Implicit_Objects\IMPLICIT_OBJECT_TRANSFORMED.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Implicit_Objects_Uniform\LEVELSET_IMPLICIT_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Implicit_Objects_Uniform\MULTIBODY_LEVELSET_IMPLICIT_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Level_Sets\LEVELSET_UTILITIES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_EMBEDDED_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_EMBEDDED_TETRAHEDRALIZED_VOLUME.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_EMBEDDED_TRIANGULATED_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_FREE_PARTICLES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_HEXAHEDRALIZED_VOLUME.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_MESH_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_POINT_SIMPLICES_1D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_RIGID_GEOMETRY_COLLECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_SEGMENTED_CURVE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_SEGMENTED_CURVE_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_STRUCTURE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TETRAHEDRALIZED_VOLUME.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TRIANGULATED_AREA.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TRIANGULATED_SURFACE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Grids_Uniform_Level_Sets\READ_WRITE_LEVELSET_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects\READ_WRITE_ANALYTIC_IMPLICIT_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects\READ_WRITE_IMPLICIT_OBJECT_TRANSFORMED.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_IMPLICIT_OBJECT_COMBINED.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_IMPLICIT_OBJECT_COMBINED_EULERIAN.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_LEVELSET_IMPLICIT_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_MULTIBODY_LEVELSET_IMPLICIT_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Read_Write\Topology\READ_WRITE_SIMPLEX_MESH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Registry\STRUCTURE_REGISTRY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Solids_Geometry\RIGID_GEOMETRY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Solids_Geometry\RIGID_GEOMETRY_COLLECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Solids_Geometry_Evolution\RIGID_GEOMETRY_EXAMPLE_VELOCITIES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\BOX_HIERARCHY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\PARTICLE_HIERARCHY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\SEGMENT_HIERARCHY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\TETRAHEDRON_HIERARCHY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\TRIANGLE_HIERARCHY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\TRIANGLE_HIERARCHY_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology\HEXAHEDRON_MESH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology\POINT_SIMPLEX_MESH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology\SEGMENT_MESH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology\SIMPLEX_MESH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology\TETRAHEDRON_MESH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology\TRIANGLE_MESH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\EMBEDDED_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\FREE_PARTICLES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\HEXAHEDRALIZED_VOLUME.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\MESH_OBJECT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\POINT_SIMPLICES_1D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\SEGMENTED_CURVE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\SEGMENTED_CURVE_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\STRUCTURE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TETRAHEDRALIZED_VOLUME.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TRIANGLE_SUBDIVISION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TRIANGULATED_AREA.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TRIANGULATED_SURFACE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry_Intersections\RAY_POINT_SIMPLICES_1D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry_Intersections\RAY_SEGMENTED_CURVE_2D_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry_Intersections\RAY_TRIANGULATED_SURFACE_INTERSECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_COLLECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_COLLECTION_ELEMENT_BASE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Arrays\EXTERNAL_ARRAY_COLLECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Clone\CLONE_ARRAY.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Data_Structures\DYNAMIC_LIST.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Data_Structures\FLOOD_FILL_GRAPH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Data_Structures\KD_TREE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform\GRID.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_CELL.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_EDGE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_FACE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_NODE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\FLOOD_FILL_2D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\FLOOD_FILL_3D.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\UNIFORM_ARRAY_ITERATOR.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Boundaries\BOUNDARY_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Interpolation\LINEAR_INTERPOLATION_MAC_2D_HELPER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Interpolation\LINEAR_INTERPOLATION_MAC_3D_HELPER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Interpolation\LINEAR_INTERPOLATION_UNIFORM.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Interpolation\LINEAR_INTERPOLATION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Log\DEBUG_PRINT.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Log\DEBUG_SUBSTEPS.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Log\DEBUG_UTILITIES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Log\LOG.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\BANDED_SYMMETRIC_MATRIX.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_3X2.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_3X3.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_4X4.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_BASE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_MXN.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\ROTATION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\SPARSE_MATRIX_FLAT_MXN.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\SPARSE_MATRIX_FLAT_NXN.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\SYMMETRIC_MATRIX_3X3.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Matrices\SYMMETRIC_MATRIX_NXN.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Nonlinear_Equations\ITERATIVE_SOLVER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Nonlinear_Equations\LINE_SEARCH.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Ordinary_Differential_Equations\RUNGEKUTTA.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Parallel_Computation\THREAD_QUEUE.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Parsing\GENERIC_PARSER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Parsing\PARAMETER_LIST.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Parsing\PARAMETER_LIST_CONTAINER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Parsing\PARSE_ARGS.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Parsing\STRING_UTILITIES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Polynomials\CUBIC.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Polynomials\QUADRATIC.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Random_Numbers\MT19937.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Random_Numbers\RANDOM_NUMBERS.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_ARRAY_COLLECTION.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\FILE_UTILITIES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\ZIP.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Utilities\EXCEPTIONS.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Utilities\PROCESS_UTILITIES.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Utilities\TIMER.cpp" />
+    <ClCompile Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR.cpp" />
+    <ClCompile Include="StackWalker\StackWalker.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\BASIC_GEOMETRY_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\BASIC_GEOMETRY_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\BASIC_SIMPLEX_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\BOUNDED_HORIZONTAL_PLANE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\BOX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\CONICAL_FRUSTUM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\CYLINDER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\ELLIPSE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\ELLIPSOID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\HEXAHEDRON.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\LINE_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\ORIENTED_BOX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\PLANE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\POINT_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\POINT_SIMPLEX_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\POLYGON.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\RAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\RING.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\SEGMENT_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\SEGMENT_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\SEGMENT_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\SPHERE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\TETRAHEDRON.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\TORUS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\TRIANGLE_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry\TRIANGLE_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_LINE_2D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_PLANE_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_POINT_SIMPLEX_1D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_SEGMENT_2D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\BOX_TRIANGLE_3D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_BOX_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_ORIENTED_BOX_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_PLANE_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_POINT_SIMPLEX_1D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_SEGMENT_2D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_SPHERE_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\RAY_TRIANGLE_3D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\SEGMENT_2D_SEGMENT_2D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Basic_Geometry_Intersections\SEGMENT_3D_TRIANGLE_3D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISIONS_GEOMETRY_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISION_GEOMETRY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISION_GEOMETRY_COLLECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISION_GEOMETRY_ID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISION_GEOMETRY_IMPULSE_ACCUMULATOR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\COLLISION_PARTICLE_STATE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\POINT_REPULSION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions\RIGID_COLLISION_GEOMETRY_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions_And_Grids\GRID_BASED_COLLISION_GEOMETRY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collisions_And_Grids\OBJECTS_IN_CELL.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Collision_Detection\COLLISION_GEOMETRY_SPATIAL_PARTITION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Continuous_Collision_Detection\EDGE_EDGE_COLLISION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Continuous_Collision_Detection\POINT_FACE_COLLISION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Geometry_Particles\GEOMETRY_PARTICLES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Geometry_Particles\GEOMETRY_PARTICLES_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Geometry_Particles\RIGID_GEOMETRY_PARTICLES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Collisions\GRID_BASED_COLLISION_GEOMETRY_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Computations\LEVELSET_MAKER_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Computations\RIGID_GEOMETRY_RASTERIZATION_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Interpolation_Collidable\INTERPOLATION_COLLIDABLE_POLICY_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Interpolation_Collidable\INTERPOLATION_COLLIDABLE_UNIFORM_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Interpolation_Collidable\LINEAR_INTERPOLATION_COLLIDABLE_CELL_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Interpolation_Collidable\LINEAR_INTERPOLATION_COLLIDABLE_FACE_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\EXTRAPOLATION_HIGHER_ORDER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\EXTRAPOLATION_PDE_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\EXTRAPOLATION_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\FAST_LEVELSET.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\FAST_MARCHING_METHOD_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_MULTIPLE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_MULTIPLE_ON_A_RAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_MULTIPLE_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_POLICY_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Grids_Uniform_Level_Sets\LEVELSET_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Implicit_Objects\ANALYTIC_IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Implicit_Objects\IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Implicit_Objects\IMPLICIT_OBJECT_TRANSFORMED.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Implicit_Objects_Uniform\IMPLICIT_OBJECT_COMBINED.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Implicit_Objects_Uniform\IMPLICIT_OBJECT_COMBINED_EULERIAN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Implicit_Objects_Uniform\LEVELSET_IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Implicit_Objects_Uniform\MULTIBODY_LEVELSET_IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Interpolation_Collidable\INTERPOLATION_COLLIDABLE_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\EXTRAPOLATION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\FAST_MARCHING.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\IMPLICIT_OBJECT_ON_A_RAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\IMPLICIT_OBJECT_ON_A_RAY_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\IMPLICIT_OBJECT_ON_A_RAY_SECONDARY_INTERPOLATION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\LEVELSET.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\LEVELSET_MAKER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\LEVELSET_NORMAL_COMPUTATION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\LEVELSET_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Level_Sets\LEVELSET_UTILITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_BOUNDED_HORIZONTAL_PLANE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_BOX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_CONICAL_FRUSTUM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_CYLINDER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_ELLIPSE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_ELLIPSOID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_EMBEDDED_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_EMBEDDED_TETRAHEDRALIZED_VOLUME.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_EMBEDDED_TRIANGULATED_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_FREE_PARTICLES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_HEXAHEDRALIZED_VOLUME.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_LINE_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_MESH_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_ORIENTED_BOX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_PLANE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_POINT_SIMPLEX_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_POINT_SIMPLICES_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_POLYGON.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_RIGID_GEOMETRY_COLLECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_RING.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_SEGMENTED_CURVE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_SEGMENTED_CURVE_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_SEGMENT_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_SPHERE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_STRUCTURE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_STRUCTURE_LIST.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TETRAHEDRALIZED_VOLUME.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TORUS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TRIANGLE_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TRIANGULATED_AREA.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Geometry\READ_WRITE_TRIANGULATED_SURFACE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Grids_Uniform_Level_Sets\READ_WRITE_LEVELSET_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects\READ_WRITE_ANALYTIC_IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects\READ_WRITE_IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects\READ_WRITE_IMPLICIT_OBJECT_TRANSFORMED.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_IMPLICIT_OBJECT_COMBINED.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_IMPLICIT_OBJECT_COMBINED_EULERIAN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_LEVELSET_IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Implicit_Objects_Uniform\READ_WRITE_MULTIBODY_LEVELSET_IMPLICIT_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Topology\READ_WRITE_HEXAHEDRON_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Topology\READ_WRITE_POLYGON_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Topology\READ_WRITE_QUADRILATERAL_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Read_Write\Topology\READ_WRITE_SIMPLEX_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Registry\STRUCTURE_REGISTRY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Solids_Geometry\RIGID_GEOMETRY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Solids_Geometry\RIGID_GEOMETRY_COLLECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Solids_Geometry_Evolution\RIGID_GEOMETRY_EXAMPLE_VELOCITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Solids_Geomtery\RIGID_GEOMETRY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Solids_Geomtery\RIGID_GEOMETRY_COLLECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\BOX_HIERARCHY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\BOX_HIERARCHY_DEFINITION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\PARTICLE_3D_SPATIAL_PARTITION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\PARTICLE_HIERARCHY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\PARTICLE_PARTITION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\SEGMENT_HIERARCHY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\SPATIAL_ACCELERATION_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\TETRAHEDRON_HIERARCHY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\TRIANGLE_HIERARCHY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Spatial_Acceleration\TRIANGLE_HIERARCHY_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology\HEXAHEDRON_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology\POINT_SIMPLEX_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology\SEGMENT_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology\SIMPLEX_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology\TETRAHEDRON_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology\TOPOLOGY_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology\TRIANGLE_MESH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\EMBEDDED_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\FREE_PARTICLES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\HEXAHEDRALIZED_VOLUME.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\MESH_OBJECT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\POINT_SIMPLICES_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\SEGMENTED_CURVE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\SEGMENTED_CURVE_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\STRUCTURE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\STRUCTURE_LIST.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TETRAHEDRALIZED_VOLUME.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TOPOLOGY_BASED_GEOMETRY_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TOPOLOGY_BASED_GEOMETRY_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TOPOLOGY_BASED_SIMPLEX_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TRIANGLE_SUBDIVISION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TRIANGULATED_AREA.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry\TRIANGULATED_SURFACE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry_Intersections\RAY_POINT_SIMPLICES_1D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry_Intersections\RAY_SEGMENTED_CURVE_2D_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Geometry\Topology_Based_Geometry_Intersections\RAY_TRIANGULATED_SURFACE_INTERSECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAYS_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_BASE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_COLLECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_COLLECTION_ELEMENT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_COLLECTION_ELEMENT_BASE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_DIFFERENCE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_EXPRESSION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_LEFT_MULTIPLE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_NEGATION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_PLUS_SCALAR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_PRODUCT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_RATIO.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_SUM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ARRAY_VIEW.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\ATTRIBUTE_ID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\CONSTANT_ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\EXTERNAL_ARRAY_COLLECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\IDENTITY_ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\INDIRECT_ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\PROJECTED_ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays\Scalar_View.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays_Computations\ARRAY_ARITHMETIC.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays_Computations\ARRAY_COPY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays_Computations\ARRAY_MIN_MAX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays_Computations\SORT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Arrays_Computations\SUMMATIONS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Clone\CLONEABLE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Clone\CLONE_ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\DATA_STRUCTURES_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\DYNAMIC_LIST.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\ELEMENT_ID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\FLOOD_FILL_GRAPH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\HASHTABLE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\HASHTABLE_ITERATOR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\KD_TREE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\KD_TREE_NODE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Data_Structures\PAIR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\BLOCK_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\EDGE_INDEX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\FACE_INDEX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\GRID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\GRID_ADAPTIVE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\SIDED_FACE_INDEX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_CELL.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_EDGE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_FACE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform\UNIFORM_GRID_ITERATOR_NODE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\ARRAYS_ND.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\ARRAYS_ND_BASE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\FACE_ARRAYS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\FLOOD_FILL_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\FLOOD_FILL_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Arrays\UNIFORM_ARRAY_ITERATOR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Boundaries\BOUNDARY_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Interpolation\LINEAR_INTERPOLATION_MAC_2D_HELPER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Interpolation\LINEAR_INTERPOLATION_MAC_3D_HELPER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Grids_Uniform_Interpolation\LINEAR_INTERPOLATION_UNIFORM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Interpolation\LINEAR_INTERPOLATION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Log\DEBUG_PRINT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Log\DEBUG_SUBSTEPS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Log\DEBUG_UTILITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Log\LOG.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Log\LOG_ENTRY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Log\LOG_SCOPE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Log\PROGRESS_INDICATOR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\argmax.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\argmin.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\cbrt.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\choice.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\clamp.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\Componentwise_Min_Max.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\constants.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\cube.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\cyclic_shift.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\exchange.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\exchange_sort.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\FACTORIAL.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\givens_rotate.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\Hash.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\integer_log.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\INTERVAL.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\Inverse.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\Is_NaN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\max.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\maxabs.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\maxmag.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\min.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\minabs.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\minmag.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\Minmod.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\ONE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\permutation.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\pow.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\RANGE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\rint.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\Robust_Arithmetic.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\Robust_Functions.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\robust_givens_rotation.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\sign.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\sqr.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\ulp.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\wrap.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Math_Tools\ZERO.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\BANDED_SYMMETRIC_MATRIX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\DIAGONAL_MATRIX_2X2.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\DIAGONAL_MATRIX_3X3.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\FRAME.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_0X0.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_1X1.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_2X2.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_2X3.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_3X2.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_3X3.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_4X4.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_ARITHMETIC_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_BASE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_EXPRESSION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_MXN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\MATRIX_VIEW.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\QUATERNION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\ROTATION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\SPARSE_MATRIX_FLAT_MXN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\SPARSE_MATRIX_FLAT_NXN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\SPARSE_MATRIX_NXN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\SYMMETRIC_MATRIX_2X2.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\SYMMETRIC_MATRIX_3X3.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\SYMMETRIC_MATRIX_NXN.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\TRANSPOSE_MATRIX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\UPPER_TRIANGULAR_MATRIX_2X2.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Matrices\UPPER_TRIANGULAR_MATRIX_3X3.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Nonlinear_Equations\ITERATIVE_SOLVER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Nonlinear_Equations\LINE_SEARCH.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Ordinary_Differential_Equations\RUNGEKUTTA.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Parallel_Computation\THREAD_QUEUE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Parsing\ARG_DATA.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Parsing\GENERIC_PARSER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Parsing\PARAMETER_LIST.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Parsing\PARAMETER_LIST_CONTAINER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Parsing\PARSE_ARGS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Parsing\STRING_UTILITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Polynomials\CUBIC.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Polynomials\QUADRATIC.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Random_Numbers\MT19937.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Random_Numbers\RANDOM_NUMBERS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_ARRAY_COLLECTION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_ARRAY_COLLECTION_ELEMENT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_ARRAY_COLLECTION_ID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_ARRAY_VIEW.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_INDIRECT_ARRAY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Arrays\READ_WRITE_READ_WRITE_ARRAY_COLLECTION_ID.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\FILE_UTILITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\READ_WRITE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\READ_WRITE_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\READ_WRITE_FUNCTIONS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\READ_WRITE_SYMBOL.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\TYPED_STREAM.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Utilities\ZIP.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Vectors\READ_WRITE_VECTOR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Vectors\READ_WRITE_VECTOR_0D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Vectors\READ_WRITE_VECTOR_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Vectors\READ_WRITE_VECTOR_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Vectors\READ_WRITE_VECTOR_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Vectors\READ_WRITE_VECTOR_BASE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Read_Write\Vectors\READ_WRITE_VECTOR_ND.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Utilities\EXCEPTIONS.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Utilities\NONCOPYABLE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Utilities\PHYSBAM_OVERRIDE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Utilities\PROCESS_UTILITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Utilities\STATIC_ASSERT.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Utilities\TIMER.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Utilities\TYPE_UTILITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\ARITHMETIC_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\COMPLEX.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\Dot_Product.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\Normalize.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\SCALAR_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\SPARSE_VECTOR_ND.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\TWIST.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_0D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_1D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_2D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_3D.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_BASE.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_EXPRESSION.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_FORWARD.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_ND.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_POLICY.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_UTILITIES.h" />
+    <ClInclude Include="Public_Library\PhysBAM_Tools\Vectors\VECTOR_VIEW.h" />
+    <ClInclude Include="StackWalker\StackWalker.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
