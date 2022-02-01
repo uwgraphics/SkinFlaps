@@ -30,7 +30,7 @@ Surgical examples of various facial skin flap procedures can be run by pressing 
  - lowerEyelidCanthotomy.hst - eyelid defect closed with lateral canthotomy/ inferior cantholysis
  - postAuricularEar.hst - ear defect closed with postauricular flap and skin graft
 
-A YouTube video by Dr. Cutting will demonstrate how to use the program in *[dummy][9]*.
+A YouTube video by Dr. Cutting will demonstrate how to use the program in *[Users Guide][9]*.
 
 ### **Known Issues for Future Work**
 
@@ -89,4 +89,4 @@ A YouTube video by Dr. Cutting will demonstrate how to use the program in *[dumm
   [6]: https://www.glfw.org/
   [7]: https://www.tandfonline.com/doi/abs/10.3109/10929080209146521
   [8]: http://pages.cs.wisc.edu/~sifakis/papers/surgery_simulator_JRS.pdf
-  [9]: http://courtcuttingmd.com/
+  [9]: https://youtu.be/xuKLgMS5gzk
