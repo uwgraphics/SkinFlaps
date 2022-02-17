@@ -362,7 +362,9 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					historyDirectory.assign(buff);
+					size_t pos = sceneDirectory.rfind("SkinFlaps");
+					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
+					historyDirectory = sceneDirectory;
 					sceneDirectory.append("\\Model\\");
 					historyDirectory.append("\\History\\");
 
@@ -380,12 +382,13 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					sceneDirectory.append("\\Model\\");
-					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					size_t pos = sceneDirectory.rfind("SkinFlaps");
+					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
 					if (historyDirectory.empty()) {
-						historyDirectory.assign(buff);
-						historyDirectory.append("\\History\\");
+						historyDirectory = sceneDirectory;
+						sceneDirectory.append("\\Model\\");
 					}
+					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
 					if (!loadFile(historyDirectory.c_str(), "hst", historyDirectory, historyFile)) {
 						puts("Couldn't load model.\n");
 					}
@@ -493,13 +496,15 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					sceneDirectory.append("\\Model\\");
-					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					size_t pos = sceneDirectory.rfind("SkinFlaps");
+					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
 					if (historyDirectory.empty()) {
-						historyDirectory.assign(buff);
+						historyDirectory = sceneDirectory;
 						historyDirectory.append("\\History\\");
 						igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					}
+					sceneDirectory.append("\\Model\\");
+					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
 				}
 				++nextCounter;
 			}

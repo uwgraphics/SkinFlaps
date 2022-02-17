@@ -65,11 +65,12 @@ int main(int, char**)
 							bts->drawTetLattice();
 					}
 				}
+				if (ffg.physicsDrag)
+					ffg.physicsDrag = false;
 				if (ffg.nextCounter > 0) {
 					ffg.getSurgicalActions()->nextHistoryAction();
 					--ffg.nextCounter;
 				}
-				ffg.physicsDrag = false;
 				// below is from: https://www.intel.com/content/www/us/en/develop/documentation/onetbb-documentation/top/onetbb-developer-guide/design-patterns/gui-thread.html
 				if (bts->forcesApplied() && sa->physicsDone && !bts->isPhysicsPaused()) {  // physicsDone recheck necessary since nextHistoryAction() may have spawned a task that this one would collide with
 					sa->physicsDone = false;
