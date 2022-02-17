@@ -195,7 +195,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		json::Object hullObj = oit->second.ToObject();
 		std::string lsPath;
 		std::vector<Vec2f> txPoly;
-//		json::Object hullObj = fixedCollObj.ToObject();
 		for (suboit = hullObj.begin(); suboit != hullObj.end(); ++suboit) {
 			lsPath = dataDirectory + suboit->first;
 			json::Array polyArr;
@@ -247,9 +246,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		_ptp.setHookSutureWeights(hookWeight, sutureWeight, 0.3f);
 		_surgAct->getSutures()->setAutoSutureSpacing(autoSutureSpacing);
 		lsFname += collisionObject;  //  "collision_proxy_5_4_20.obj";
-#ifndef NO_PHYSICS
-//		_ptp.setCollisionObject(lsFname.c_str());
-#endif
 	}
 	struct tetSubset {
 		std::string name;
@@ -388,19 +384,8 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 void bccTetScene::initPdPhysics()
 {
 	fixPeriostealPeriferalVertices();
-//	if (!_pc.empty()) {
 	if (!_tetCol.empty()) {
-		std::vector<long> tets;
-//		std::vector<Vec3f> weights;
-		std::vector<std::array<float, 3> > weights;
 		_tetCol.updateFixedCollisions(_mt, &_vnTets);
-//		std::vector<float> areas;
-//		_pc.computeCollisionProxies(_mt, &_vnTets, 2, tets, weights, areas);
-#ifndef NO_PHYSICS
-//		_ptp.inputCollisionProxies(tets, reinterpret_cast<const std::vector< std::array<float, 3> >(&) >(weights), areas);
-//		_ptp.addRigidCollisionSets(tets, weights);
-//		COURT here
-#endif
 	}
 #ifndef NO_PHYSICS
 	_surgAct->getHooks()->updateHookPhysics();
@@ -411,7 +396,7 @@ void bccTetScene::initPdPhysics()
 
 void bccTetScene::updatePhysics()
 {
-	if (_vnTets.empty() || _physicsPaused)
+	if (_vnTets.empty())
 		return;
 	if (!_tetsModified && _forcesApplied) {
 		_tetsModified = true;
@@ -420,19 +405,8 @@ void bccTetScene::updatePhysics()
 
 #ifndef NO_PHYSICS
 	if (_tetsModified || _forcesApplied) {
-		std::vector<float> weights;
-		std::vector<Vec3f> pos;
-//		_tetCol.rigidCollisionsNow(weights, pos);
-//		_ptp.updateRigidCollisions(&weights[0], reinterpret_cast<float (*)[3]>(&pos[0][0]), weights.size());
 		_tetCol.findSoftCollisionPairs();
 		_ptp.solve();
-		_surgAct->getSutures()->updateSutureGraphics();
-		if (_surgAct->getSurgGraphics()->getSceneNode()->visible)
-			updateSurfaceDraw();
-		else {  // draw only tets without the surface
-			if (_gl3w->getLines()->getSceneNode() && _gl3w->getLines()->getSceneNode()->visible)
-				drawTetLattice();
-		}
 	}
 #endif
 

@@ -48,6 +48,7 @@ public:
 	void setSurgicalActions(surgicalActions *sa) { _surgAct = sa; }
 	void setPhysicsPause(bool pause) { _physicsPaused = pause; }
 	inline bool isPhysicsPaused(){ return  _physicsPaused; }
+	inline bool forcesApplied() { return  _forcesApplied; }
 	bccTetScene();
 	~bccTetScene();
 

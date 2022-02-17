@@ -11,7 +11,9 @@
 #include "materialTriangles.h"
 #include "vnBccTetrahedra.h"
 #include "deepCut.h"
+#include "surgicalActions.h"
 #include "GLmatrices.h"
+// #include <tbb/task_arena.h>
 #include <assert.h>
 #ifdef linux
 #include <stdio.h>
@@ -193,8 +195,25 @@ int sutures::setSecondEdge(int sutureNumber, materialTriangles *tri, int triangl
 		}
 		if (_ptp->solverInitialized()) {
 			sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));
-			if (initPhysics)
+			if (initPhysics) {
+//				_surgAct->physicsDone = false;
+//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+//					_surgAct->getBccTetScene()->promoteSutures();
+//					_ptp->initializePhysics();
+//					_surgAct->physicsDone = true;
+//					}
+//				);
+
 				_ptp->initializePhysics();
+			}
+//			else {
+//				_surgAct->physicsDone = false;
+//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+//					sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));
+//					_surgAct->physicsDone = true;
+//					}
+//				);
+//			}
 		}
 		else
 			sit->second._constraintId = -1;  // stub until forces applied

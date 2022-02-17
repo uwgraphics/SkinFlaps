@@ -18,6 +18,7 @@ class materialTriangles;
 class GLmatrices;
 class lightsShaders;
 class vnBccTetrahedra;
+class surgicalActions;
 class deepCut;
 
 class sutureTets
@@ -71,6 +72,7 @@ public:
 	inline void setPhysicsLattice(pdTetPhysics *ptp) { _ptp = ptp; }
 	inline void setVnBccTetrahedra(vnBccTetrahedra *vbt) { _vbt = vbt; }
 	inline void setDeepCut(deepCut *dc){ _dc = dc; }
+	inline void setSurgicalActions(surgicalActions* sa) { _surgAct = sa; }
 	inline static void setAutoSutureSpacing(float spacing) { _sutureSpanGap = spacing; }
 	inline bool empty() { return _sutures.empty(); }
 	void clear()	{_sutures.clear(); }
@@ -99,6 +101,7 @@ private:
 	deepCut *_dc;
 	pdTetPhysics *_ptp;
 	vnBccTetrahedra *_vbt;
+	surgicalActions* _surgAct;
 	GLmatrices *_glm;
 	shapes *_shapes;
 	typedef std::map<unsigned int, sutureTets> SUTUREMAP;

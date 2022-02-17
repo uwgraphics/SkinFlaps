@@ -82,6 +82,8 @@ bool hooks::setHookPosition(unsigned int hookNumber, float(&hookPos)[3])
 #ifndef NO_PHYSICS
 	if(hit->second._constraintId > -1)
 		_ptp->moveHook(hit->second._constraintId, reinterpret_cast< const std::array<float, 3>(&) >(hit->second.xyz));
+	else  // physics not activated yet
+		throw(std::logic_error("Attempting to move a hook without physics activation.\n"));
 #endif
 	GLfloat *mvm = hit->second._shape->getModelViewMatrix();
 	mvm[12] = hookPos[0];
@@ -126,7 +128,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	axisAngleRotateMatrix4x4(om, vn._v, angle);
 	translateMatrix4x4(om,xyz[0],xyz[1],xyz[2]);
 	Vec3f gridLocus, bw;
-	if (_deepCut->getMaterialTriangles() != nullptr && _ptp->solverInitialized()){
+	if (_deepCut->getMaterialTriangles() != nullptr && _ptp->solverInitialized()){  // COURT - won't need second condition
 		long tetIdx = _deepCut->parametricMTtriangleTet(triangle, uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;

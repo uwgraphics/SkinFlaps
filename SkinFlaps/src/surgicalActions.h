@@ -26,7 +26,7 @@ public:
 	bool mouseMotion(float dScreenX, float dScreenY);
 	void onKeyDown(int key);
 	void onKeyUp(int key);
-	inline void setToolState(int toolState){_bts.setPhysicsPause(toolState<1?false:true); _toolState = toolState; }
+	inline void setToolState(int toolState){ _bts.setPhysicsPause(toolState < 1 ? false : true); _toolState = toolState; }
 	inline int getToolState() { return _toolState; }
 	inline void setGl3wGraphics(gl3wGraphics *gl3w) { _gl3w = gl3w; _bts.setGl3wGraphics(gl3w); }
 	void setFacialFlapsGui(FacialFlapsGui *ffg) { _ffg = ffg; }
@@ -51,6 +51,8 @@ public:
 	void promoteFakeSutures();
 	void pausePhysics();
 	bool _strongHooks;  // COURT - hack for collision cheating purposes
+	std::atomic<bool> physicsDone, newTopology;
+	bccTetScene _bts;
 
 	surgicalActions();
 	~surgicalActions();
@@ -60,9 +62,6 @@ private:
 	int _toolState;
 	gl3wGraphics *_gl3w;
 	FacialFlapsGui *_ffg;
- public:
-	bccTetScene _bts;
- private:
 	std::vector<int> _pXToPbTetVertices;
 	int _originalTriangleNumber;
 	int _dragVertex;
@@ -72,6 +71,7 @@ private:
 	hooks _hooks;
 	sutures _sutures;
 	deepCut _incisions;  // derived from skinCutUndermineTets class
+
 	struct undermineTriangle {
 		unsigned int incisionConnect : 1;
 		unsigned int triangle : 31;
@@ -86,6 +86,8 @@ private:
 	json::Array _historyArray;
 	json::Array::ValueVector::iterator _historyIt;	// current history command
 	std::string _sceneDir, _historyDir;
+	bool texturePickCode(const int triangle, const float(&uv)[2], float(&txUv)[2], float &triangleDuv, int &material);
+	bool closestTexturePick(const float(&txUv)[2], const float triangleDuv, int &material, int &triangle, float(&uv)[2]);
 
 	// next are temporary move variables set by ascii keys
 	float _x,_y,_z,_u,_f,_r;

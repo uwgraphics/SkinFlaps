@@ -34,7 +34,7 @@ public:
 
 	bool inputCorrectFence(fence* fp);
 	int addDeepPost(const int triangle, const float(&uv)[2], const Vec3d& rayDirection, bool closedEnd);
-	inline void popLastDeepPost() { _deepPosts.pop_back(); }
+	inline void popLastDeepPost() { if(!_deepPosts.empty()) _deepPosts.pop_back(); }
 	inline int numberOfDeepPosts() { return (int)_deepPosts.size(); }
 	bool preventPreviousCrossover(const int postNum);
 	void getDeepPosts(std::vector<Vec3f>& xyz, std::vector<Vec3f>& nrm);
@@ -76,7 +76,6 @@ protected:
 		Vec3d qn;
 		Vec3d P00;
 		Vec3d P10;
-
 		Vec3d P01;
 		Vec3d P11;
 	};
@@ -88,7 +87,6 @@ protected:
 		std::vector<materialTriangles::matTriangle> quadTriangles;
 	};
 	std::vector< deepPost> _deepPosts;
-
 
 	std::vector<Vec3d> _deepXyz;  // deep spatial coords for each mt vertex. material 2 vertices use deepBed coords.  rayIntersectSolids() repeatedly use these
 	float _maxSceneSize;

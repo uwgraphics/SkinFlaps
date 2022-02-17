@@ -42,12 +42,12 @@ using namespace gl;
 #endif
 
 bool FacialFlapsGui::powerHooks = false, FacialFlapsGui::showToolbox = true, FacialFlapsGui::viewPhysics = false, FacialFlapsGui::viewSurface = true, FacialFlapsGui::user_message_flag = false;
-bool FacialFlapsGui::nextRequested = false;
+int FacialFlapsGui::nextCounter = 0;
 int FacialFlapsGui::csgToolstate;
 std::string FacialFlapsGui::sceneDirectory, FacialFlapsGui::historyDirectory, FacialFlapsGui::modelFile, FacialFlapsGui::historyFile, FacialFlapsGui::user_message, FacialFlapsGui::user_message_title;
 GLFWwindow* FacialFlapsGui::window;
 unsigned char FacialFlapsGui::buttonsDown;
-bool FacialFlapsGui::surgicalDrag, FacialFlapsGui::ctrlShiftKeyDown = false, FacialFlapsGui::guiActive = false;
+bool FacialFlapsGui::surgicalDrag, FacialFlapsGui::ctrlShiftKeyDown = false, FacialFlapsGui::guiActive = false, FacialFlapsGui::physicsDrag = false;
 int FacialFlapsGui::windowWidth, FacialFlapsGui::windowHeight;
 GLuint FacialFlapsGui::hourglassTexture = 0xffffffff;
 int FacialFlapsGui::hourglassWidth, FacialFlapsGui::hourglassHeight;

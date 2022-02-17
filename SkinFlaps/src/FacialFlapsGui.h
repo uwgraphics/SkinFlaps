@@ -111,18 +111,6 @@ public:
 			else
 				igGl3w.mouseButtonEvent((unsigned short)(xpos), (unsigned short)(ypos), 2, true);
 		}
-/*		else {
-			int butEvent;
-			if(buttonsDown < 1)
-				butEvent = -1;
-			else if (buttonsDown < 2)
-				butEvent = 0;
-			else if (buttonsDown < 3)
-				butEvent = 1;
-			else
-				butEvent = 2;
-			igGl3w.mouseButtonEvent((unsigned short)(xpos), (unsigned short)(ypos), butEvent, true);
-		} */
 	}
 
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -207,7 +195,7 @@ public:
 #endif
 
 	// Create window with graphics context
-		window = glfwCreateWindow(1280, 720, "Skin Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
+		window = glfwCreateWindow(1280, 720, "Facial Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
 		if (window == NULL)
 			return false;
 		glfwMakeContextCurrent(window);
@@ -324,6 +312,7 @@ public:
 
 	static void showHourglass() {
 		// from: https ://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples#Example-for-OpenGL-users
+		physicsDrag = true;
 		if (hourglassTexture > 0xfffffffe) {
 			std::string str(sceneDirectory);
 			str.append("Hourglass_2.jpg");
@@ -356,7 +345,8 @@ public:
 			}
 		}
 		if (hourglassTexture < 0xffffffff) {
-			ImGui::Begin("processing", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
+			ImGui::SetNextWindowPos(ImVec2(104., 24.), 0, ImVec2(0.0, 0.0));
+			ImGui::Begin("Processing", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
 			ImGui::Image((void*)(intptr_t)hourglassTexture, ImVec2((float)hourglassWidth, (float)hourglassHeight));
 			ImGui::End();
 		}
@@ -372,20 +362,13 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					pos += 9;
-					sceneDirectory.erase(pos);
-					if (historyDirectory.empty()) {
-						historyDirectory = sceneDirectory;
-						historyDirectory.append("\\History\\");
-						igSurgAct.setHistoryDirectory(historyDirectory.c_str());
-					}
+					historyDirectory.assign(buff);
 					sceneDirectory.append("\\Model\\");
-					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					historyDirectory.append("\\History\\");
+
 					if (!loadFile(sceneDirectory.c_str(), "smd", sceneDirectory, modelFile)) {
 						puts("Couldn't load model.\n");
 					}
-					nextRequested = true;
 					igSurgAct.loadScene(sceneDirectory.c_str(), modelFile.c_str(), true);
 				}
 				if (ImGui::MenuItem("Exit")) { glfwSetWindowShouldClose(window, 1); }
@@ -397,16 +380,12 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					pos += 9;
-					sceneDirectory.erase(pos);
-					if (historyDirectory.empty()) {
-						historyDirectory = sceneDirectory;
-						historyDirectory.append("\\History\\");
-						igSurgAct.setHistoryDirectory(historyDirectory.c_str());
-					}
 					sceneDirectory.append("\\Model\\");
 					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					if (historyDirectory.empty()) {
+						historyDirectory.assign(buff);
+						historyDirectory.append("\\History\\");
+					}
 					if (!loadFile(historyDirectory.c_str(), "hst", historyDirectory, historyFile)) {
 						puts("Couldn't load model.\n");
 					}
@@ -471,6 +450,7 @@ public:
 		}
 		if (showToolbox) {
 			// toolbar
+			ImGui::SetNextWindowPos(ImVec2(4., 24.), 0, ImVec2(0.0, 0.0));
 			ImGui::Begin("     TOOLS", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);  // | ImGuiWindowFlags_NoScrollbar 
 			if (ImGui::RadioButton("View", csgToolstate == 0)) {
 				igSurgAct.setToolState(0);
@@ -496,36 +476,32 @@ public:
 				igSurgAct.setToolState(5);
 				csgToolstate = 5;
 			}
-
-			// COURT - put back in when new version is ready
 			if(ImGui::RadioButton("Deep Cut", csgToolstate == 6)){
 				igSurgAct.setToolState(6);
 				csgToolstate = 6;
 			}
 
+			// COURT - put back in when new version is ready
 //			if(ImGui::RadioButton("Periosteal", csgToolstate == 7)){
 //				igSurgAct.setToolState(7);
 //				csgToolstate = 7;
 //			}
+
 			ImGui::Separator();
 			if (ImGui::Button("   NEXT   ")) {  // Buttons return true when clicked (most widgets return true when edited/activated)
 				if (historyDirectory.empty() || sceneDirectory.empty()) {
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					pos += 9;
-					sceneDirectory.erase(pos);
+					sceneDirectory.append("\\Model\\");
+					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
 					if (historyDirectory.empty()) {
-						historyDirectory= sceneDirectory;
+						historyDirectory.assign(buff);
 						historyDirectory.append("\\History\\");
 						igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					}
-					sceneDirectory.append("\\Model\\");
-					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
 				}
-				nextRequested = true;
-//				igSurgAct.nextHistoryAction();
+				++nextCounter;
 			}
 			ImGui::End();
 		}
@@ -545,7 +521,8 @@ public:
 
 	~FacialFlapsGui(){}
 
-	static bool nextRequested;
+	static int nextCounter;
+	static bool physicsDrag;
 
 private:
 	static bool powerHooks, showToolbox, viewPhysics, viewSurface, user_message_flag, guiActive;
