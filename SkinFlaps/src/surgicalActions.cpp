@@ -501,7 +501,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		int i = _sutures.addUserSuture(tr, tri4, edg, param);
 		_sutures.setLinked(i, false);
 		triEdge(uv5);
-		_sutures.setSecondEdge(i, tr, tri5, edg, param, true);
+		_sutures.setSecondEdge(i, tr, tri5, edg, param);
 		tr->getBarycentricPosition(tri5, uv5, xyz);
 		_sutures.setSecondVertexPosition(i, xyz);
 		json::Array hArr;
@@ -676,8 +676,13 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 				throw(std::logic_error("Trying to add a suture while a physics thread is active.\n"));
 			_sutures.setSecondVertexPosition(i, pos);
 			if (_sutures.isLinked(i)) {
-				_sutures.laySutureLine(i);
-				_bts.promoteSutures();
+				physicsDone = false;
+				_ffg->physicsDrag = true;
+				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+					_sutures.laySutureLine(i);
+					physicsDone = true;
+					}
+				);
 			}
 		}
 		else if (sRet < 2){
@@ -1994,7 +1999,7 @@ void surgicalActions::nextHistoryAction()
 			hTx[1] = pArr[1].ToFloat();
 			getHistoryAttachPoint(5, hTx, hVec, eTri, uv, false);
 			triEdge(uv);
-			_sutures.setSecondEdge(k, tr, eTri, edge, param, true);
+			_sutures.setSecondEdge(k, tr, eTri, edge, param);
 			tr->getBarycentricPosition(eTri, uv, hVec._v);
 			_sutures.setSecondVertexPosition(k, hVec._v);
 			_bts.setForcesAppliedFlag();
@@ -2122,18 +2127,13 @@ void surgicalActions::nextHistoryAction()
 				assert(false);
 			if (sutureObj["linked"].ToBool()) {
 				_sutures.setLinked(sn, true);
-				_sutures.laySutureLine(sn);
-
-				// should work but sometimes doesn't.  Check with Qisi about possible threading conflict
-//				physicsDone = false;
-// 				_ffg->physicsDrag = true;
-//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
-//					_bts.getPdTetPhysics_2()->initializePhysics();  // promotesAllSutures internally
-//					physicsDone = true;
-//					}
-//				);
-
-				_bts.getPdTetPhysics_2()->initializePhysics();  // promotesAllSutures internally. _bts.promoteSutures() duplicates effort
+				physicsDone = false;
+ 				_ffg->physicsDrag = true;
+				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+					_sutures.laySutureLine(sn);
+					physicsDone = true;
+					}
+				);
 			}
 			else
 				_sutures.setLinked(sn, false);
@@ -2147,8 +2147,11 @@ void surgicalActions::nextHistoryAction()
 #endif
 			_selectedSurgObject = s;
 			++_historyIt;
-			if (_historyIt == _historyArray.end())  // automatically promote any fake sutures if this is the last one
+			if (_historyIt == _historyArray.end()) {  // automatically promote any fake sutures if this is the last one
+				while (!physicsDone)
+					;
 				_bts.promoteSutures();
+			}
 		}
 		else if (_historyIt->HasKey("deleteSuture"))
 		{

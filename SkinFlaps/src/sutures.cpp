@@ -167,7 +167,7 @@ void sutures::setSecondVertexPosition(int sutureNumber, float *position)
 	translateMatrix4x4(mm,p[0],p[1],p[2]);
 }
 
-int sutures::setSecondEdge(int sutureNumber, materialTriangles *tri, int triangle, int edge, float param, bool initPhysics)
+int sutures::setSecondEdge(int sutureNumber, materialTriangles *tri, int triangle, int edge, float param)
 {
 	SUTUREMAP::iterator sit=_sutures.find(sutureNumber);
 	if(sit==_sutures.end())
@@ -193,28 +193,8 @@ int sutures::setSecondEdge(int sutureNumber, materialTriangles *tri, int triangl
 			}
 			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(sit->second._tetIdx[i]), sit->second._baryWeights[i]);
 		}
-		if (_ptp->solverInitialized()) {
+		if (_ptp->solverInitialized())
 			sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));
-			if (initPhysics) {
-//				_surgAct->physicsDone = false;
-//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-//					_surgAct->getBccTetScene()->promoteSutures();
-//					_ptp->initializePhysics();
-//					_surgAct->physicsDone = true;
-//					}
-//				);
-
-				_ptp->initializePhysics();
-			}
-//			else {
-//				_surgAct->physicsDone = false;
-//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-//					sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));
-//					_surgAct->physicsDone = true;
-//					}
-//				);
-//			}
-		}
 		else
 			sit->second._constraintId = -1;  // stub until forces applied
 		return 0;
@@ -355,6 +335,8 @@ int sutures::deleteSuture(int sutureNumber)
 		_userSutures.erase(usit);
 		delSut();
 	}
+	while (!_surgAct->physicsDone)
+		;
 	_ptp->initializePhysics();
 	return ret;
 }
@@ -488,7 +470,7 @@ void sutures::laySutureLine(int suture2)
 					else
 						param *= op;
 				}
-				setSecondEdge(sutNum, mt, triEdges1[j1] >> 2, triEdges1[j1] & 3, param, false);  // don't init physics. Do once as group
+				setSecondEdge(sutNum, mt, triEdges1[j1] >> 2, triEdges1[j1] & 3, param);  // don't init physics. Do once as group
 				break;
 			}
 			else{
