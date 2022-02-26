@@ -20,10 +20,10 @@ public:
 //	void addSphereSet(const float radius, const float (&center)[3], const std::vector<Vec2f> &txPoly );
 	void addFixedCollisionSet(materialTriangles* mt, const std::string& levelSetFile, const std::vector<Vec2f>& txPoly);
 	void updateFixedCollisions(materialTriangles *mt, vnBccTetrahedra *vnt);  // must be done after every topo change
-	bool empty() { return _fixedCollisionSets.empty() && _botRays.empty(); }
+	bool empty() { return _fixedCollisionSets.empty() && _bedRays.empty(); }
 	inline void setPdTetPhysics(pdTetPhysics *ptp) { _ptp = ptp; }
 	tetCollisions() : _itCount(0), _initialized(false), _minTime((double)FLT_MAX), _maxTime(0.0){
-		_fixedCollisionSets.clear(); _bedVerts.clear(); _bedVerts.reserve(1024);
+		_fixedCollisionSets.clear(); _bedVerts.clear(); _bedVerts.reserve(1024); _flapBottomTris.clear();
 	}
 	~tetCollisions() {}
 
@@ -41,14 +41,14 @@ private:
 		int restIdx;  // only 6 of these in bcc tets
 		float param;  // parametric length variable. <0 means not unique tetrahedron so not used for now.
 	};
-	std::vector<bottomRay> _botRays;
+	std::vector<bottomRay*> _bedRays;
 	std::unordered_map<int, bottomRay> _bedVerts;
+	std::vector<int> _flapBottomTris;
 	struct fixedCollisionSet {
 		std::string levelSetFilename;
 		std::vector<long> vertices;
 	};
 	std::list< fixedCollisionSet> _fixedCollisionSets;
-	std::vector<int> _topTris;
 
 	std::vector<int> _topTets;
 	std::vector<Vec3f> _topBarys;

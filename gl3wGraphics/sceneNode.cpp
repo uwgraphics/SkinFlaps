@@ -72,9 +72,9 @@ void sceneNode::draw(void) {
 		std::cout << "Trying to draw a sceneNode of unknown type.";
 	}
 
-	GLenum errCode;
-	if((errCode=glGetError())!=GL_NO_ERROR)
-		std::cout << "Graphics draw error code number " << errCode << "\n";
+//	GLenum errCode;
+//	if((errCode=glGetError())!=GL_NO_ERROR)
+//		std::cout << "Graphics draw error code number " << errCode << "\n";
 }
 
 void sceneNode::setType(nodeType type) {

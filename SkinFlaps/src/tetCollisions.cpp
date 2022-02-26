@@ -7,6 +7,7 @@
 #include "materialTriangles.h"
 #include "vnBccTetrahedra.h"
 #include "pdTetPhysics.h"
+#include "tbb/tbb.h"
 #include "tetCollisions.h"
 
 #include "tbb/tick_count.h"  // for debug nuke later
@@ -36,59 +37,93 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 	}
 	std::unordered_set<int> tets;
 	tets.reserve(2048);
-	_topTris.clear();
+	_flapBottomTris.clear();
 	for (auto& bedV : _bedVerts)
 		bedV.second.materialNormal.set(0.0f, 0.0f, 0.0f);
+	auto inputFlapBottomTriangle = [&](int triangle) {
+		for (int j = 0; j < 3; ++j) {
+			if (_mt->triangleMaterial(_mt->triAdjs(triangle)[j] >> 2) == 5)  // hinge triangle, don't process
+				return;
+		}
+		_flapBottomTris.push_back(triangle);
+		long* tr = _mt->triangleVertices(triangle);
+		for (int j = 0; j < 3; ++j)
+			tets.insert(_vnt->getVertexTetrahedron(tr[j]));
+	};
+	std::set<int> hingeVerts;
+	auto inputBedTriangle = [&](int triangle) {
+		long* tr = _mt->triangleVertices(triangle);
+		bottomRay* br[3];
+		Vec3f matPos[3];
+		for (int j = 0; j < 3; ++j) {
+			if (_mt->triangleMaterial(_mt->triAdjs(triangle)[j] >> 2) == 4) {  // hinge triangle.  Do normal computation, but remove hinge verts later.
+				hingeVerts.insert(tr[j]);
+				hingeVerts.insert(tr[(j + 1) % 3]);
+			}
+			int tet = _vnt->getVertexTetrahedron(tr[j]);
+			auto tc = _vnt->tetCentroid(tet);
+			vnt->barycentricWeightToGridLocus(*tc, *vnt->getVertexWeight(tr[j]), matPos[j]);
+			auto bv = _bedVerts.emplace(tr[j], bottomRay());
+			if (bv.second) {
+				bv.first->second.vertex = tr[j];
+				bv.first->second.materialNormal.set(0.0f, 0.0f, 0.0f);
+				bv.first->second.restIdx = tc->halfCoordAxis << 1;
+				if ((tc->xyz[tc->halfCoordAxis] + tc->xyz[(tc->halfCoordAxis + 2) % 3]) & 1)
+					++(bv.first->second.restIdx);
+			}
+			br[j] = &bv.first->second;
+		}
+		Vec3f v0, v1, N;
+		v0 = matPos[2] - matPos[0];
+		v1 = matPos[1] - matPos[0];
+		N = v0 ^ v1;
+		for (int j = 0; j < 3; ++j)
+			br[j]->materialNormal += N;
+	};
 	for (size_t n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
-		if (_mt->triangleMaterial(i) == 4) {
-			_topTris.push_back(i);
-			long* tr = _mt->triangleVertices(i);
-			for (int j = 0; j < 3; ++j)
-				tets.insert(_vnt->getVertexTetrahedron(tr[j]));
-		}
-		else if (_mt->triangleMaterial(i) == 5) {
-			long* tr = _mt->triangleVertices(i);
-			bottomRay* br[3];
-			for (int j = 0; j < 3; ++j) {
-				auto bv = _bedVerts.emplace(tr[j], bottomRay());
-				if (bv.second) {
-					bv.first->second.vertex = tr[j];
-					bv.first->second.materialNormal.set(0.0f, 0.0f, 0.0f);
-					int tet = _vnt->getVertexTetrahedron(tr[j]);
-					bv.first->second.param = 1.0f;
-					auto tc = _vnt->tetCentroid(tet);
-					bv.first->second.restIdx = tc->halfCoordAxis << 1;
-					if ((tc->xyz[tc->halfCoordAxis] + tc->xyz[(tc->halfCoordAxis + 2) % 3]) & 1)
-						++(bv.first->second.restIdx);
-					vnt->barycentricWeightToGridLocus(*tc, *vnt->getVertexWeight(tr[j]), bv.first->second.materialXyz);
-				}
-				br[j] = &bv.first->second;
+		if (_mt->triangleMaterial(i) == 3) {
+			int adjMat = _mt->triangleMaterial(_mt->triAdjs(i)[0] >> 2);
+			if (adjMat == 5) {
+				if (_mt->triangleMaterial(_mt->triAdjs(i - 1)[0] >> 2) != 2)
+					throw(std::logic_error("Incision convention violated in initializing soft colli8sions."));
+				inputBedTriangle(i);
+				inputBedTriangle(i - 1);
 			}
-			Vec3f v0, v1, N;
-			v0 = br[2]->materialXyz - br[0]->materialXyz;
-			v1 = br[1]->materialXyz - br[0]->materialXyz;
-			N = v0 ^ v1;
-			for (int j = 0; j < 3; ++j) {
-				if (br[j])
-					br[j]->materialNormal += N;
+			else if (adjMat == 4) {  // should only the lower of the 2 edge triangles be processed?
+				if (_mt->triangleMaterial(_mt->triAdjs(i - 1)[0] >> 2) != 2)
+					throw(std::logic_error("Incision convention violated in initializing soft colli8sions."));
+				inputFlapBottomTriangle(i);
+//				inputFlapBottomTriangle(i-1);
 			}
+			else;  // top incion edge tris processed with their bottom edge tri
 		}
+		else if (_mt->triangleMaterial(i) == 4)
+			inputFlapBottomTriangle(i);
+		else if (_mt->triangleMaterial(i) == 5)
+			inputBedTriangle(i);
 		else
 			;
 	}
-	_topTris.shrink_to_fit();
-	_botRays.clear();
-	_botRays.reserve(_bedVerts.size());
+	_flapBottomTris.shrink_to_fit();
+
+	// vertices on hinge boundary between bed and bottom tris can be removed from bed set as collision processing not necessary
+	for (auto h : hingeVerts)
+		_bedVerts.erase(h);
+	_bedRays.clear();
+	_bedRays.reserve(_bedVerts.size());
 	for (auto& bedV : _bedVerts) {
+//		tets.insert(vnt->getVertexTetrahedron(bedV.second.vertex));
 		if (!tets.insert(vnt->getVertexTetrahedron(bedV.second.vertex)).second)  // for now tets must be unique
 			continue;
 		bedV.second.materialNormal.normalize();
-		bedV.second.materialNormal *= 0.1f;  // scale;
-		_botRays.push_back(bedV.second);
+		bedV.second.materialNormal *= 0.1f;  // ?scale?
+		_bedRays.push_back(&bedV.second);
 	}
-	_botRays.shrink_to_fit();
+	_bedRays.shrink_to_fit();
+	// _bedRay crossover ignored since will only use shortest one
+
 	// now trim lengths of _botRays to prevent crossover. N*logN
-	for (int n = (int)_botRays.size(), i = 0; i < n; ++i) {
+/*	for (int n = (int)_botRays.size(), i = 0; i < n; ++i) {
 		Vec3f P = _botRays[i].materialXyz, N = _botRays[i].materialNormal;
 		boundingBox<float> bb;
 		bb.Empty_Box();
@@ -113,7 +148,9 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			N *= R.X;
 			_botRays[j].param *= R.Y;
 		}
-	}
+	} */
+
+
 	//	// run test - results verified
 	//	const long *nodes = _vnt->tetNodes(tet);
 	//	Vec3f cols[3];
@@ -129,29 +166,37 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 }
 
 void tetCollisions::findSoftCollisionPairs() {
-	if (_topTris.empty())
+	if (_flapBottomTris.empty())
 		return;
 
-	//	tbb::tick_count t0 = tbb::tick_count::now();
+//	tbb::tick_count t0 = tbb::tick_count::now();
 
 	std::vector<boundingBox<float> > triBox;
 	boundingBox<float> bb;
 	bb.Empty_Box();
-	triBox.assign(_topTris.size(), bb);
-	for (size_t n = _topTris.size(), i = 0; i < n; ++i) {
-		long* tr = _mt->triangleVertices(_topTris[i]);
+	triBox.assign(_flapBottomTris.size(), bb);
+	for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
+		long* tr = _mt->triangleVertices(_flapBottomTris[i]);
 		for (int j = 0; j < 3; ++j)
 			triBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(*_mt->vertexCoordinate(tr[j])));
 	}
 	std::vector<long> topTets, bottomTets;
-	topTets.reserve(_botRays.size());
-	bottomTets.reserve(_botRays.size());
+	topTets.reserve(_bedRays.size());
+	bottomTets.reserve(_bedRays.size());
 	std::vector<std::array<float, 3> > topBarys, bottomBarys, collisionNormals;
-	topBarys.reserve(_botRays.size());
-	bottomBarys.reserve(_botRays.size());
-	collisionNormals.reserve(_botRays.size());
-	for (int n = _botRays.size(), i = 0; i < n; ++i) {
-		bottomRay* b = &_botRays[i];
+	topBarys.reserve(_bedRays.size());
+	bottomBarys.reserve(_bedRays.size());
+	collisionNormals.reserve(_bedRays.size());
+
+//	tbb::parallel_for(tbb::blocked_range<size_t>(0, n),
+//		[=](const tbb::blocked_range<size_t>& r) {
+//			for (size_t i = r.begin(); i != r.end(); ++i)
+//				Foo(a[i]);
+//		}
+//	);
+
+	for (int n = _bedRays.size(), i = 0; i < n; ++i) {
+		bottomRay* b = _bedRays[i];
 		Vec3f P, N;
 		const long* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(b->vertex));
 		const Vec3f* bw = _vnt->getVertexWeight(b->vertex);
@@ -166,21 +211,21 @@ void tetCollisions::findSoftCollisionPairs() {
 		// only direction of b->materialNormal matters since deformation gradient will change length.  Normalize here.
 		N = _rest[b->restIdx] * M * b->materialNormal;
 		float scale = inverse_rsqrt(N * N);
-		N *= scale * 0.1f * b->param;  // QISI and YUTIAN - play with fudge factor here.  Adding param adds crossover trim.
+		N *= scale * 0.1f;  // QISI and YUTIAN - play with fudge factor here.
 		bb.Empty_Box();
 		bb.Enlarge_To_Include_Point(P._v);
 		bb.Enlarge_To_Include_Point((P + N)._v);
 		float nearT = FLT_MAX;
 		int nearV = -1;
-		for (size_t n = _topTris.size(), j = 0; j < n; ++j) {
+		for (size_t n = _flapBottomTris.size(), j = 0; j < n; ++j) {
 			if (bb.Intersection(triBox[j])) {
-				long* tr = _mt->triangleVertices(_topTris[j]);
+				long* tr = _mt->triangleVertices(_flapBottomTris[j]);
 				Vec3f* tv[3];
 				for (int k = 0; k < 3; ++k)
 					tv[k] = reinterpret_cast<Vec3f*>(_mt->vertexCoordinate(tr[k]));
 				Mat3x3f C(*tv[1] - *tv[0], *tv[2] - *tv[0], -N);
 				Vec3f R = C.Robust_Solve_Linear_System(P - *tv[0]);
-				if (R[0] < -1e-6f || R[1] < -1e-6f || R[2] < 1e-6f || R[0] + R[1] > 1.0001f || R[0] > 1.0001f || R[1] > 1.0001f || R[2] > 1.0f)  //  || R[2] > 1.0f
+				if (R[0] < 1e-6f || R[1] < 1e-6f || R[2] < 2e-1f || R[0] + R[1] > 1.0f || R[0] > 1.0f || R[1] > 1.0f || R[2] > 1.0f)  // R[2] determines how deep the collision must go before processing triggered. Bigger makes less sticky.
 					continue;
 				if (nearT > R[2]) {
 					nearT = R[2];
@@ -208,12 +253,13 @@ void tetCollisions::findSoftCollisionPairs() {
 		collisionNormals.push_back(tmp);
 	}
 
-	//	tbb::tick_count t1 = tbb::tick_count::now();
-	//	double time = (t1 - t0).seconds();
-	//	if (_maxTime < time)
-	//		_maxTime = time;
-	//	if (_minTime > time)
-	//		_minTime = time;
+/*	tbb::tick_count t1 = tbb::tick_count::now();
+	double time = (t1 - t0).seconds();
+	if (_maxTime < time)
+		_maxTime = time;
+	if (_minTime > time)
+		_minTime = time;
+	std::cout << "Soft collision minimum processing time was " << _minTime << " and maximum processing time was " << _maxTime << "verts colliding " << topTets.size() << "\n"; */
 
 	_ptp->currentSoftCollisionPairs(topTets, topBarys, bottomTets, bottomBarys, collisionNormals);
 }
