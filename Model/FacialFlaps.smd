@@ -35,11 +35,11 @@
     },
     "tetrahedralProperties" : {
         "minStrain" : 0.6,
-        "maxStrain" : 1.8,
+        "maxStrain" : 1.6,
         "lowTetWeight" : 500.0,
         "highTetWeight" : 1000.0,
         "collisionWeight": 40000.0,
-        "selfCollisionWeight" :  40000.0,
+        "selfCollisionWeight" :  10000.0,
         "fixedWeight" : 10000.0,
         "periferalWeight" : 1000.0,
         "hookWeight" : 500.0,

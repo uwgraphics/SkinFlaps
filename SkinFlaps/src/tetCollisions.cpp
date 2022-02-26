@@ -122,35 +122,6 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 	_bedRays.shrink_to_fit();
 	// _bedRay crossover ignored since will only use shortest one
 
-	// now trim lengths of _botRays to prevent crossover. N*logN
-/*	for (int n = (int)_botRays.size(), i = 0; i < n; ++i) {
-		Vec3f P = _botRays[i].materialXyz, N = _botRays[i].materialNormal;
-		boundingBox<float> bb;
-		bb.Empty_Box();
-		bb.Enlarge_To_Include_Point(P._v);
-		bb.Enlarge_To_Include_Point((P + N)._v);
-		for (int j = i + i; j < n; ++j) {
-			Vec3f M = _botRays[j].materialNormal * _botRays[j].param;
-			Vec3f Q = _botRays[j].materialXyz;
-			boundingBox<float> b2;
-			b2.Empty_Box();
-			b2.Enlarge_To_Include_Point(Q._v);
-			b2.Enlarge_To_Include_Point((Q + M)._v);
-			if (!b2.Intersection(bb))
-				continue;
-			Mat2x2f Mat;
-			Mat.Initialize_With_Column_Vectors(Vec2f(N * N, N * M), Vec2f(M * N, M * M));
-			Q -= P;
-			Vec2f R = Mat.Robust_Solve_Linear_System(Vec2f(Q * N, Q * M));
-			if (R.X <= 0.0f || R.Y <= 0.0f || R.X >= 1.0f || R.Y >= 1.0f)
-				continue;
-			_botRays[i].param = R.X;
-			N *= R.X;
-			_botRays[j].param *= R.Y;
-		}
-	} */
-
-
 	//	// run test - results verified
 	//	const long *nodes = _vnt->tetNodes(tet);
 	//	Vec3f cols[3];
@@ -158,6 +129,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 	//		cols[i-1] = _vnt->nodeSpatialCoordinate(nodes[i]) - _vnt->nodeSpatialCoordinate(nodes[0]);
 	//	Mat3x3f Q, N(cols[0], cols[1], cols[2]);
 	//	Q = N * _rest[r.restIdx];
+
 	if (!tets.empty()) {
 		std::vector<long> tetras;
 		tetras.assign(tets.begin(), tets.end());
@@ -171,87 +143,106 @@ void tetCollisions::findSoftCollisionPairs() {
 
 //	tbb::tick_count t0 = tbb::tick_count::now();
 
-	std::vector<boundingBox<float> > triBox;
+	std::vector<boundingBox<float> > flapBox, bedBox;
 	boundingBox<float> bb;
 	bb.Empty_Box();
-	triBox.assign(_flapBottomTris.size(), bb);
+	flapBox.assign(_flapBottomTris.size(), bb);
+	bedBox.assign(_bedRays.size(), bb);
 	for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
 		long* tr = _mt->triangleVertices(_flapBottomTris[i]);
 		for (int j = 0; j < 3; ++j)
-			triBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(*_mt->vertexCoordinate(tr[j])));
+			flapBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(*_mt->vertexCoordinate(tr[j])));
 	}
-	std::vector<long> topTets, bottomTets;
-	topTets.reserve(_bedRays.size());
-	bottomTets.reserve(_bedRays.size());
-	std::vector<std::array<float, 3> > topBarys, bottomBarys, collisionNormals;
-	topBarys.reserve(_bedRays.size());
-	bottomBarys.reserve(_bedRays.size());
-	collisionNormals.reserve(_bedRays.size());
-
-//	tbb::parallel_for(tbb::blocked_range<size_t>(0, n),
-//		[=](const tbb::blocked_range<size_t>& r) {
-//			for (size_t i = r.begin(); i != r.end(); ++i)
-//				Foo(a[i]);
-//		}
-//	);
-
-	for (int n = _bedRays.size(), i = 0; i < n; ++i) {
+	for (size_t n = _bedRays.size(), i = 0; i < n; ++i) {
 		bottomRay* b = _bedRays[i];
-		Vec3f P, N;
 		const long* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(b->vertex));
 		const Vec3f* bw = _vnt->getVertexWeight(b->vertex);
 		const Vec3f* sc[4];
 		sc[0] = &_vnt->nodeSpatialCoordinate(nodes[0]);
-		P = *sc[0] * (1.0f - bw->_v[0] - bw->_v[1] - bw->_v[2]);
+		b->P = *sc[0] * (1.0f - bw->_v[0] - bw->_v[1] - bw->_v[2]);
 		for (int j = 1; j < 4; ++j) {
 			sc[j] = &_vnt->nodeSpatialCoordinate(nodes[j]);
-			P += *sc[j] * bw->_v[j - 1];
+			b->P += *sc[j] * bw->_v[j - 1];
 		}
 		Mat3x3f M(*sc[1] - *sc[0], *sc[2] - *sc[0], *sc[3] - *sc[0]);
 		// only direction of b->materialNormal matters since deformation gradient will change length.  Normalize here.
-		N = _rest[b->restIdx] * M * b->materialNormal;
-		float scale = inverse_rsqrt(N * N);
-		N *= scale * 0.1f;  // QISI and YUTIAN - play with fudge factor here.
-		bb.Empty_Box();
-		bb.Enlarge_To_Include_Point(P._v);
-		bb.Enlarge_To_Include_Point((P + N)._v);
-		float nearT = FLT_MAX;
-		int nearV = -1;
-		for (size_t n = _flapBottomTris.size(), j = 0; j < n; ++j) {
-			if (bb.Intersection(triBox[j])) {
-				long* tr = _mt->triangleVertices(_flapBottomTris[j]);
-				Vec3f* tv[3];
-				for (int k = 0; k < 3; ++k)
-					tv[k] = reinterpret_cast<Vec3f*>(_mt->vertexCoordinate(tr[k]));
-				Mat3x3f C(*tv[1] - *tv[0], *tv[2] - *tv[0], -N);
-				Vec3f R = C.Robust_Solve_Linear_System(P - *tv[0]);
-				if (R[0] < 1e-6f || R[1] < 1e-6f || R[2] < 2e-1f || R[0] + R[1] > 1.0f || R[0] > 1.0f || R[1] > 1.0f || R[2] > 1.0f)  // R[2] determines how deep the collision must go before processing triggered. Bigger makes less sticky.
-					continue;
-				if (nearT > R[2]) {
-					nearT = R[2];
-					if (R[0] + R[1] < 0.66667f)
-						nearV = tr[0];
-					else if (R[0] > R[1])
-						nearV = tr[1];
-					else
-						nearV = tr[2];
+		b->N = _rest[b->restIdx] * M * b->materialNormal;
+		float scale = inverse_rsqrt(b->N * b->N);
+		b->N *= scale * 0.1f;  // QISI and YUTIAN - play with fudge factor here.
+		bedBox[i].Empty_Box();
+		bedBox[i].Enlarge_To_Include_Point(b->P._v);
+		bedBox[i].Enlarge_To_Include_Point((b->P + b->N)._v);
+	}
+	std::vector<long> topTets, bottomTets;
+	topTets.assign(_bedRays.size(), -1);
+	bottomTets.assign(_bedRays.size(), -1);
+	std::vector<std::array<float, 3> > topBarys, bottomBarys, collisionNormals;
+	topBarys.assign(_bedRays.size(), std::array<float, 3>());
+	bottomBarys.assign(_bedRays.size(), std::array<float, 3>());
+	collisionNormals.assign(_bedRays.size(), std::array<float, 3>());  // should I do this unique spec on my side or continue having Qisi do it?
+
+	tbb::parallel_for(tbb::blocked_range<size_t>(0, _bedRays.size()), [&](const tbb::blocked_range<size_t>& r) {
+		for (size_t j = r.begin(); j != r.end(); ++j) {
+			//	for (int n = _bedRays.size(), j = 0; j < n; ++j) {  // serial version
+			float nearT = FLT_MAX;
+			int nearV = -1;
+			bottomRay* bestBottom = nullptr;
+			for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
+				bottomRay* b = _bedRays[j];
+				if (bedBox[j].Intersection(flapBox[i])) {
+					long* tr = _mt->triangleVertices(_flapBottomTris[i]);
+					Vec3f* tv[3];
+					for (int k = 0; k < 3; ++k)
+						tv[k] = reinterpret_cast<Vec3f*>(_mt->vertexCoordinate(tr[k]));
+					Mat3x3f C(*tv[1] - *tv[0], *tv[2] - *tv[0], -b->N);
+					Vec3f R = C.Robust_Solve_Linear_System(b->P - *tv[0]);
+					if (R[0] < 1e-6f || R[1] < 1e-6f || R[2] < 2e-1f || R[0] + R[1] > 1.0f || R[0] > 1.0f || R[1] > 1.0f || R[2] > 1.0f)  // R[2] determines how deep the collision must go before processing triggered. Bigger makes less sticky.
+						continue;
+					if (nearT > R[2]) {
+						bestBottom = b;
+						nearT = R[2];
+						if (R[0] + R[1] < 0.66667f)
+							nearV = tr[0];
+						else if (R[0] > R[1])
+							nearV = tr[1];
+						else
+							nearV = tr[2];
+					}
 				}
 			}
+			if (nearV < 0)
+				continue;
+			// found soft-soft collision pair
+			topTets[j] = _vnt->getVertexTetrahedron(nearV);
+			const Vec3f* W = _vnt->getVertexWeight(nearV);
+			std::array<float, 3> tmp = { W->X, W->Y, W->Z };
+			topBarys[j] = tmp;
+			bottomTets[j] = _vnt->getVertexTetrahedron(bestBottom->vertex);
+			W = _vnt->getVertexWeight(bestBottom->vertex);
+			tmp = { W->X, W->Y, W->Z };
+			bottomBarys[j] = tmp;
+			Vec3f N = bestBottom->N * nearT;
+			tmp = { N.X, N.Y, N.Z };
+			collisionNormals[j] = tmp;
 		}
-		if (nearV < 0)
-			continue;
-		// found soft-soft collision pair
-		topTets.push_back(_vnt->getVertexTetrahedron(nearV));
-		const Vec3f* W = _vnt->getVertexWeight(nearV);
-		std::array<float, 3> tmp = { W->X, W->Y, W->Z };
-		topBarys.push_back(tmp);
-		bottomTets.push_back(_vnt->getVertexTetrahedron(b->vertex));
-		tmp = { bw->X, bw->Y, bw->Z };
-		bottomBarys.push_back(tmp);
-		N *= nearT;
-		tmp = { N.X, N.Y, N.Z };
-		collisionNormals.push_back(tmp);
 	}
+ );
+
+	int offset = 0;
+	for (int n = topTets.size(), i = 0; i < n; ++i) {
+		if (topTets[i] > -1) {
+			topTets[offset] = topTets[i];
+			bottomTets[offset] = bottomTets[i];
+			topBarys[offset] = topBarys[i];
+			bottomBarys[offset] = bottomBarys[i];
+			collisionNormals[offset++] = collisionNormals[i];
+		}
+	}
+	topTets.resize(offset);
+	bottomTets.resize(offset);
+	topBarys.resize(offset);
+	bottomBarys.resize(offset);
+	collisionNormals.resize(offset);
 
 /*	tbb::tick_count t1 = tbb::tick_count::now();
 	double time = (t1 - t0).seconds();
@@ -260,6 +251,7 @@ void tetCollisions::findSoftCollisionPairs() {
 	if (_minTime > time)
 		_minTime = time;
 	std::cout << "Soft collision minimum processing time was " << _minTime << " and maximum processing time was " << _maxTime << "verts colliding " << topTets.size() << "\n"; */
+	// tbb speeds up my 20 thread machine by a factor of 4 to 0.4495 milliseconds so overhead significant and on low core machine may not be worth it
 
 	_ptp->currentSoftCollisionPairs(topTets, topBarys, bottomTets, bottomBarys, collisionNormals);
 }

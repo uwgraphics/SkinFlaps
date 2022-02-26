@@ -36,10 +36,10 @@ private:
 	Mat3x3f _rest[6];  // material inverses used to compute deformation gradients
 	struct bottomRay {
 		int vertex;
-		Vec3f materialXyz;
+		Vec3f P;
+		Vec3f N;
 		Vec3f materialNormal;
 		int restIdx;  // only 6 of these in bcc tets
-		float param;  // parametric length variable. <0 means not unique tetrahedron so not used for now.
 	};
 	std::vector<bottomRay*> _bedRays;
 	std::unordered_map<int, bottomRay> _bedVerts;
@@ -52,7 +52,6 @@ private:
 
 	std::vector<int> _topTets;
 	std::vector<Vec3f> _topBarys;
-
 
 	double _minTime, _maxTime;
 
