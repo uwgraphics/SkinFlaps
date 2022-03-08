@@ -23,6 +23,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <string>
+#include <fstream>
 #include <gl3wGraphics.h>
 #include "surgicalActions.h"
 
@@ -195,7 +196,7 @@ public:
 #endif
 
 	// Create window with graphics context
-		window = glfwCreateWindow(1280, 720, "Facial Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
+		window = glfwCreateWindow(1280, 720, "Skin Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
 		if (window == NULL)
 			return false;
 		glfwMakeContextCurrent(window);
@@ -362,15 +363,22 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-					historyDirectory = sceneDirectory;
+					size_t pos = sceneDirectory.rfind("Build");
+					if (pos == std::string::npos) {  // not part of program build. Use install dir.
+						historyDirectory = "C:\\Users\\SkinFlaps";
+						sceneDirectory = "C:\\Users\\SkinFlaps";
+					}
+					else {  // doing program building and testing
+						pos = sceneDirectory.rfind("SkinFlaps");
+						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
+						historyDirectory = sceneDirectory;
+					}
 					sceneDirectory.append("\\Model\\");
 					historyDirectory.append("\\History\\");
-
 					if (!loadFile(sceneDirectory.c_str(), "smd", sceneDirectory, modelFile)) {
 						puts("Couldn't load model.\n");
 					}
+					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					igSurgAct.loadScene(sceneDirectory.c_str(), modelFile.c_str(), true);
 				}
 				if (ImGui::MenuItem("Exit")) { glfwSetWindowShouldClose(window, 1); }
@@ -382,17 +390,24 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-					if (historyDirectory.empty()) {
-						historyDirectory = sceneDirectory;
-						sceneDirectory.append("\\Model\\");
+					size_t pos = sceneDirectory.rfind("Build");
+					if (pos == std::string::npos) {  // not part of program build. Use install dir.
+						historyDirectory = "C:\\Users\\SkinFlaps";
+						sceneDirectory = "C:\\Users\\SkinFlaps";
 					}
+					else {  // doing program building and testing
+						pos = sceneDirectory.rfind("SkinFlaps");
+						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
+						historyDirectory = sceneDirectory;
+					}
+					sceneDirectory.append("\\Model\\");
+					historyDirectory.append("\\History\\");
 					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					if (!loadFile(historyDirectory.c_str(), "hst", historyDirectory, historyFile)) {
 						puts("Couldn't load model.\n");
 					}
-					std::string title("Facial Flaps Simulator playing - ");
+					std::string title("Skin Flaps Simulator playing - ");
 					title.append(historyFile);
 					glfwSetWindowTitle(window, title.c_str());
 					igSurgAct.loadHistory(historyDirectory.c_str(), historyFile.c_str());
@@ -496,15 +511,20 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-					if (historyDirectory.empty()) {
+					size_t pos = sceneDirectory.rfind("Build");
+					if (pos == std::string::npos) {  // not part of program build. Use install dir.
+						historyDirectory = "C:\\Users\\SkinFlaps";
+						sceneDirectory = "C:\\Users\\SkinFlaps";
+					}
+					else {  // doing program building and testing
+						pos = sceneDirectory.rfind("SkinFlaps");
+						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
 						historyDirectory = sceneDirectory;
-						historyDirectory.append("\\History\\");
-						igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					}
 					sceneDirectory.append("\\Model\\");
+					historyDirectory.append("\\History\\");
 					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 				}
 				++nextCounter;
 			}

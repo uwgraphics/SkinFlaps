@@ -1704,7 +1704,7 @@ void surgicalActions::nextHistoryAction()
 		{
 			std::string histFile;
 			_ffg->loadFile(_historyDir.c_str(), "hst", _historyDir, histFile);
-			std::string title("Facial Flaps Simulator playing - ");
+			std::string title("Skin Flaps Simulator playing - ");
 			title.append(histFile);
 			glfwSetWindowTitle(_ffg->getGLFWwindow(), title.c_str());
 			loadHistory(_historyDir.c_str(), histFile.c_str());

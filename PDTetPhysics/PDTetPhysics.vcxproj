@@ -92,6 +92,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>$(INTEL_LIB)\mkl\2022.0.0\include;$(Cuda_Path)\include;.\PDDeformer\include;..\simd-numeric-kernels-new;.\include;..\PhysBAM_subset\Common_Libraries;..\PhysBAM_subset\Public_Library;..\CleftSimPdTetPhysics\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ENABLE_AVX_INSTRUCTION_SET;WIN32;_WINDOWS;NDEBUG;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <AdditionalDependencies>cusparse.lib;cusolver.lib;cudart.lib;Public_Library.lib;%(AdditionalDependencies)</AdditionalDependencies>

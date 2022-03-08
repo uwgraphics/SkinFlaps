@@ -44,14 +44,15 @@ private:
 	std::vector<bottomRay*> _bedRays;
 	std::unordered_map<int, bottomRay> _bedVerts;
 	std::vector<int> _flapBottomTris;
+	std::vector<int> _topTets;
+	std::vector<Vec3f> _topBarys;
 	struct fixedCollisionSet {
 		std::string levelSetFilename;
 		std::vector<long> vertices;
 	};
 	std::list< fixedCollisionSet> _fixedCollisionSets;
 
-	std::vector<int> _topTets;
-	std::vector<Vec3f> _topBarys;
+	long parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus, bccTetCentroid& tC);
 
 	double _minTime, _maxTime;
 
