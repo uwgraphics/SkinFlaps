@@ -17,8 +17,6 @@
     <ClInclude Include="include\Utilities.h" />
     <ClInclude Include="PDDeformer\include\Add_Force.h" />
     <ClInclude Include="PDDeformer\include\Algebra.h" />
-    <ClInclude Include="PDDeformer\include\CudaSolver.h" />
-    <ClInclude Include="PDDeformer\include\CudaWrapper.h" />
     <ClInclude Include="PDDeformer\include\Discretization.h" />
     <ClInclude Include="PDDeformer\include\dumper.h" />
     <ClInclude Include="PDDeformer\include\Geometry.h" />
@@ -34,7 +32,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PDDeformer\src\Add_Force.cpp" />
-    <ClCompile Include="PDDeformer\src\CudaSolver.cpp" />
     <ClCompile Include="PDDeformer\src\GridDeformerTet.cpp" />
     <ClCompile Include="PDDeformer\src\PardisoWrapper.cpp" />
     <ClCompile Include="PDDeformer\src\ReshapeDataStructure.cpp" />
@@ -91,7 +88,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>$(INTEL_LIB)\mkl\2022.0.0\include;$(Cuda_Path)\include;.\PDDeformer\include;..\simd-numeric-kernels-new;.\include;..\PhysBAM_subset\Common_Libraries;..\PhysBAM_subset\Public_Library;..\CleftSimPdTetPhysics\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>USE_CUDA;ENABLE_AVX_INSTRUCTION_SET;WIN32;_WINDOWS;NDEBUG;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ENABLE_AVX_INSTRUCTION_SET;WIN32;_WINDOWS;NDEBUG;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>

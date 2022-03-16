@@ -79,7 +79,6 @@ void PDTetSolver<T, d>::initializeSolver()
 		m_solver_c.computeTensor(m_gridDeformer.m_elements, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muLow, m_gridDeformer.m_muHigh, m_gridDeformer.m_sutures); // computeTensor
 #ifdef USE_CUDA
 		m_solver_c.computeE2Tensor(m_gridDeformer.m_elements, m_gridDeformer.m_elementFlags, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muHigh[0] * (1 + m_weightProportion * m_weightProportion)); // computeE2Tensor
-#else
 #endif
 		m_solver_c.initializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures); // init pardiso
 #ifdef USE_CUDA

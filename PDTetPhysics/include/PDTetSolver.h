@@ -1,7 +1,9 @@
 #pragma once
 
 #include "GridDeformerTet.h"
+#ifdef USE_CUDA
 #include "CudaSolver.h"
+#endif
 #include "SchurSolver.h"
 #include "MergedLevelSet.h"
 
