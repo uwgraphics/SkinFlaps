@@ -42,6 +42,8 @@ template <class Discretization, class IntType> struct SchurSolver {
 
     using Constraint = SoftConstraint<VectorType, elementNodes, IndexType>;
     using Suture = SutureConstraint<VectorType, elementNodes, IndexType>;
+    using CollisionSuture = SlidingConstraint <VectorType, elementNodes, IndexType>;
+
 
     IntType schurSize;
     NumberingArrayType m_numbering; // only number the active nodes, collisionNodes at the bottom
@@ -63,7 +65,8 @@ template <class Discretization, class IntType> struct SchurSolver {
         const std::array<IndexType, elementNodesN>& elementIndex);
 
     void updatePardiso(
-        const std::vector<Constraint> &collisionConstraints
+        const std::vector<Constraint> &collisionConstraints,
+        const std::vector<CollisionSuture>& collisionSutures
     );
 
     void computeTensor(const std::vector<ElementType> &elements,
@@ -72,7 +75,21 @@ template <class Discretization, class IntType> struct SchurSolver {
                       // const std::vector<Constraint> &constraints,
         const std::vector<Suture>& sutures);
 
-    inline void reInitializePardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures) { factPardiso(constraints, sutures, fakeSutures); }
+    void computeTensor(const std::vector<ElementType>& elements,
+        const std::vector<GradientMatrixType>& gradients,
+        const std::vector<T>& restVol, const std::vector<T>& muLow, const std::vector<T>& muHigh,
+        //const std::vector<Constraint> &constraints,
+        const std::vector<Suture>& sutures
+    );
+
+    inline void reInitializePardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures) {
+        factPardiso(constraints, sutures, fakeSutures);  
+        if (schurSize) {
+            for (IntType i = 0; i < schurSize * schurSize; i++)
+                m_originalValue[i] = m_pardiso.schur[i];
+            m_pardiso.factSchur();
+        }
+    }
 
     template <int elementNodesN>
     void accumToPardiso(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix,

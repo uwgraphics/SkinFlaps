@@ -19,8 +19,8 @@ namespace PhysBAM {
             else if (iterator.value(nodeType) == PDSimulation::CollisionNode) {
                 numOfActiveNodes++;
                 schurSize++;
-                LOG::cout << "Must not have collision nodes" << std::endl;
-                exit(1);
+               // LOG::cout << "Must not have collision nodes" << std::endl;
+                //exit(1);
             }
         LOG::cout << "    schursize   = " << schurSize << std::endl;
         LOG::cout << "    matrixsize  = " << numOfActiveNodes << std::endl;
@@ -178,10 +178,11 @@ namespace PhysBAM {
 
     }
 
-#if 0
+#if 1
     template<class Discretization, class IntType>
     inline void SchurSolver<Discretization, IntType>::
-        updatePardiso(const std::vector<Constraint>& collisionConstraints) {
+        updatePardiso(const std::vector<Constraint>& collisionConstraints,
+             const std::vector<CollisionSuture>& collisionSutures) {
 #ifndef _WIN32
         LOG::SCOPE scope("SchurSolver::updatePardiso");
 #endif
@@ -202,11 +203,23 @@ namespace PhysBAM {
                 updateTensor<elementNodes>(stiffnessMatrix, constraint.m_elementIndex);
             }
         }
+
+        for (int c = 0; c < collisionSutures.size(); c++) 
+        if (collisionSutures[c].m_stiffness) {
+            MATRIX_MXN<T> stiffnessMatrix;
+            std::array<IndexType, elementNodes * 2> elementIndex;
+            //CollisionSuture tmp = collisionSutures[c];
+            //tmp.m_stiffness = 0;
+            DiscretizationType::computeCollisionSutureTensor(stiffnessMatrix, elementIndex, collisionSutures[c]);
+            updateTensor<elementNodes * 2>(stiffnessMatrix,
+                elementIndex);
+        }
+
         if (schurSize) {
             m_pardiso.factSchur();
         }
         else {
-            m_pardiso.factorize();
+            m_pardiso.factorize();                      
         }
     }
 #endif
@@ -263,6 +276,66 @@ namespace PhysBAM {
         }
 #endif
 
+        for (int c = 0; c < sutures.size(); c++) {
+            MATRIX_MXN<T> stiffnessMatrix;
+            std::array<IndexType, elementNodes * 2> elementIndex;
+            Suture tmp = sutures[c];
+            tmp.m_stiffness = 0;
+            DiscretizationType::computeSutureTensor(stiffnessMatrix, elementIndex, tmp);
+            accumToTensor<elementNodes * 2>(stiffnessMatrix,
+                elementIndex);
+        }
+    }
+
+    template<class Discretization, class IntType>
+    void SchurSolver<Discretization, IntType>::computeTensor(const std::vector<ElementType>& elements, const std::vector<GradientMatrixType>& gradients, const std::vector<T>& restVol, const std::vector<T>& muLow, const std::vector<T>& muHigh, const std::vector<Suture>& sutures)
+    {
+        // only include things that will change the sparsity of stiffness matrix
+
+#if TIMING
+        auto startStamp = std::chrono::steady_clock::now();
+        auto endStamp = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed_second;
+        double computeElTensorTime = 0;
+        double accumElTensorTime = 0;
+#endif
+
+        for (int e = 0; e < elements.size(); e++) {
+            MATRIX_MXN<T> stiffnessMatrix;
+
+#if TIMING
+            startStamp = std::chrono::steady_clock::now();
+#endif
+            DiscretizationType::computeElementTensor(stiffnessMatrix, gradients[e], -2 * (muLow[e] + muHigh[e]) * restVol[e]); // computeElementTensor
+#if TIMING
+            endStamp = std::chrono::steady_clock::now();
+            elapsed_second = endStamp - startStamp;
+            computeElTensorTime += elapsed_second.count();
+
+            startStamp = std::chrono::steady_clock::now();
+#endif
+            accumToTensor<elementNodes>(stiffnessMatrix, DiscretizationType::getElementIndex(elements[e])); // accumToTensor
+
+#if TIMING
+            endStamp = std::chrono::steady_clock::now();
+            elapsed_second = endStamp - startStamp;
+            accumElTensorTime += elapsed_second.count();
+#endif
+        }
+
+#if TIMING
+        LOG::cout << "        computeElTensor     Time : " << computeElTensorTime << std::endl;
+        LOG::cout << "        accumElTensor       Time : " << accumElTensorTime << std::endl;
+#endif
+        /*
+         for (int c = 0; c < constraints.size(); c++) {
+             MATRIX_MXN<T> stiffnessMatrix;
+             computeConstraintTensor(stiffnessMatrix, constraints[c]);
+
+            accumToTensor<elementNodes>(stiffnessMatrix,
+              constraints[c].m_elementIndex);
+         }
+         */
         for (int c = 0; c < sutures.size(); c++) {
             MATRIX_MXN<T> stiffnessMatrix;
             std::array<IndexType, elementNodes * 2> elementIndex;

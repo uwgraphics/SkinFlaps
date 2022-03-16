@@ -69,16 +69,25 @@ void PDTetSolver<T, d>::initializeSolver()
 	m_gridDeformer.initializeAuxiliaryStructures();
 	if (m_gridDeformer.m_collisionConstraints.size()||m_gridDeformer.m_collisionSutures.size()) {
 		hasCollision = true;
+#ifdef USE_CUDA
 		m_solver_c.releaseCuda();
+#endif
 		m_solver_c.releasePardiso();
 		m_solver_c.deallocate();
 
 		m_solver_c.initialize(m_gridDeformer.m_nodeType); // initialzie
 		m_solver_c.computeTensor(m_gridDeformer.m_elements, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muLow, m_gridDeformer.m_muHigh, m_gridDeformer.m_sutures); // computeTensor
-		m_solver_c.computeE2Tensor(m_gridDeformer.m_elements, m_gridDeformer.m_elementFlags, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muHigh[0] *(1 + m_weightProportion * m_weightProportion)); // computeE2Tensor
+#ifdef USE_CUDA
+		m_solver_c.computeE2Tensor(m_gridDeformer.m_elements, m_gridDeformer.m_elementFlags, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muHigh[0] * (1 + m_weightProportion * m_weightProportion)); // computeE2Tensor
+#else
+#endif
 		m_solver_c.initializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures); // init pardiso
+#ifdef USE_CUDA
 		m_solver_c.initializeCuda(m_gridDeformer.m_collisionConstraints, m_gridDeformer.m_collisionSutures); // init Cuda
 		std::cout << "using CudaSolver with nInner = " << m_nInner << std::endl;
+#else
+		std::cout << "using MKLSolver"<< std::endl;
+#endif
 	}
 	else {
 		hasCollision = false;
@@ -97,7 +106,9 @@ void PDTetSolver<T, d>::reInitializeSolver()
 {
 	if (hasCollision) {
 		m_solver_c.reInitializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures);
+#ifdef USE_CUDA
 		m_solver_c.reInitializeCuda(m_gridDeformer.m_collisionConstraints, m_gridDeformer.m_collisionSutures);
+#endif
 	}
 	else {
 		m_solver_d.reInitializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures);
@@ -173,6 +184,7 @@ void PDTetSolver<T, d>::solve()
 	m_gridDeformer.addConstraintForce(f); //addConstraintForec
 
 	if (hasCollision) {
+#ifdef USE_CUDA
 		StateVariableType u;
 		iterator.resize(u);
 
@@ -251,7 +263,30 @@ void PDTetSolver<T, d>::solve()
 		for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
 			if (iterator.value(m_gridDeformer.m_nodeType) != PDSimulation::CollisionNode)
 				iterator.value(m_gridDeformer.m_X) += iterator.value(delta_X);
+#else
+		StateVariableType u;
+		iterator.resize(u);
 
+		updateCollisionConstraints();     // updateCollision
+		m_solver_c.updatePardiso(m_gridDeformer.m_collisionConstraints, m_gridDeformer.m_collisionSutures);
+			m_gridDeformer.updatePositionBasedState(PDSimulation::CollisionEl, m_rangeMin, m_rangeMax); // updateR2
+			m_gridDeformer.addElasticForce(f, PDSimulation::CollisionEl, m_rangeMin, m_rangeMax, m_weightProportion); // addR2Force
+			m_gridDeformer.addCollisionForce(f);     // addCollisionForce
+
+			for (int v = 0; v < d; v++) {
+				m_solver_c.copyIn(f, v); //copyIn
+				m_solver_c.solve(); //diagSolve
+				m_solver_c.copyOut(delta_X, v);//copyOutTime
+			}
+
+			for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
+				if (iterator.value(m_gridDeformer.m_nodeType) == PDSimulation::InactiveNode)
+					iterator.value(delta_X) = VectorType();
+
+		// update x1
+		for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
+				iterator.value(m_gridDeformer.m_X) += iterator.value(delta_X);
+#endif
 	}
 	else {
 		//m_boxTest.clearDirichlet(m_boxTest.m_geometry, deformer.m_nodeType, f);

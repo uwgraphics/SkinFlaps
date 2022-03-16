@@ -32,6 +32,7 @@ template <class StateVariable> struct TetrahedralDiscretization {
     using WeightType = std::array<T, elementNodes>;
     using ConstraintType = SoftConstraint<VectorType, elementNodes, IndexType>;
     using SutureType = SutureConstraint<VectorType, elementNodes, IndexType>;
+    using CollisionSutureType = SlidingConstraint <VectorType, elementNodes, IndexType>;
 
 
     using ShapeMatrixType = MATRIX<T, d>;
@@ -195,6 +196,19 @@ template <class StateVariable> struct TetrahedralDiscretization {
             elementIndex[i+elementNodes] = suture.m_elementIndex2[i];
         }
         MATRIX_MXN<T> weightMatrix(1, elementNodes*2);
+        for (int i = 0; i < elementNodes; i++) {
+            weightMatrix(1, i + 1) = suture.m_weights1[i];
+            weightMatrix(1, elementNodes + i + 1) = -suture.m_weights2[i];
+        }
+        stiffnessMatrix = weightMatrix.Transpose_Times(weightMatrix) * -suture.m_stiffness;
+    }
+
+    static void computeCollisionSutureTensor(MATRIX_MXN<T>& stiffnessMatrix, std::array<IndexType, elementNodes * 2>& elementIndex, const CollisionSutureType& suture) {
+        for (int i = 0; i < elementNodes; i++) {
+            elementIndex[i] = suture.m_elementIndex1[i];
+            elementIndex[i + elementNodes] = suture.m_elementIndex2[i];
+        }
+        MATRIX_MXN<T> weightMatrix(1, elementNodes * 2);
         for (int i = 0; i < elementNodes; i++) {
             weightMatrix(1, i + 1) = suture.m_weights1[i];
             weightMatrix(1, elementNodes + i + 1) = -suture.m_weights2[i];
