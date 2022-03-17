@@ -181,52 +181,74 @@ void tetCollisions::findSoftCollisionPairs() {
 	bottomBarys.assign(_bedRays.size(), std::array<float, 3>());
 	collisionNormals.assign(_bedRays.size(), std::array<float, 3>());  // should I do this unique spec on my side or continue having Qisi do it?
 
-	tbb::parallel_for(tbb::blocked_range<size_t>(0, _bedRays.size()), [&](const tbb::blocked_range<size_t>& r) {
-		for (size_t j = r.begin(); j != r.end(); ++j) {
-			//	for (int n = _bedRays.size(), j = 0; j < n; ++j) {  // serial version
-			float nearT = FLT_MAX;
-			int nearV = -1;
-			bottomRay* bestBottom = nullptr;
-			for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
-				bottomRay* b = _bedRays[j];
-				if (bedBox[j].Intersection(flapBox[i])) {
-					long* tr = _mt->triangleVertices(_flapBottomTris[i]);
-					Vec3f* tv[3];
-					for (int k = 0; k < 3; ++k)
-						tv[k] = reinterpret_cast<Vec3f*>(_mt->vertexCoordinate(tr[k]));
-					Mat3x3f C(*tv[1] - *tv[0], *tv[2] - *tv[0], -b->N);
-					Vec3f R = C.Robust_Solve_Linear_System(b->P - *tv[0]);
-					if (R[0] < 1e-6f || R[1] < 1e-6f || R[2] < 2e-1f || R[0] + R[1] > 1.0f || R[0] > 1.0f || R[1] > 1.0f || R[2] > 1.0f)  // R[2] determines how deep the collision must go before processing triggered. Bigger makes less sticky.
-						continue;
-					if (nearT > R[2]) {
-						bestBottom = b;
-						nearT = R[2];
-						if (R[0] + R[1] < 0.66667f)
-							nearV = tr[0];
-						else if (R[0] > R[1])
-							nearV = tr[1];
-						else
-							nearV = tr[2];
+	tbb::parallel_for(tbb::blocked_range<size_t>(0, _bedRays.size()),
+		[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t j = r.begin(); j != r.end(); ++j) {
+//	for (int n = _bedRays.size(), j = 0; j < n; ++j) {  // serial version
+				float nearT = FLT_MAX;
+				int nearV = -1;
+				bottomRay* bestBottom = nullptr;
+
+				//			int bottomTri = -1;
+				//			float bottomUv[2];
+
+				for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
+					bottomRay* b = _bedRays[j];
+					if (bedBox[j].Intersection(flapBox[i])) {
+						long* tr = _mt->triangleVertices(_flapBottomTris[i]);
+						Vec3f* tv[3];
+						for (int k = 0; k < 3; ++k)
+							tv[k] = reinterpret_cast<Vec3f*>(_mt->vertexCoordinate(tr[k]));
+						Mat3x3f C(*tv[1] - *tv[0], *tv[2] - *tv[0], -b->N);
+						Vec3f R = C.Robust_Solve_Linear_System(b->P - *tv[0]);
+						if (R[0] < 1e-6f || R[1] < 1e-6f || R[2] < 2e-1f || R[0] + R[1] > 1.0f || R[0] > 1.0f || R[1] > 1.0f || R[2] > 1.0f)  // R[2] determines how deep the collision must go before processing triggered. Bigger makes less sticky.
+							continue;
+						if (nearT > R[2]) {
+
+							//						bottomTri = i;
+							//						bottomUv[0] = R[0];
+							//						bottomUv[1] = R[1];
+
+							bestBottom = b;
+							nearT = R[2];
+
+							if (R[0] + R[1] < 0.66667f)
+								nearV = tr[0];
+							else if (R[0] > R[1])
+								nearV = tr[1];
+							else
+								nearV = tr[2];
+						}
 					}
 				}
+
+				//			if (bottomTri < 0)
+				//				continue;
+
+				if (nearV < 0)
+					continue;
+				// found soft-soft collision pair
+				topTets[j] = _vnt->getVertexTetrahedron(nearV);
+				const Vec3f* W = _vnt->getVertexWeight(nearV);
+				std::array<float, 3> tmp = { W->X, W->Y, W->Z };
+				//			Vec3f gridLocus, bw;
+				//			bccTetCentroid tc;
+				//			topTets[j] = parametricMTtriangleTet(bottomTri, bottomUv, gridLocus, tc);  // problem with this version is all tets intersecting bottom of flaps must be initialized making Schur complement large
+				//			if (topTets[j] < 0)
+				//				continue;
+				//			_vnt->gridLocusToBarycentricWeight(gridLocus, tc, bw);
+				//			tmp = { bw.X, bw.Y, bw.Z };
+				topBarys[j] = tmp;
+				bottomTets[j] = _vnt->getVertexTetrahedron(bestBottom->vertex);
+				W = _vnt->getVertexWeight(bestBottom->vertex);
+				tmp = { W->X, W->Y, W->Z };
+				bottomBarys[j] = tmp;
+				Vec3f N = bestBottom->N * nearT;
+				tmp = { N.X, N.Y, N.Z };
+				collisionNormals[j] = tmp;
 			}
-			if (nearV < 0)
-				continue;
-			// found soft-soft collision pair
-			topTets[j] = _vnt->getVertexTetrahedron(nearV);
-			const Vec3f* W = _vnt->getVertexWeight(nearV);
-			std::array<float, 3> tmp = { W->X, W->Y, W->Z };
-			topBarys[j] = tmp;
-			bottomTets[j] = _vnt->getVertexTetrahedron(bestBottom->vertex);
-			W = _vnt->getVertexWeight(bestBottom->vertex);
-			tmp = { W->X, W->Y, W->Z };
-			bottomBarys[j] = tmp;
-			Vec3f N = bestBottom->N * nearT;
-			tmp = { N.X, N.Y, N.Z };
-			collisionNormals[j] = tmp;
 		}
-	}
- );
+	);
 
 	int offset = 0;
 	for (int n = topTets.size(), i = 0; i < n; ++i) {
@@ -253,8 +275,54 @@ void tetCollisions::findSoftCollisionPairs() {
 	std::cout << "Soft collision minimum processing time was " << _minTime << " and maximum processing time was " << _maxTime << "verts colliding " << topTets.size() << "\n"; */
 	// tbb speeds up my 20 thread machine by a factor of 4 to 0.4495 milliseconds so overhead significant and on low core machine may not be worth it
 
+/*	topTets.clear();
+	bottomTets.clear();
+	topBarys.clear();
+	bottomBarys.clear();
+	collisionNormals.clear(); */
+
 	_ptp->currentSoftCollisionPairs(topTets, topBarys, bottomTets, bottomBarys, collisionNormals);
 }
+
+long tetCollisions::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus, bccTetCentroid &tC)
+{  // in material coords
+	long* tr = _mt->triangleVertices(mtTriangle);
+	Vec3f tV[3];
+	for (int i = 0; i < 3; ++i)
+		_vnt->vertexGridLocus(tr[i], tV[i]);
+	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
+	_vnt->gridLocusToTetCentroid(gridLocus, tC);
+	for (int i = 0; i < 3; ++i) {
+		if (tC.ll == _vnt->tetCentroid(_vnt->getVertexTetrahedron(tr[i]))->ll)
+			return _vnt->getVertexTetrahedron(tr[i]);
+	}
+
+	return -1;
+
+	// find candidate cubes
+	std::list<long> cc, tp;
+	auto pr = _vnt->getTetHash()->equal_range(tC.ll);
+	while (pr.first != pr.second) {
+		cc.push_back(pr.first->second);
+		++pr.first;
+	}
+	if (cc.size() < 1) {
+//		assert(false);
+		return -1;
+	}
+	if (cc.size() < 2)
+		return cc.front();
+	for (auto c : cc) {
+		for (int i = 0; i < 3; ++i) {
+			if (_vnt->decreasingCentroidPath(c, _vnt->getVertexTetrahedron(tr[i]), tp))
+				return c;
+		}
+	}
+//	assert(false);
+	return -1;
+}
+
+
 
 float tetCollisions::inverse_rsqrt(float number)
 {  // usual Quake cheat

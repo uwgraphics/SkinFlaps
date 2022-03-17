@@ -1704,7 +1704,7 @@ void surgicalActions::nextHistoryAction()
 		{
 			std::string histFile;
 			_ffg->loadFile(_historyDir.c_str(), "hst", _historyDir, histFile);
-			std::string title("Facial Flaps Simulator playing - ");
+			std::string title("Skin Flaps Simulator playing - ");
 			title.append(histFile);
 			glfwSetWindowTitle(_ffg->getGLFWwindow(), title.c_str());
 			loadHistory(_historyDir.c_str(), histFile.c_str());
@@ -2405,3 +2405,9 @@ bool surgicalActions::closestTexturePick(const float(&txUv)[2], const float tria
 		return true;
 }
 
+bool surgicalActions::saveCurrentObj(const char* objPath) {
+	materialTriangles* tr = _sg.getMaterialTriangles();
+	if (tr == nullptr)
+		return false;
+	return tr->writeObjFile(objPath);
+}
