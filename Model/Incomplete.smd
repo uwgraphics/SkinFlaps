@@ -1,0 +1,99 @@
+{
+    "dynamicObjects" : {
+        "Incomplete.obj" : {
+            "textureMaps": [
+                1,
+                2,
+                3,
+                4
+            ]
+        }
+    },
+    "staticObjects" : {
+        "Teeth_8_5_20.obj" : {
+            "textureMap" : 1,
+            "normalMap" : 2
+        },
+        "RalveolarFixedSkin_8_5_20.obj" : {
+            "textureMap" : 1,
+            "normalMap" : 2
+        },
+        "LalveolarFixedSkin_8_5_20.obj" : {
+            "textureMap" : 1,
+            "normalMap" : 2
+        },
+        "LmaxillaFace_9_1_20.obj" : {
+            "textureMap" : 3,
+            "normalMap" : 4
+        }
+    },
+    "fixedGeometry" : {
+        "mesh": [
+            "Rfixed.obj",
+            "Lfixed.obj",
+            "TopFixed.obj"
+        ]
+    },
+    "areaOfInterest" : {
+        "boundingBox": [
+            -0.012,
+            -0.8415,
+            0.1587,
+            1.2417,
+            0.5147,
+            1.6075
+        ]
+    },
+    "premaxillaCollisionVertices" : {
+        "rightLipPolygon": [
+            0.057283, 0.378153,
+            0.059594, 0.233463,
+            0.062309, 0.205122,
+            0.067432, 0.172645,
+            0.073455, 0.143068,
+            0.082437, 0.141504,
+            0.116085, 0.147986,
+            0.281728, 0.19204,
+            0.294997, 0.196177,
+            0.300596, 0.207952,
+            0.302593, 0.214009,
+            0.250996, 0.314245,
+            0.220884, 0.359542,
+            0.126766, 0.39613,
+            0.082382, 0.403429,
+            0.066062, 0.396378
+        ],
+        "leftLipPolygon": [
+            0.760733, 0.206032,
+            0.766663, 0.196599,
+            0.850635, 0.185608,
+            0.864389, 0.18566,
+            0.878382, 0.188947,
+            0.904195, 0.205227,
+            0.920424, 0.274941,
+            0.917376, 0.276487,
+            0.886821, 0.285851,
+            0.829841, 0.297173,
+            0.821397, 0.288132,
+            0.763523, 0.211231
+        ]
+    },
+    "textureFiles" : {
+        "unilatCleftLip_9_1_20.bmp" : 1,
+        "unilatCleftLipNrm_9_1_20.bmp" : 2,
+        "deepBed_9_1_20.bmp" : 3,
+        "deepBedNrm_9_1_20.bmp" : 4
+    },
+    "tetrahedralProperties" : {
+        "minStrain" : 0.6,
+        "maxStrain" : 1.8,
+        "lowTetWeight" : 500.0,
+        "highTetWeight" : 1000.0,
+        "collisionWeight" : 1000.0,
+        "fixedWeight" : 10000.0,
+        "periferalWeight" : 1.0,
+        "maxDimSubdivisions" : 180,
+        "collisionObject" : "collision_proxy.obj"
+    },
+    "incisionWidth" : 0.01
+}

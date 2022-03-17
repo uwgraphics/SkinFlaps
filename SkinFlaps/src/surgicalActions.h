@@ -48,6 +48,7 @@ public:
 	const char* getHistoryDirectory() { return _historyDir.c_str(); }
 	void setSceneDirectory(const char* sceneDir) { _sceneDir.assign(sceneDir); }
 	void setHistoryDirectory(const char* histDir) { _historyDir.assign(histDir); }
+	bool saveCurrentObj(const char* objPath);
 	void promoteFakeSutures();
 	void pausePhysics();
 	bool _strongHooks;  // COURT - hack for collision cheating purposes

@@ -138,14 +138,17 @@
     <ClCompile>
       <WarningLevel>Level1</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;NOMINMAX;ENABLE_AVX_INSTRUCTION_SET;IMGUI_IMPL_OPENGL_LOADER_GL3W;_CRT_SECURE_NO_WARNINGS;WIN64;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\SkinFlaps\src\CDT\include;$(INTEL_LIB)\tbb\2021.5.0\include;$(INTEL_LIB)\mkl\2022.0.0\include;..\..\PDTetPhysics\include;..\..\simd-numeric-kernels-new;$(Cuda_Path)\include;..\..\PhysBAM_subset\Public_Library;..\..\PhysBAM_subset\Common_Libraries\Common_Tools;..\..\PhysBAM_subset\Common_Libraries;..\..\PDTetPhysics\PDDeformer\include;..\..\gl3wGraphics;..\..\imgui_glfw_nfd_lib\extLibs\nfd\include;..\..\imgui_glfw_nfd_lib\extLibs\glfw\include;..\..\imgui_glfw_nfd_lib\extLibs\gl3w;..\..\imgui_glfw_nfd_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>MaxSpeed</Optimization>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard_C>Default</LanguageStandard_C>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -154,7 +157,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Intel\oneAPI\tbb\2021.5.0\lib\intel64\vc_mt;C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\lib\intel64;$(Cuda_Path)\lib\x64;..\..\PhysBAM_subset\x64\Release;.\x64\Release;..\..\imgui_glfw_nfd_lib\extLibs\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics.lib;cusparse.lib;cusolver.lib;cudart.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics.lib;cusparse.lib;cusolver.lib;cudart_static.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>

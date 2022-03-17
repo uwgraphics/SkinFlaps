@@ -2405,3 +2405,9 @@ bool surgicalActions::closestTexturePick(const float(&txUv)[2], const float tria
 		return true;
 }
 
+bool surgicalActions::saveCurrentObj(const char* objPath) {
+	materialTriangles* tr = _sg.getMaterialTriangles();
+	if (tr == nullptr)
+		return false;
+	return tr->writeObjFile(objPath);
+}
