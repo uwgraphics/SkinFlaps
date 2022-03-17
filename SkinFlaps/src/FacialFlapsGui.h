@@ -23,6 +23,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <string>
+#include <fstream>
 #include <gl3wGraphics.h>
 #include "surgicalActions.h"
 
@@ -195,7 +196,7 @@ public:
 #endif
 
 	// Create window with graphics context
-		window = glfwCreateWindow(1280, 720, "Facial Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
+		window = glfwCreateWindow(1280, 720, "Skin Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
 		if (window == NULL)
 			return false;
 		glfwMakeContextCurrent(window);
@@ -295,7 +296,7 @@ public:
 	static bool saveFile(const char *startPath, const char *fileFilterSuffix, std::string &outPath) {
 		// "smd" is a module file and "hst" is a history file
 		nfdchar_t *outpath = NULL;
-		nfdresult_t result = NFD_SaveDialog("hst", startPath, &outpath);
+		nfdresult_t result = NFD_SaveDialog(fileFilterSuffix, startPath, &outpath);
 		if (result == NFD_OKAY) {
 			outPath = outpath;
 		}
@@ -362,15 +363,22 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-					historyDirectory = sceneDirectory;
+					size_t pos = sceneDirectory.rfind("Build");
+					if (pos == std::string::npos) {  // not part of program build. Use install dir.
+						historyDirectory = "C:\\Users\\SkinFlaps";
+						sceneDirectory = "C:\\Users\\SkinFlaps";
+					}
+					else {  // doing program building and testing
+						pos = sceneDirectory.rfind("SkinFlaps");
+						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
+						historyDirectory = sceneDirectory;
+					}
 					sceneDirectory.append("\\Model\\");
 					historyDirectory.append("\\History\\");
-
 					if (!loadFile(sceneDirectory.c_str(), "smd", sceneDirectory, modelFile)) {
 						puts("Couldn't load model.\n");
 					}
+					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					igSurgAct.loadScene(sceneDirectory.c_str(), modelFile.c_str(), true);
 				}
 				if (ImGui::MenuItem("Exit")) { glfwSetWindowShouldClose(window, 1); }
@@ -382,17 +390,24 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-					if (historyDirectory.empty()) {
-						historyDirectory = sceneDirectory;
-						sceneDirectory.append("\\Model\\");
+					size_t pos = sceneDirectory.rfind("Build");
+					if (pos == std::string::npos) {  // not part of program build. Use install dir.
+						historyDirectory = "C:\\Users\\SkinFlaps";
+						sceneDirectory = "C:\\Users\\SkinFlaps";
 					}
+					else {  // doing program building and testing
+						pos = sceneDirectory.rfind("SkinFlaps");
+						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
+						historyDirectory = sceneDirectory;
+					}
+					sceneDirectory.append("\\Model\\");
+					historyDirectory.append("\\History\\");
 					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					if (!loadFile(historyDirectory.c_str(), "hst", historyDirectory, historyFile)) {
 						puts("Couldn't load model.\n");
 					}
-					std::string title("Facial Flaps Simulator playing - ");
+					std::string title("Skin Flaps Simulator playing - ");
 					title.append(historyFile);
 					glfwSetWindowTitle(window, title.c_str());
 					igSurgAct.loadHistory(historyDirectory.c_str(), historyFile.c_str());
@@ -412,6 +427,31 @@ public:
 					}
 				}
 				if (ImGui::MenuItem("Next")) igSurgAct.nextHistoryAction();
+				if (ImGui::MenuItem("Output .obj file")) {
+					if (objDirectory.empty()) {  // std::filesystem not working when switched to C++17.  Put in later when MS fixes problem.  Use nfd for now.
+						nfdchar_t* outpath = NULL;
+						nfdresult_t result = NFD_PickFolder("C:\\Users\\", &outpath);
+						if (result == NFD_OKAY)
+							objDirectory = outpath;
+						else
+							sendUserMessage("You must choose an existing directory for your .obj files-", "User Request");
+					}
+					if (!objDirectory.empty()) {
+						std::string outPath;
+						if (!saveFile(objDirectory.c_str(), "obj", outPath))
+							puts("error in saveFileDialog");
+						else {
+							if (outPath.empty())
+								puts("User Cancelled Save history file action.");
+							else {
+								if (outPath.rfind(".obj", outPath.length() - 4) == std::string::npos)
+									outPath.append(".obj");
+								if(!igSurgAct.saveCurrentObj(outPath.c_str()))
+									sendUserMessage("Your .obj file could not be saved-", "Error");
+							}
+						}
+					}
+				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Tools"))
@@ -423,7 +463,7 @@ public:
 				if (ImGui::MenuItem("Suture", NULL, csgToolstate == 4, true)) { csgToolstate = 4; igSurgAct.setToolState(4); }
 				if (ImGui::MenuItem("Excise", NULL, csgToolstate == 5, true)) { csgToolstate = 5; igSurgAct.setToolState(5); }
 				if (ImGui::MenuItem("Deep cut", NULL, csgToolstate == 6, true)) { csgToolstate = 6; igSurgAct.setToolState(6); }
-//				if (ImGui::MenuItem("Periosteal", NULL, csgToolstate == 7, true)) { csgToolstate = 7; igSurgAct.setToolState(7); }
+				if (ImGui::MenuItem("Periosteal", NULL, csgToolstate == 7, true)) { csgToolstate = 7; igSurgAct.setToolState(7); }
 //				if (ImGui::MenuItem("Collision proxy", NULL, csgToolstate == 8, true)) { csgToolstate = 8; igSurgAct.setToolState(8); }
 				if (ImGui::MenuItem("Promote sutures")) { igSurgAct.promoteFakeSutures();  csgToolstate = 0; igSurgAct.setToolState(0); }
 				if (ImGui::MenuItem("Pause physics")) { igSurgAct.pausePhysics();  csgToolstate = 0; igSurgAct.setToolState(0); }
@@ -483,12 +523,10 @@ public:
 				igSurgAct.setToolState(6);
 				csgToolstate = 6;
 			}
-
-			// COURT - put back in when new version is ready
-//			if(ImGui::RadioButton("Periosteal", csgToolstate == 7)){
-//				igSurgAct.setToolState(7);
-//				csgToolstate = 7;
-//			}
+			if(ImGui::RadioButton("Periosteal", csgToolstate == 7)){
+				igSurgAct.setToolState(7);
+				csgToolstate = 7;
+			}
 
 			ImGui::Separator();
 			if (ImGui::Button("   NEXT   ")) {  // Buttons return true when clicked (most widgets return true when edited/activated)
@@ -496,15 +534,20 @@ public:
 					char buff[400];
 					GetCurrentDir(buff, 400);
 					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("SkinFlaps");
-					sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-					if (historyDirectory.empty()) {
+					size_t pos = sceneDirectory.rfind("Build");
+					if (pos == std::string::npos) {  // not part of program build. Use install dir.
+						historyDirectory = "C:\\Users\\SkinFlaps";
+						sceneDirectory = "C:\\Users\\SkinFlaps";
+					}
+					else {  // doing program building and testing
+						pos = sceneDirectory.rfind("SkinFlaps");
+						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
 						historyDirectory = sceneDirectory;
-						historyDirectory.append("\\History\\");
-						igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					}
 					sceneDirectory.append("\\Model\\");
+					historyDirectory.append("\\History\\");
 					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
+					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 				}
 				++nextCounter;
 			}
@@ -532,7 +575,7 @@ public:
 private:
 	static bool powerHooks, showToolbox, viewPhysics, viewSurface, user_message_flag, guiActive;
 	static int csgToolstate;
-	static std::string sceneDirectory, historyDirectory, modelFile, historyFile, user_message, user_message_title;
+	static std::string sceneDirectory, historyDirectory, objDirectory, modelFile, historyFile, user_message, user_message_title;
 	static GLFWwindow* window;
 	static unsigned char buttonsDown;
 	static bool surgicalDrag, ctrlShiftKeyDown;
