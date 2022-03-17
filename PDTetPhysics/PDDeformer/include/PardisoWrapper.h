@@ -38,8 +38,8 @@ template <class T, class IntType_> struct PardisoWrapper {
         nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr
     };      // Internal solver memory pointer pt
-    IntType iparm[64]; // Pardiso control parameters.
-    IntType maxfct, mnum, msglvl;
+    IntType iparm[64]{}; // Pardiso control parameters.
+    IntType maxfct=0, mnum=0, msglvl=0;
 
     void initialize(const IntType _n, const IntType _nnz, const IntType _m = 0);
 

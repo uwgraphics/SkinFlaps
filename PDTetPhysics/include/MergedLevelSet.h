@@ -16,7 +16,7 @@ namespace PhysBAM {
 		using T = typename VectorType::SCALAR;
 		static constexpr int d = VectorType::m;
 		std::vector<PhysBAM::LEVELSET_IMPLICIT_OBJECT<VectorType>*>m_levelSet;
-		T gridDX;
+		T gridDX = T(1);
 	public:
 		T Extended_Phi(const VectorType& pos) const;
 		VectorType Extended_Normal(const VectorType& pos) const;

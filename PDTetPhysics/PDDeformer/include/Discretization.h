@@ -45,7 +45,7 @@ template <class StateVariable> struct TetrahedralDiscretization {
 
     static inline VectorType interpolateX(const ElementIndexType &elementIndex, const WeightType &weights,
                                           const StateVariableType &x) {
-        VectorType result;
+        VectorType result{};
         for (int v = 0; v < elementNodes; v++) {
             result += weights[v] * IteratorType::at(x, elementIndex[v]);
         }

@@ -14,7 +14,7 @@ namespace PhysBAM {
 template <int d> struct Geometry {
     using IndexType = VECTOR<int, d>;
     using RangeType = RANGE<IndexType>;
-    using NodeType = PDSimulation::NodeType;
+    //using NodeType = PDSimulation::NodeType;
 
     IndexType m_gridSize;          // Domain size in cell counts
     RangeType m_paddedCellRange;   // One layer added, exclusively for marking cells as Dirichlet
@@ -42,7 +42,7 @@ template <int d> struct Geometry {
         MapType::resizeGeometry(nodeType, m_unpaddedCellRange);
 
         for (IteratorType iterator(nodeType); !iterator.isEnd(); iterator.next())
-            iterator.value(nodeType) = PDSimulation::InactiveNode;
+            iterator.value(nodeType) = NodeType::Inactive;
 
         for (RANGE_ITERATOR<d> cellIterator(m_unpaddedCellRange); cellIterator.Valid(); cellIterator.Next()) {
             const auto &cellIndex = cellIterator.Index();
@@ -50,7 +50,7 @@ template <int d> struct Geometry {
                 for (RANGE_ITERATOR<d> nodeIterator(RangeType(cellIndex, cellIndex + 1)); nodeIterator.Valid();
                      nodeIterator.Next())
                     IteratorType::at(nodeType, MapType::coordinateToIndex(nodeIterator.Index(), m_unpaddedCellRange)) =
-                        PDSimulation::ActiveNode;
+                        NodeType::Active;
         }
 
         for (RANGE_ITERATOR<d> cellIterator(m_paddedCellRange); cellIterator.Valid(); cellIterator.Next()) {
@@ -61,7 +61,7 @@ template <int d> struct Geometry {
                     const auto &nodeIndex = nodeIterator.Index();
                     if (m_nodeRange.Lazy_Inside(nodeIndex) &&
                         IteratorType::at(nodeType, MapType::coordinateToIndex(nodeIndex, m_unpaddedCellRange)) ==
-                        PDSimulation::ActiveNode)
+                        NodeType::Active)
                         IteratorType::at(nodeType, MapType::coordinateToIndex(nodeIndex, m_unpaddedCellRange)) =
                             static_cast<NodeType>(m_cellType(cellIndex));
                 }

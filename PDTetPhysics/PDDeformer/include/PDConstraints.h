@@ -20,7 +20,7 @@ namespace PhysBAM {
     };
 
     template <class VectorType, int elementNodeNum, class IndexType> struct SlidingConstraint {
-        std::array<IndexType, elementNodeNum> m_elementIndex1, m_elementIndex2;
+        std::array<IndexType, elementNodeNum> m_elementIndex1{}, m_elementIndex2{};
         typename VectorType::ELEMENT m_stiffness;
         std::array<typename VectorType::ELEMENT, elementNodeNum> m_weights1, m_weights2;
         VectorType m_normal;

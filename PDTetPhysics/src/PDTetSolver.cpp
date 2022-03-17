@@ -38,7 +38,7 @@ int PDTetSolver<T, d>::addSuture(const long(&tets)[2], const T(&barycentricWeigh
 	return (int)m_gridDeformer.m_sutures.size();
 #endif
 
-	typename DeformerType::Constraint c1, c2;
+	typename DeformerType::Constraint c1{}, c2{};
 
 	for (int v = 0; v < d + 1; v++) {
 		c1.m_elementIndex[v] = m_gridDeformer.m_elements[tets[0]][v];
@@ -120,11 +120,11 @@ void PDTetSolver<T, d>::addCollisionProxies(const long * tets, const T (*weights
 	//m_gridDeformer.m_collisionConstraints.resize(length);
 	// int offset = m_gridDeformer.m_collisionConstraints.size();
 	for (int i = 0; i < length; i++) {
-		typename DeformerType::Constraint constraint;
+		typename DeformerType::Constraint constraint{};
 		constraint.m_weights[0] = T(1);
 		for (int v = 0; v < d + 1; v++) {
 			constraint.m_elementIndex[v] = m_gridDeformer.m_elements[tets[i]][v];
-			m_gridDeformer.m_nodeType[constraint.m_elementIndex[v]] = PDSimulation::CollisionNode;
+			m_gridDeformer.m_nodeType[constraint.m_elementIndex[v]] = NodeType::Collision;
 		}
 		for (int v = 0; v < d; v++) {
 			constraint.m_weights[0] -= weights[i][v];
@@ -153,7 +153,7 @@ void PDTetSolver<T, d>::addSelfCollisionElements(const long* tets, size_t length
 		for (int v = 0; v < d + 1; v++) {
 			constraint.m_elementIndex1[v] = m_gridDeformer.m_elements[tets[i]][v];
 			constraint.m_elementIndex2[v] = m_gridDeformer.m_elements[tets[i]][v];
-			m_gridDeformer.m_nodeType[constraint.m_elementIndex1[v]] = PDSimulation::CollisionNode;
+			m_gridDeformer.m_nodeType[constraint.m_elementIndex1[v]] = NodeType::Collision;
 		}
 		
 		constraint.m_stiffness = 0;
@@ -169,17 +169,16 @@ void PDTetSolver<T, d>::solve()
 	using IteratorType = typename DeformerType::IteratorType;
 	using AlgebraType = PhysBAM::Algebra<StateVariableType>;
 
-	StateVariableType delta_X;
+	StateVariableType delta_X{};
+	StateVariableType f{};
+	
 	IteratorType iterator(m_gridDeformer.m_X);
-
 	iterator.resize(delta_X);
-
-	StateVariableType f;
 	iterator.resize(f);
+	
 
-	m_gridDeformer.updatePositionBasedState(PDSimulation::unCollisionEl, m_rangeMin, m_rangeMax); // updateR1
-	m_gridDeformer.addElasticForce(f, PDSimulation::unCollisionEl, m_rangeMin, m_rangeMax, m_weightProportion); //addR1Force
-
+	m_gridDeformer.updatePositionBasedState(ElementFlag::unCollisionEl/*, m_rangeMin, m_rangeMax*/ ); // updateR1
+	m_gridDeformer.addElasticForce(f, ElementFlag::unCollisionEl /*, m_rangeMin, m_rangeMax, m_weightProportion */); //addR1Force
 	m_gridDeformer.addConstraintForce(f); //addConstraintForec
 
 	if (hasCollision) {
@@ -208,13 +207,13 @@ void PDTetSolver<T, d>::solve()
 			iterator.resize(f_temp);
 
 			for (IteratorType iterator(f); !iterator.isEnd(); iterator.next())
-				if (iterator.value(m_gridDeformer.m_nodeType) != PDSimulation::CollisionNode) {
+				if (iterator.value(m_gridDeformer.m_nodeType) != NodeType::Collision) {
 					iterator.value(f_temp) = iterator.value(f);
 				}
 
 			m_gridDeformer.updatePositionBasedState(PDSimulation::CollisionEl, m_rangeMin, m_rangeMax); // updateR2
 
-			m_gridDeformer.addElasticForce(f_temp, PDSimulation::CollisionEl, m_rangeMin, m_rangeMax, m_weightProportion); // addR2Force
+			m_gridDeformer.addElasticForce(f_temp, ElementFlag::CollisionEl, m_rangeMin, m_rangeMax, m_weightProportion); // addR2Force
 
 			m_gridDeformer.addCollisionForce(f_temp);     // addCollisionForce
 
@@ -234,22 +233,22 @@ void PDTetSolver<T, d>::solve()
 
 			// update x2
 			for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
-				if (iterator.value(m_gridDeformer.m_nodeType) == PDSimulation::CollisionNode)
+				if (iterator.value(m_gridDeformer.m_nodeType) == NodeType::Collision)
 					iterator.value(m_gridDeformer.m_X) += iterator.value(delta_X);
 
 			// accum to u
 			for (IteratorType iterator(u); !iterator.isEnd(); iterator.next())
-				if (iterator.value(m_gridDeformer.m_nodeType) == PDSimulation::CollisionNode)
+				if (iterator.value(m_gridDeformer.m_nodeType) == NodeType::Collision)
 					iterator.value(u) += iterator.value(delta_X);
 
 			for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
-				if (iterator.value(m_gridDeformer.m_nodeType) == PDSimulation::InactiveNode)
+				if (iterator.value(m_gridDeformer.m_nodeType) == NodeType::Inactive)
 					iterator.value(delta_X) = VectorType();
 
 		}
 		// copy in x1 part
 		for (IteratorType iterator(u); !iterator.isEnd(); iterator.next())
-			if (iterator.value(m_gridDeformer.m_nodeType) != PDSimulation::CollisionNode)
+			if (iterator.value(m_gridDeformer.m_nodeType) != NodeType::Collision)
 				iterator.value(u) = iterator.value(delta_X);
 
 		for (int v = 0; v < d; v++) {
@@ -260,16 +259,16 @@ void PDTetSolver<T, d>::solve()
 
 		// update x1
 		for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
-			if (iterator.value(m_gridDeformer.m_nodeType) != PDSimulation::CollisionNode)
+			if (iterator.value(m_gridDeformer.m_nodeType) != NodeType::Collision)
 				iterator.value(m_gridDeformer.m_X) += iterator.value(delta_X);
 #else
-		StateVariableType u;
+		StateVariableType u{};
 		iterator.resize(u);
 
 		updateCollisionConstraints();     // updateCollision
 		m_solver_c.updatePardiso(m_gridDeformer.m_collisionConstraints, m_gridDeformer.m_collisionSutures);
-			m_gridDeformer.updatePositionBasedState(PDSimulation::CollisionEl, m_rangeMin, m_rangeMax); // updateR2
-			m_gridDeformer.addElasticForce(f, PDSimulation::CollisionEl, m_rangeMin, m_rangeMax, m_weightProportion); // addR2Force
+			m_gridDeformer.updatePositionBasedState(ElementFlag::CollisionEl /*, m_rangeMin, m_rangeMax*/); // updateR2
+			m_gridDeformer.addElasticForce(f, ElementFlag::CollisionEl /*, m_rangeMin, m_rangeMax, m_weightProportion */ ); // addR2Force
 			m_gridDeformer.addCollisionForce(f);     // addCollisionForce
 
 			for (int v = 0; v < d; v++) {
@@ -278,13 +277,13 @@ void PDTetSolver<T, d>::solve()
 				m_solver_c.copyOut(delta_X, v);//copyOutTime
 			}
 
-			for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
-				if (iterator.value(m_gridDeformer.m_nodeType) == PDSimulation::InactiveNode)
-					iterator.value(delta_X) = VectorType();
+			for (IteratorType i(delta_X); !i.isEnd(); i.next())
+				if (i.value(m_gridDeformer.m_nodeType) == NodeType::Inactive)
+					i.value(delta_X) = VectorType();
 
 		// update x1
-		for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
-				iterator.value(m_gridDeformer.m_X) += iterator.value(delta_X);
+		for (IteratorType i(delta_X); !i.isEnd(); i.next())
+				i.value(m_gridDeformer.m_X) += i.value(delta_X);
 #endif
 	}
 	else {
@@ -298,9 +297,9 @@ void PDTetSolver<T, d>::solve()
 		AlgebraType::addTo(m_gridDeformer.m_X, delta_X);
 	}
 
-	for (IteratorType iterator(delta_X); !iterator.isEnd(); iterator.next())
-		if (iterator.value(m_gridDeformer.m_nodeType) == PDSimulation::InactiveNode)
-			iterator.value(delta_X) = VectorType();
+	for (IteratorType i(delta_X); !i.isEnd(); i.next())
+		if (i.value(m_gridDeformer.m_nodeType) == NodeType::Inactive)
+			i.value(delta_X) = VectorType();
 }
 
 template<class T, int d>
@@ -314,7 +313,7 @@ template<class T, int d>
 void PDTetSolver<T, d>::premoteSutures()
 {
 	for (int i = 0; i < m_gridDeformer.m_fakeSutures.size(); i += 2) {
-		typename DeformerType::Suture suture;
+		typename DeformerType::Suture suture{};
 		const DeformerType::Constraint& c1 = m_gridDeformer.m_fakeSutures[i];
 		const DeformerType::Constraint& c2 = m_gridDeformer.m_fakeSutures[i+1];
 		suture.m_elementIndex1 = c1.m_elementIndex;
@@ -377,7 +376,7 @@ void PDTetSolver<T, d>::updateCollisionConstraints()
 template<class T, int d>
 void PDTetSolver<T, d>::updateCollisionSutures(const long length, const long* topI, const long* botI, const T* topW, const T* botW, const T* normal)
 {
-	T threshold = 1e-6;
+	T threshold = T(1e-6);
 	for (auto& c : m_gridDeformer.m_collisionSutures)
 		c.m_stiffness = 0;
 
@@ -463,7 +462,7 @@ inline void PDTetSolver<T, d>::initializeDeformer(const long(*elements)[d + 1], 
 	// assuming all nodes in x are active
 	m_gridDeformer.m_nodeType.resize(nNodes);
 	for (int i = 0; i < nNodes; i++)
-		m_gridDeformer.m_nodeType[i] = PDSimulation::ActiveNode;
+		m_gridDeformer.m_nodeType[i] = NodeType::Active;
 
 	m_gridDeformer.initializeDeformer();
 	m_gridDeformer.initializeUndeformedState();
@@ -504,18 +503,18 @@ void PDTetSolver<T, d>::initializeDeformer(const long(*elements)[d + 1], const s
 #if 0
 	for (int i = 0; i < nEls; i++)
 		for (int v = 0; v < d + 1; v++)
-			m_gridDeformer.m_nodeType[elements[i][v]] = PDSimulation::ActiveNode;
+			m_gridDeformer.m_nodeType[elements[i][v]] = NodeType::Active;
 #else
 	for (int i = 0; i < nNodes; i++)
-			m_gridDeformer.m_nodeType[i] = PDSimulation::ActiveNode;
+			m_gridDeformer.m_nodeType[i] = NodeType::Active;
 #endif
 
 #if 0
 	// make sure all nodes in x are active
 	for (int i = 0; i < nNodes; i++)
-		if (m_gridDeformer.m_nodeType[i] != PDSimulation::ActiveNode || m_gridDeformer.m_nodeType[i] != PDSimulation::CollisionNode)
+		if (m_gridDeformer.m_nodeType[i] != NodeType::Active || m_gridDeformer.m_nodeType[i] != NodeType::Collision)
 			throw std::logic_error("node not active");
-		// assert(m_gridDeformer.m_nodeType[i] == PDSimulation::ActiveNode);
+		// assert(m_gridDeformer.m_nodeType[i] == NodeType::Active);
 #endif
 
 
@@ -526,8 +525,8 @@ void PDTetSolver<T, d>::initializeDeformer(const long(*elements)[d + 1], const s
 		for (int i = 0; i < nEls; i++) {
 			for (int v = 0; v < d; v++)
 				for (int w = 0; w < d; w++)
-					m_gridDeformer.m_gradientMatrix[i](v + 1, w + 1) = ::bccDmInv[w*d + v]/gridSize;
-			m_gridDeformer.m_elementRestVolume[i] = ::vol * gridSize * gridSize * gridSize;
+					m_gridDeformer.m_gradientMatrix[i](v + 1, w + 1) = ::bccDmInv[(size_t)w * d + v] / T(gridSize);
+			m_gridDeformer.m_elementRestVolume[i] = T(::vol) * gridSize * gridSize * gridSize;
 		}
 	}
 
@@ -543,7 +542,7 @@ int PDTetSolver<T, d>::addConstraint(const long tet, const T(&barycentricWeight)
 template<class T, int d>
 int PDTetSolver<T, d>::addConstraint(const int(&index)[d + 1], const T(&barycentricWeight)[d], const T(&hookPosition)[d], const T stiffness, T limit)
 {
-	typename DeformerType::Constraint constraint;
+	typename DeformerType::Constraint constraint{};
 	constraint.m_weights[0] = T(1);
 	for (int v = 0; v < d + 1; v++)
 		constraint.m_elementIndex[v] = index[v];

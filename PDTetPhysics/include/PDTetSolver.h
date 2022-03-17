@@ -26,7 +26,7 @@ private:
 	T m_weightProportion;
 	T m_rangeMin;
 	T m_rangeMax;
-	T m_uniformMu;
+	T m_uniformMu = 0;
 
 	// int m_nCollisionNodes;
 
@@ -103,7 +103,7 @@ public:
 			m_gridDeformer.m_sutures[sutureHandle].m_stiffness = 0;
 		}
 		else {
-			const int fakeSutureHandle = sutureHandle - m_gridDeformer.m_sutures.size();
+			const size_t fakeSutureHandle = sutureHandle - m_gridDeformer.m_sutures.size();
 			m_gridDeformer.m_fakeSutures[fakeSutureHandle * 2].m_stiffness = 0;
 			m_gridDeformer.m_fakeSutures[fakeSutureHandle * 2 + 1].m_stiffness = 0;
 		}
@@ -123,7 +123,7 @@ public:
 
 	void solve();  // do least squares solve and process collisions
 
-	PDTetSolver() : m_nInner(1), m_rangeMin(1), m_rangeMax(1), m_weightProportion(0), m_collisionStiffness(0) { m_levelSet = new PhysBAM::MergedLevelSet<VectorType>; }
+	PDTetSolver() : m_nInner(1), m_rangeMin(1), m_rangeMax(1), m_weightProportion(0), m_collisionStiffness(0), m_selfCollisionStiffness(0) { m_levelSet = new PhysBAM::MergedLevelSet<VectorType>; }
 	~PDTetSolver();
 
 	void premoteSutures();
