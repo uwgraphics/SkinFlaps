@@ -144,8 +144,11 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+<<<<<<< HEAD
       <LanguageStandard>stdcpp14</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
+=======
+>>>>>>> 896b2e09278da128dff991a9c88d316d08b92400
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

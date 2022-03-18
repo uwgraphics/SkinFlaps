@@ -1,7 +1,9 @@
 #pragma once
 
 #include "GridDeformerTet.h"
+#ifdef USE_CUDA
 #include "CudaSolver.h"
+#endif
 #include "SchurSolver.h"
 #include "MergedLevelSet.h"
 
@@ -30,7 +32,11 @@ private:
 
 	DeformerType m_gridDeformer;
 	PhysBAM::SchurSolver<DiscretizationType, IntType> m_solver_d; // use this when no collision node
+#ifdef USE_CUDA
 	PhysBAM::CudaSolver<DiscretizationType, IntType> m_solver_c; // use this when there are collision nodes
+#else
+	PhysBAM::SchurSolver<DiscretizationType, IntType> m_solver_c;
+#endif
 	// PhysBAM::LEVELSET_IMPLICIT_OBJECT<VectorType>* m_softLevelSet;
 	PhysBAM::MergedLevelSet<VectorType>* m_levelSet;
 	std::vector<std::string> m_levelSetPaths;
@@ -131,7 +137,9 @@ public:
 
 	inline void releaseSolver() {
 		if (m_gridDeformer.m_collisionConstraints.size()) {
+#ifdef USE_CUDA
 			m_solver_c.releaseCuda();
+#endif
 			m_solver_c.releasePardiso();
 			m_solver_c.deallocate();
 		}
