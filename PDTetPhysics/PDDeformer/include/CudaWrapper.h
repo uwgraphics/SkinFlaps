@@ -113,30 +113,30 @@ CudaSparse():
 
         cudaError_t cudaStat;
         // spaces for const
-        cudaStat = cudaMalloc((void**)&m_rowPtrW, (pc+ps+1)*sizeof(int));
+        cudaStat = cudaMalloc((void**)&m_rowPtrW, (static_cast<size_t>(pc)+ps+1)*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for rowPtrW");
         cudaStat = cudaMalloc((void**)&m_colIdxPtrW, m_nnzSparse*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for colIdxPtrW");
         cudaStat = cudaMalloc((void**)&m_valPtrW, m_nnzSparse*sizeof(T));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for valPtrW");
 
-        cudaStat = cudaMalloc((void**)&m_rowPtrS, (m+1)*sizeof(int));
+        cudaStat = cudaMalloc((void**)&m_rowPtrS, (static_cast<size_t>(m)+1)*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for rowPtrS");
-        cudaStat = cudaMalloc((void**)&m_colIdxPtrS, m*m*sizeof(int));
+        cudaStat = cudaMalloc((void**)&m_colIdxPtrS, static_cast<size_t>(m)*m*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for colIdxPtrS");
-        cudaStat = cudaMalloc((void**)&m_valPtrS, m*m*sizeof(T));
+        cudaStat = cudaMalloc((void**)&m_valPtrS, static_cast<size_t>(m)*m*sizeof(T));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for valPtrS");
 
         // space for inputs
-        cudaStat = cudaMalloc((void**)&m_rowPtrD, (pc+ps+1)*sizeof(int));
+        cudaStat = cudaMalloc((void**)&m_rowPtrD, (static_cast<size_t>(pc)+ps+1)*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for rowPtrD");
-        cudaStat = cudaMalloc((void**)&m_colIdxPtrD, (pc+ps)*sizeof(int));
+        cudaStat = cudaMalloc((void**)&m_colIdxPtrD, (static_cast<size_t>(pc)+ps)*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for colIdxPtrD");
-        cudaStat = cudaMalloc((void**)&m_valPtrD, (pc+ps)*sizeof(T));
+        cudaStat = cudaMalloc((void**)&m_valPtrD, (static_cast<size_t>(pc)+ps)*sizeof(T));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for valPtrD");
 
         // space for temps
-        cudaStat = cudaMalloc((void**)&m_rowPtrWT, (m+1)*sizeof(int));
+        cudaStat = cudaMalloc((void**)&m_rowPtrWT, (static_cast<size_t>(m)+1)*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for rowPtrWT");
         cudaStat = cudaMalloc((void**)&m_colIdxPtrWT, m_nnzSparse*sizeof(int));
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't allocate mem for colIdxPtrWT");
@@ -172,24 +172,24 @@ CudaSparse():
         }
 
 
-        cudaStat = cudaMemcpy(m_rowPtrD, rowPtrD_h, (size_t)((pc+ps+1)*sizeof(int)), cudaMemcpyHostToDevice);
+        cudaStat = cudaMemcpy(m_rowPtrD, rowPtrD_h, (static_cast<size_t>(pc)+ps+1)*sizeof(int), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for rowPtrD");
-        cudaStat = cudaMemcpy(m_colIdxPtrD, colIdxPtrD_h, (size_t)((pc+ps)*sizeof(int)), cudaMemcpyHostToDevice);
+        cudaStat = cudaMemcpy(m_colIdxPtrD, colIdxPtrD_h, (static_cast<size_t>(pc)+ps)*sizeof(int), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for colIdxPtrD");
 
         // copy data in
-        cudaStat = cudaMemcpy(m_rowPtrW, rowPtrW_h, (size_t)((pc+ps+1)*sizeof(int)), cudaMemcpyHostToDevice);
+        cudaStat = cudaMemcpy(m_rowPtrW, rowPtrW_h, (static_cast<size_t>(pc)+ps+1)*sizeof(int), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for rowPtrW");
         cudaStat = cudaMemcpy(m_colIdxPtrW, colIdxPtrW_h, (size_t)(m_nnzSparse*sizeof(int)), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for colIdxPtrW");
         cudaStat = cudaMemcpy(m_valPtrW, valPtrW_h, (size_t)(m_nnzSparse*sizeof(T)), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for valPtrW");
 
-        cudaStat = cudaMemcpy(m_rowPtrS, rowPtrS_h, (size_t)((m+1)*sizeof(int)), cudaMemcpyHostToDevice);
+        cudaStat = cudaMemcpy(m_rowPtrS, rowPtrS_h, (static_cast<size_t>(m)+1)*sizeof(int), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for rowPtrS");
-        cudaStat = cudaMemcpy(m_colIdxPtrS, colIdxPtrS_h, (size_t)(m*m*sizeof(int)), cudaMemcpyHostToDevice);
+        cudaStat = cudaMemcpy(m_colIdxPtrS, colIdxPtrS_h, static_cast<size_t>(m)*m*sizeof(int), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for colIdxPtrS");
-        cudaStat = cudaMemcpy(m_valPtrS, valPtrS_h, (size_t)(m*m*sizeof(T)), cudaMemcpyHostToDevice);
+        cudaStat = cudaMemcpy(m_valPtrS, valPtrS_h, static_cast<size_t>(m)*m*sizeof(T), cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for valPtrS");
 
         delete[]    rowPtrS_h; delete[]    rowPtrD_h;
@@ -260,7 +260,7 @@ CudaSparse():
     }
 
     void reInitialize(const int m, const T* valPtrS_h) {
-        cudaError_t cudaStat = cudaMemcpy(m_valPtrS, valPtrS_h, (size_t)(m*m*sizeof(T)), cudaMemcpyHostToDevice);
+        cudaError_t cudaStat = cudaMemcpy(m_valPtrS, valPtrS_h, sizeof(T)*m*m, cudaMemcpyHostToDevice);
         if (cudaStat != cudaSuccess) throw std::logic_error("couldn't copy mem for valPtrS");
     }
 
@@ -352,7 +352,7 @@ CudaSparse():
 #if TIMING
         cudaEventRecord(start);
 #endif
-        cudaStat = cudaMemcpy(m_valPtrD, valPtrD_h, (size_t)((pc+ps)*sizeof(T)), cudaMemcpyHostToDevice);
+        cudaStat = cudaMemcpy(m_valPtrD, valPtrD_h, (static_cast<size_t>(pc)+ps)*sizeof(T), cudaMemcpyHostToDevice);
 #if TIMING
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
@@ -657,7 +657,7 @@ struct CudaSolve<float> {
         cudaError_t cudaStat = cudaSuccess;
 
         int workspaceSize;
-        T* workspace;
+        T* workspace{};
 
 #if TIMING
         cudaEvent_t start, stop;

@@ -183,7 +183,7 @@ void PDTetSolver<T, d>::solve()
 
 	if (hasCollision) {
 #ifdef USE_CUDA
-		StateVariableType u;
+		StateVariableType u{};
 		iterator.resize(u);
 
 		for (int v = 0; v < d; v++) {
@@ -203,7 +203,7 @@ void PDTetSolver<T, d>::solve()
 		//m_solver_c.updatePardiso(deformer.m_collisionConstraints, deformer.m_collisionSutures);
 			m_solver_c.updateCuda(m_gridDeformer.m_collisionConstraints, m_gridDeformer.m_collisionSutures);
 
-			StateVariableType f_temp;
+			StateVariableType f_temp{};
 			iterator.resize(f_temp);
 
 			for (IteratorType iterator(f); !iterator.isEnd(); iterator.next())
@@ -211,9 +211,9 @@ void PDTetSolver<T, d>::solve()
 					iterator.value(f_temp) = iterator.value(f);
 				}
 
-			m_gridDeformer.updatePositionBasedState(PDSimulation::CollisionEl, m_rangeMin, m_rangeMax); // updateR2
+			m_gridDeformer.updatePositionBasedState(ElementFlag::CollisionEl/*, m_rangeMin, m_rangeMax*/); // updateR2
 
-			m_gridDeformer.addElasticForce(f_temp, ElementFlag::CollisionEl, m_rangeMin, m_rangeMax, m_weightProportion); // addR2Force
+			m_gridDeformer.addElasticForce(f_temp, ElementFlag::CollisionEl/*, m_rangeMin, m_rangeMax, m_weightProportion*/); // addR2Force
 
 			m_gridDeformer.addCollisionForce(f_temp);     // addCollisionForce
 
