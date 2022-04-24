@@ -87,7 +87,9 @@ void PardisoWrapper<T, IntType>::factSchur() {
             IntType info = LAPACKPolicy<T>::fact(m, schur);
             if(info != 0) {
                 std::cerr<<"info after LAPACKE_dspotrf = "<<info<<std::endl;
-                exit(22);
+
+ //               exit(22);  // QISI - COURT commented out this exit for crash removal
+
             }
         }
     }

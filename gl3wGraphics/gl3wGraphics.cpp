@@ -211,7 +211,7 @@ void gl3wGraphics::getTrianglePickLine(float(&lineStartPosition)[3], float(&line
 	GLfloat m[16], invM[16], *om;
 	const GLfloat *fr = _glM.getFrameAndRotationMatrix();
 	for (auto nit = _nodes.begin(); nit != _nodes.end(); ++nit)	{
-		if ((*nit)->getType() != sceneNode::nodeType::TRISTRIP)
+		if ((*nit)->getType() != sceneNode::nodeType::MATERIAL_TRIANGLES)  // was TRISTRIP. Why?
 			continue;
 		om = (*nit)->getModelViewMatrix();
 		for (int i = 0; i < 4; ++i)	{

@@ -32,7 +32,7 @@ class materialTriangles
 public:
 	void clear();
 	int readObjFile(const char *fileName);  // uses shading group separators to separate materials
-	bool writeObjFile(const char *fileName);
+	bool writeObjFile(const char *fileName, const char* materialFileName=nullptr);
 	void collectCreateTextureSeams();
 	void addOneMaterialTextureSeamVertex(long vertex, long(&textures)[2]);
 	void getVertexCoordinate(unsigned int vertex, float (&xyz)[3]) const;
@@ -112,6 +112,7 @@ public:
 	void partitionTriangleMaterials();  // key is material, second is index into triangle array of the next element beyond key material
 	void closestPoint(const float(&xyz)[3], long &triangle, float(&uv)[2], long onlyMaterial = -1);  // closest barycentric position to point xyz. Can limit search to onlyMaterial if desired(-1 is no limit)
 	bool textureFind(const float(&txIn)[2], const long materialIn, int &triangle, float(&uv)[2]);
+	float getDiameter();
 
 	materialTriangles(void);
 	~materialTriangles(void);

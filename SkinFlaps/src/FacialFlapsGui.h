@@ -275,9 +275,12 @@ public:
 			size_t pos = returnDirectory.rfind('\\');
 			returnFilename = returnDirectory.substr(pos+1, returnDirectory.size());
 			returnDirectory = returnDirectory.substr(0, pos+1);
+			if (returnFilename.empty())
+				return false;
 		}
 		else if (result == NFD_CANCEL) {
 			puts("User pressed cancel.");
+			return false;
 		}
 		else {
 			printf("Error: %s\n", NFD_GetError());
@@ -377,6 +380,7 @@ public:
 					historyDirectory.append("\\History\\");
 					if (!loadFile(sceneDirectory.c_str(), "smd", sceneDirectory, modelFile)) {
 						puts("Couldn't load model.\n");
+						return;
 					}
 					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					igSurgAct.loadScene(sceneDirectory.c_str(), modelFile.c_str(), true);
@@ -406,6 +410,7 @@ public:
 					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 					if (!loadFile(historyDirectory.c_str(), "hst", historyDirectory, historyFile)) {
 						puts("Couldn't load model.\n");
+						return;
 					}
 					std::string title("Skin Flaps Simulator playing - ");
 					title.append(historyFile);
@@ -446,7 +451,7 @@ public:
 							else {
 								if (outPath.rfind(".obj", outPath.length() - 4) == std::string::npos)
 									outPath.append(".obj");
-								if(!igSurgAct.saveCurrentObj(outPath.c_str()))
+								if(!igSurgAct.saveCurrentObj(outPath.c_str(), "unilatCleftTextures.mtl"))
 									sendUserMessage("Your .obj file could not be saved-", "Error");
 							}
 						}
@@ -570,10 +575,10 @@ public:
 	~FacialFlapsGui(){}
 
 	static int nextCounter;
-	static bool physicsDrag;
+	static bool user_message_flag, physicsDrag;
 
 private:
-	static bool powerHooks, showToolbox, viewPhysics, viewSurface, user_message_flag, guiActive;
+	static bool powerHooks, showToolbox, viewPhysics, viewSurface, guiActive;
 	static int csgToolstate;
 	static std::string sceneDirectory, historyDirectory, objDirectory, modelFile, historyFile, user_message, user_message_title;
 	static GLFWwindow* window;

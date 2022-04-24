@@ -11,6 +11,7 @@
 #include <exception>
 #include "closestPointOnTriangle.h"
 #include "fence.h"
+#include "FacialFlapsGui.h"
 #include "clockwise.h"
 #include "deepCut.h"
 
@@ -181,7 +182,7 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 			ri.mat2Vert = topVertex;
 			ri.deepVert = bottomVertex;
 		}
-		else if (mat == 5 || mat == 7 || mat == 8) {
+		else if (mat == 1 || (mat > 4 && mat < 10)) {
 			Vec3f gridLocus, bw;
 			long tet = parametricMTtriangleTet(ri.triangle, uv, gridLocus);
 			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
@@ -916,9 +917,8 @@ bool deepCut::getDeepSpatialCoordinates()
 		}
 		Vec3f bw;
 		long botTet = deepPointTetWeight(dbit, bw);
-		if (botTet < 0) {
-			_deepXyz.clear();  // COURT - this is bad.  Input deepBed needs to be recomputed.
-			return false;
+		if (botTet < 0) {  // COURt if there are a lot of these or any occur over an important area of the model should recompute deep bed.
+			std::cout << "Deep bed point at vertex " << dbit->first << " with deep vertex " << dbit->second.deepMtVertex << " not in a tet.\n";
 		}
 		else {
 			Vec3f v;
@@ -951,69 +951,77 @@ void deepCut::getDeepPosts(std::vector<Vec3f>& xyz, std::vector<Vec3f>& nrm) {
 	}
 }
 
-bool deepCut::preventPreviousCrossover(const int postNum) {
+int deepCut::preventPreviousCrossover(const int postNum) {
 	// assumes all posts have previous surface connections
 	assert(postNum > 0);  // already checked in calling routine
 	deepPost* dp = &_deepPosts[postNum];
-	Vec3d P = dp->triIntersects[0].intersect, N = dp->rayDirection;
+	Vec3d P = dp->triIntersects[0].intersect, N;;
+	int k;
+	for (k = 1; k < dp->triIntersects.size(); k += 2) {
+		if (dp->triIntersects[k].scl.rtiPostTo == postNum - 1)
+			break;
+	}
+	if (k > dp->triIntersects.size()) {
+		return postNum;
+	}
+	N = dp->triIntersects[k].intersect;
+	N -= P;
 	bool normalChanged = false;
 	for (int i = 0; i < postNum; ++i) {
 		if (postNum < 2) {
-			Vec3d Q = _deepPosts[i].triIntersects[0].intersect, M = _deepPosts[i].triIntersects.back().intersect;
-			Q -= P;
-			M -= P;
-			Mat2x2d Mat(N * N, Q * N, Q * N, Q * Q);
-			Vec2d R = Mat.Robust_Solve_Linear_System(Vec2d(N * M, Q * M));
-			if (R.X >= 0.0 && R.Y > 0.0)
+			int j = dp->triIntersects[k].scl.rtiIndexTo;
+			Vec3d Q = _deepPosts[i].triIntersects[0].intersect, M = _deepPosts[i].triIntersects[j].intersect;
+			M -= Q;
+			double MdN = M * N, mn = M.length() * N.length();
+			if (MdN/mn > 0.998) // lines parallel
 				continue;
-			R.Y *= 1.01;
-			N *= R.X;
-			N += Q * R.Y;
-			N.normalize();
-			normalChanged = true;
+			Mat2x2d Mat(M*M, MdN, -MdN, -(N * N));
+			P -= Q;
+			Vec2d R = Mat.Robust_Solve_Linear_System(Vec2d(P * M, P * N));
+			double sep = (Q + M * R.X - P - N * R.Y).length2();
+			if (sep/mn > 0.001) // no crossover
+				continue;
+			return postNum;
 		}
 		else {
 			if (i < 1)
 				continue;
-			bilinearPatch bl;
-			makeBilinearPatch(_deepPosts[i - 1].triIntersects.back().intersect, _deepPosts[i].triIntersects.back().intersect, _deepPosts[i - 1].triIntersects.front().intersect, _deepPosts[i].triIntersects.front().intersect, bl);
-			double rP[2];
-			Vec2d fP[2];
+			// get this active patch
 			int j;
-			for (j = 1; j < _deepPosts[i].triIntersects.size(); ++j)
+			for (j = 1; j < _deepPosts[i].triIntersects.size(); ++j) {
 				if (_deepPosts[i].triIntersects[j].scl.rtiPostTo == i - 1)
 					break;
-			if (j >= _deepPosts[i].triIntersects.size())
-				throw(std::logic_error("Program error in connecting posts or preventing crossover."));
-			N *= 100.0;
+			}
+			if (j > _deepPosts[i].triIntersects.size())
+				throw(std::logic_error("Previous processing should have removed this case."));
+			bilinearPatch bl;
+			int idx = _deepPosts[i].triIntersects[j].scl.rtiIndexTo;
+			makeBilinearPatch(_deepPosts[i - 1].triIntersects[idx].intersect, _deepPosts[i].triIntersects[j].intersect, _deepPosts[i - 1].triIntersects.front().intersect, _deepPosts[i].triIntersects.front().intersect, bl);
+			double rP[2];
+			Vec2d fP[2];
 			if (bilinearRayIntersection(P, N, bl, rP, fP)) {
-				int k = rP[0] < rP[1] ? 0 : 1;
-				if (fP[k].Y > _deepPosts[i].triIntersects[j].scl.lowestV) {
-					fP[k].Y = _deepPosts[i].triIntersects[j].scl.lowestV - 0.01;
-					N = bl.P00 * (1.0 - fP[k].X) * (1.0 - fP[k].Y) + bl.P01 * fP[k].X * (1.0 - fP[k].Y) + bl.P10 * fP[k].Y * (1.0 - fP[k].X) + bl.P11 * fP[k].X * fP[k].Y;
-					N -= P;
-					N.normalize();
-					normalChanged = true;
+				int k;
+				for (k = 0; k < 2; ++k) {
+					if (rP[k] < 0.0 || rP[k] > 1.0)
+						continue;
+					if (fP[k].Y > _deepPosts[i].triIntersects[j].scl.lowestV)
+						return postNum;
 				}
 			}
 		}
 	}
-	if (normalChanged) {
-		dp->rayDirection = N;
-		auto oldTi0 = dp->triIntersects[0];
-		if (!rayIntersectMaterialTriangles(dp->triIntersects[0].intersect, dp->rayDirection, dp->triIntersects))  // overwrites initial triIntersects
-			return false;
-		dp->triIntersects[0] = oldTi0;  // first one doesn't change
-		for (auto& ti : dp->triIntersects)
-			ti.postNum = postNum;
-		if(!connectToPreviousPost(postNum))
-			return false;
-	}
-	return true;
+	return 0;
 }
 
-bool deepCut::inputCorrectFence(fence* fp) {
+bool deepCut::inputCorrectFence(fence* fp, FacialFlapsGui* ffg) {
+	// interactive deep cut builder.  On successful exit deep posts have interpost connections set up.
 	_deepPosts.clear();
+	char str[200];
+	if (fp->numberOfPosts() < 2) {
+		sprintf(str, "You need at least 2 posts to create a deep cut.");
+		ffg->sendUserMessage(str, "Invalid deep cut-");
+		return false;
+	}
 	std::vector<Vec3f> positions, normals;
 	std::vector<int> triangles;
 	std::vector<float> uv;
@@ -1025,23 +1033,44 @@ bool deepCut::inputCorrectFence(fence* fp) {
 			closedEnd = !startOpen;
 		if (i == n-1)
 			closedEnd = !endOpen;
-		if (addDeepPost(triangles[i], (const float(&)[2])uv[i * 2], -Vec3d(normals[i]), closedEnd) < 0)
+		if (addDeepPost(triangles[i], (const float(&)[2])uv[i * 2], -Vec3d(normals[i]), closedEnd) < 0) {
+			sprintf(str, "Post number %d needs direction adjustment.", i + 1);
+			ffg->sendUserMessage(str, "Please correct deep cut-");
 			return false;
-	}
-	if (n > 1) {  // no corrections necessary til 3
-		for (int i = 1; i < n; ++i) {
-			preventPreviousCrossover(i);
 		}
 	}
-	positions.clear();
-	normals.clear();
-	positions.reserve(n);
-	normals.reserve(n);
-	for (int i = 0; i < n; ++i) {
-		positions.push_back(Vec3f(_deepPosts[i].triIntersects.front().intersect._v));
-		normals.push_back(-Vec3f(_deepPosts[i].rayDirection._v));
+	for (int i = 1; i < n; ++i) {
+		if (!topConnectToPreviousPost(i)) {
+			sprintf(str, "Post number %d has no top side connection to previous post.\nDelete it and try again", i + 1);
+			ffg->sendUserMessage(str, "Please correct deep cut-");
+			return false;
+		}
 	}
-	fp->updatePosts(positions, normals);
+	for (int i = 1; i < n; ++i) {
+		if (!deepConnectToPreviousPost(i)) {
+			sprintf(str, "Post number %d has no bottom connection to previous post.\nAdjust its post direction or previous post direction.", i + 1);
+			ffg->sendUserMessage(str, "Please correct deep cut-");
+			return false;
+		}
+	}
+	if (n > 1) {  // no corrections necessary til 2
+		for (int i = 1; i < n; ++i) {
+			if (preventPreviousCrossover(i) > 0) {
+				sprintf(str, "Solid post line %d intersects a previous cut.\nPlease adjust it's direction.", i + 1);
+				ffg->sendUserMessage(str, "Please correct deep cut-");
+				return false;
+			}
+		}
+	}
+//	positions.clear();  // section no longer necessary as fence must be corrected on entry to pass this far
+//	normals.clear();
+//	positions.reserve(n);
+//	normals.reserve(n);
+//	for (int i = 0; i < n; ++i) {
+//		positions.push_back(Vec3f(_deepPosts[i].triIntersects.front().intersect._v));
+//		normals.push_back(-Vec3f(_deepPosts[i].rayDirection._v));
+//	}
+//	fp->updatePosts(positions, normals);
 	return true;
 }
 
@@ -1071,11 +1100,43 @@ int deepCut::addDeepPost(const int triangle, const float (&uv)[2], const Vec3d& 
 		return -1;
 	for (auto& ti : _deepPosts.back().triIntersects)
 		ti.postNum = ret;
-	if (ret > 0) {
-		if(!connectToPreviousPost(ret))
-			return -1;
-	}
 	return ret;
+}
+
+bool deepCut::topConnectToPreviousPost(int postNum) {
+	assert(postNum > 0);
+	double lowV;
+	if (surfacePath(_deepPosts[postNum - 1].triIntersects[0], _deepPosts[postNum].triIntersects[0], nullptr, false, lowV) == DBL_MAX)
+		return false;
+	auto fp = &_deepPosts[postNum - 1].triIntersects[0].scl;
+	fp->rtiPostTo = postNum;
+	fp->rtiIndexTo = 0;
+	fp->lowestV = lowV;
+	return true;
+}
+
+bool deepCut::deepConnectToPreviousPost(int postNum) {
+	// find shortest return path
+	double pathLen = DBL_MAX, minPath = DBL_MAX, lowV;
+	int minJ = 10000;
+	int i, j, n = _deepPosts[postNum].triIntersects.size();
+	for (i = 1; i < n; i += 2) {
+		for (j = 1; j < _deepPosts[postNum - 1].triIntersects.size(); j += 2) {
+			pathLen = surfacePath(_deepPosts[postNum].triIntersects[i], _deepPosts[postNum - 1].triIntersects[j], nullptr, false, lowV);
+			if (pathLen < DBL_MAX)
+				break;
+		}
+		if (pathLen < DBL_MAX)
+			break;
+	}
+	if (pathLen < DBL_MAX) {
+		auto fp = &_deepPosts[postNum].triIntersects[i].scl;
+		fp->rtiPostTo = postNum - 1;
+		fp->rtiIndexTo = j;  //  minJ;
+		fp->lowestV = lowV;  //  minLowV;
+		return true;
+	}
+	return false;
 }
 
 bool deepCut::connectToPreviousPost(int postNum) {

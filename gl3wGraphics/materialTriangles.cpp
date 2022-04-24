@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <exception>
 #include <string.h>
+#include <array>
+#include <sstream>
 #include "materialTriangles.h"
 #include "math3d.h"
 #include "boundingBox.h"
@@ -158,7 +160,7 @@ bool materialTriangles::parseNextInputFileLine(std::ifstream *infile, std::strin
 	return true;
 }
 
-bool materialTriangles::writeObjFile(const char *fileName)
+bool materialTriangles::writeObjFile(const char *fileName, const char* materialFileName)
 {
 	std::string title(fileName);
 	if(title.rfind(".obj")>title.size())
@@ -166,31 +168,72 @@ bool materialTriangles::writeObjFile(const char *fileName)
 	std::ofstream fout(title.c_str());
     if(!fout.is_open())
         return false;
-	partitionTriangleMaterials();
 	char s[400];
 	std::string line;
-	for(size_t i=0; i<_xyz.size(); i+=3)	{
-		sprintf(s,"v %f %f %f\n",_xyz[i],_xyz[i+1],_xyz[i+2]);
-		line.assign(s);
-		fout.write(line.c_str(),line.size());	}
-	for(size_t i=0; i<_uv.size(); i+=2)	{
-		sprintf(s,"vt %f %f\n",_uv[i],_uv[i+1]);
-		line.assign(s);
-		fout.write(line.c_str(),line.size());	}
-	long lastMaterial = -1;
-	for(size_t i=0; i<_tris.size(); ++i)	{
-		if(_tris[i].material<0)  // skip deleted triangles
+	if (materialFileName != nullptr) {
+		line = "mtllib ";
+		line.append(materialFileName);
+		if (line.rfind(".mtl") > title.size())
+			line.append(".mtl");
+		line.append("\n");
+		fout << line;
+	}
+	std::vector<int> vIdx, tIdx;
+	vIdx.assign(_xyz.size() / 3, -1);
+	tIdx.assign(_uv.size()>>1, -1);
+	std::vector<matTriangle> tris;
+	tris.reserve(_tris.size());
+	for (size_t i = 0; i < _tris.size(); ++i) {
+		if (_tris[i].material < 0)  // skip deleted triangles
 			continue;
-		if (_tris[i].material > lastMaterial) {  // new material/shading group
-			sprintf(s, "usemtl %d\n", _tris[i].material);
-			line.assign(s);
-			fout.write(line.c_str(), line.size());
-			sprintf(s, "s %d\n", _tris[i].material);
-			line.assign(s);
-			fout.write(line.c_str(), line.size());
-			lastMaterial = _tris[i].material;
+		tris.push_back(_tris[i]);
+		for (int j = 0; j < 3; ++j) {
+			vIdx[_tris[i].v[j]] = 1;
+			tIdx[_tris[i].tex[j]] = 1;
 		}
-		sprintf(s, "f %d/%d %d/%d %d/%d\n", _tris[i].v[0] + 1, _tris[i].tex[0] + 1, _tris[i].v[1] + 1, _tris[i].tex[1] + 1, _tris[i].v[2] + 1, _tris[i].tex[2] + 1);
+	}
+	int vn = 1, tn = 1;  // .obj indices start at 1 , not 0
+	for (size_t n = vIdx.size(), i = 0; i < n; ++i) {
+		if (vIdx[i] > 0)
+			vIdx[i] = vn++;
+	}
+	for (size_t n = tIdx.size(), i = 0; i < n; ++i) {
+		if (tIdx[i] > 0)
+			tIdx[i] = tn++;
+	}
+	for (size_t n=vIdx.size(), i = 0; i < n; ++i) {
+		if (vIdx[i] < 0)
+			continue;
+		float* fp = &_xyz[i * 3];
+		sprintf(s, "v %f %f %f\n", fp[0], fp[1], fp[2]);
+		line.assign(s);
+		fout.write(line.c_str(), line.size());
+	}
+	for (size_t n=tIdx.size(), i = 0; i < n; ++i) {
+		if (tIdx[i] < 0)
+			continue;
+		float* fp = &_uv[i<<1];
+		sprintf(s, "vt %f %f\n", fp[0], fp[1]);
+		line.assign(s);
+		fout.write(line.c_str(), line.size());
+	}
+	std::sort(tris.begin(), tris.end(),
+		[](const matTriangle& a, const matTriangle& b) -> bool
+		{
+			return a.material < b.material;
+		});
+	long smoothNum=1, lastMaterial = -1;
+	for(size_t n=tris.size(), i=0; i<n; ++i)	{
+		if (tris[i].material > lastMaterial) {  // new material/shading group
+			lastMaterial = tris[i].material;
+			sprintf(s, "usemtl %d\n", lastMaterial);
+			line.assign(s);
+			fout.write(line.c_str(), line.size());
+			sprintf(s, "s %d\n", smoothNum++);
+			line.assign(s);
+			fout.write(line.c_str(), line.size());
+		}
+		sprintf(s, "f %d/%d %d/%d %d/%d\n", vIdx[tris[i].v[0]], tIdx[tris[i].tex[0]], vIdx[tris[i].v[1]], tIdx[tris[i].tex[1]], vIdx[tris[i].v[2]], tIdx[tris[i].tex[2]]);
 		line.assign(s);
 		fout.write(line.c_str(),line.size());	}
 	fout.close();
@@ -934,6 +977,10 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 	// Creates 1 or 2 new triangles and one new vertex. Returns new vertex number of the input triangle split.
 	// Does fix adjacency array so getNeighbors() works and texture interpolated.
 	// Definitely should call getTriangleAdjacencies() ASAP.
+
+	if (triangle == 26395)
+		int junk = 0;
+
 	assert(0.0f<=parameter && 1.0f>=parameter);
 	long *trVerts = &_tris[triangle].v[0], *trTex = &_tris[triangle].tex[0];
 	if (_tris[triangle].material<0)
@@ -2195,3 +2242,18 @@ void materialTriangles::addOneMaterialTextureSeamVertex(long vertex, long(&textu
 		_oneMaterialSeams.insert(std::make_pair(vertex, nt));
 }
 
+float materialTriangles::getDiameter() {
+	findAdjacentTriangles(false, false);
+	boundingBox<float> bb;
+	bb.Empty_Box();
+	Vec3f v, max;
+	for (int n = (int)_vertexFace.size(), i = 0; i < n; ++i) {
+		if (_vertexFace[i] == 0x80000000)
+			continue;
+		getVertexCoordinate(i, v._v);
+		bb.Enlarge_To_Include_Point(v._v);
+	}
+	bb.Minimum_Corner(v._v);
+	bb.Maximum_Corner(max._v);
+	return (max - v).length();
+}

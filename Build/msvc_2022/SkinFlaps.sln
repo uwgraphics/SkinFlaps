@@ -18,12 +18,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gl3wGraphics", "..\..\gl3wG
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgui_glfw_nfd_lib", "..\..\imgui_glfw_nfd_lib\imgui_glfw_nfd_lib.vcxproj", "{7F05671F-7805-4541-9EC9-31ED72931CFE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PDTetPhysics", "..\..\PDTetPhysics\PDTetPhysics.vcxproj", "{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}"
-	ProjectSection(ProjectDependencies) = postProject
-		{DEB9C50E-C72F-42AF-A881-66ED5D9654A9} = {DEB9C50E-C72F-42AF-A881-66ED5D9654A9}
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhysBAM_subset", "..\..\PhysBAM_subset\PhysBAM_subset.vcxproj", "{DEB9C50E-C72F-42AF-A881-66ED5D9654A9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PDTetPhysics", "..\..\PDTetPhysics\PDTetPhysics.vcxproj", "{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,14 +54,6 @@ Global
 		{7F05671F-7805-4541-9EC9-31ED72931CFE}.Release|x64.Build.0 = Release|x64
 		{7F05671F-7805-4541-9EC9-31ED72931CFE}.Release|x86.ActiveCfg = Release|Win32
 		{7F05671F-7805-4541-9EC9-31ED72931CFE}.Release|x86.Build.0 = Release|Win32
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x64.ActiveCfg = Debug|x64
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x64.Build.0 = Debug|x64
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x86.ActiveCfg = Debug|x64
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x86.Build.0 = Debug|x64
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x64.ActiveCfg = Release|x64
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x64.Build.0 = Release|x64
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x86.ActiveCfg = Release|x64
-		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x86.Build.0 = Release|x64
 		{DEB9C50E-C72F-42AF-A881-66ED5D9654A9}.Debug|x64.ActiveCfg = Debug|x64
 		{DEB9C50E-C72F-42AF-A881-66ED5D9654A9}.Debug|x64.Build.0 = Debug|x64
 		{DEB9C50E-C72F-42AF-A881-66ED5D9654A9}.Debug|x86.ActiveCfg = Debug|Win32
@@ -73,6 +62,14 @@ Global
 		{DEB9C50E-C72F-42AF-A881-66ED5D9654A9}.Release|x64.Build.0 = Release|x64
 		{DEB9C50E-C72F-42AF-A881-66ED5D9654A9}.Release|x86.ActiveCfg = Release|Win32
 		{DEB9C50E-C72F-42AF-A881-66ED5D9654A9}.Release|x86.Build.0 = Release|Win32
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x64.ActiveCfg = Debug|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x64.Build.0 = Debug|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x86.ActiveCfg = Debug|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Debug|x86.Build.0 = Debug|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x64.ActiveCfg = Release|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x64.Build.0 = Release|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x86.ActiveCfg = Release|x64
+		{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

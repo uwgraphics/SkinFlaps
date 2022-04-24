@@ -348,4 +348,7 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
-/History/junk.hst
+
+# SkinFlaps specific exceptions to above ignore rules
+!/Model/*
+!/History/*

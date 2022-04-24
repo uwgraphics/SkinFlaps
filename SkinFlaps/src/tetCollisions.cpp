@@ -35,11 +35,11 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 		}
 		_initialized = true;
 	}
+	std::unordered_map<int, bottomRay> bedVerts;
+	bedVerts.reserve(1024);
 	std::unordered_set<int> tets;
 	tets.reserve(2048);
 	_flapBottomTris.clear();
-	for (auto& bedV : _bedVerts)
-		bedV.second.materialNormal.set(0.0f, 0.0f, 0.0f);
 	auto inputFlapBottomTriangle = [&](int triangle) {
 		for (int j = 0; j < 3; ++j) {
 			if (_mt->triangleMaterial(_mt->triAdjs(triangle)[j] >> 2) == 5)  // hinge triangle, don't process
@@ -63,7 +63,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			int tet = _vnt->getVertexTetrahedron(tr[j]);
 			auto tc = _vnt->tetCentroid(tet);
 			vnt->barycentricWeightToGridLocus(*tc, *vnt->getVertexWeight(tr[j]), matPos[j]);
-			auto bv = _bedVerts.emplace(tr[j], bottomRay());
+			auto bv = bedVerts.emplace(tr[j], bottomRay());
 			if (bv.second) {
 				bv.first->second.vertex = tr[j];
 				bv.first->second.materialNormal.set(0.0f, 0.0f, 0.0f);
@@ -81,6 +81,8 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			br[j]->materialNormal += N;
 	};
 	for (size_t n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
+		if (_mt->triangleMaterial(i) < 0)
+			continue;
 		if (_mt->triangleMaterial(i) == 3) {
 			int adjMat = _mt->triangleMaterial(_mt->triAdjs(i)[0] >> 2);
 			if (adjMat == 5) {
@@ -108,16 +110,15 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 
 	// vertices on hinge boundary between bed and bottom tris can be removed from bed set as collision processing not necessary
 	for (auto h : hingeVerts)
-		_bedVerts.erase(h);
+		bedVerts.erase(h);
 	_bedRays.clear();
-	_bedRays.reserve(_bedVerts.size());
-	for (auto& bedV : _bedVerts) {
-//		tets.insert(vnt->getVertexTetrahedron(bedV.second.vertex));
+	_bedRays.reserve(bedVerts.size());
+	for (auto& bedV : bedVerts) {
 		if (!tets.insert(vnt->getVertexTetrahedron(bedV.second.vertex)).second)  // for now tets must be unique
 			continue;
 		bedV.second.materialNormal.normalize();
 		bedV.second.materialNormal *= 0.1f;  // ?scale?
-		_bedRays.push_back(&bedV.second);
+		_bedRays.push_back(bedV.second);
 	}
 	_bedRays.shrink_to_fit();
 	// _bedRay crossover ignored since will only use shortest one
@@ -130,6 +131,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 	//	Mat3x3f Q, N(cols[0], cols[1], cols[2]);
 	//	Q = N * _rest[r.restIdx];
 
+	tets.erase(-1);
 	if (!tets.empty()) {
 		std::vector<long> tetras;
 		tetras.assign(tets.begin(), tets.end());
@@ -153,25 +155,39 @@ void tetCollisions::findSoftCollisionPairs() {
 		for (int j = 0; j < 3; ++j)
 			flapBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(*_mt->vertexCoordinate(tr[j])));
 	}
+
+	int badTri;
+	for (size_t n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i) {
+		long* tr = _mt->triangleVertices(i);
+		for(j=0; j<3; ++j)
+			if (tr[j] == 8987) {
+				int mat = _mt->triangleMaterial(i);
+				badTri = i;
+				break;
+			}
+		if (j < 3)
+			break;
+	}
+
 	for (size_t n = _bedRays.size(), i = 0; i < n; ++i) {
-		bottomRay* b = _bedRays[i];
-		const long* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(b->vertex));
-		const Vec3f* bw = _vnt->getVertexWeight(b->vertex);
+		bottomRay& b = _bedRays[i];
+		const long* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(b.vertex));
+		const Vec3f* bw = _vnt->getVertexWeight(b.vertex);
 		const Vec3f* sc[4];
 		sc[0] = &_vnt->nodeSpatialCoordinate(nodes[0]);
-		b->P = *sc[0] * (1.0f - bw->_v[0] - bw->_v[1] - bw->_v[2]);
+		b.P = *sc[0] * (1.0f - bw->_v[0] - bw->_v[1] - bw->_v[2]);
 		for (int j = 1; j < 4; ++j) {
 			sc[j] = &_vnt->nodeSpatialCoordinate(nodes[j]);
-			b->P += *sc[j] * bw->_v[j - 1];
+			b.P += *sc[j] * bw->_v[j - 1];
 		}
 		Mat3x3f M(*sc[1] - *sc[0], *sc[2] - *sc[0], *sc[3] - *sc[0]);
 		// only direction of b->materialNormal matters since deformation gradient will change length.  Normalize here.
-		b->N = _rest[b->restIdx] * M * b->materialNormal;
-		float scale = inverse_rsqrt(b->N * b->N);
-		b->N *= scale * 0.1f;  // QISI and YUTIAN - play with fudge factor here.
+		b.N = _rest[b.restIdx] * M * b.materialNormal;
+		float scale = inverse_rsqrt(b.N * b.N);
+		b.N *= scale * 0.1f;  // QISI and YUTIAN - play with fudge factor here.
 		bedBox[i].Empty_Box();
-		bedBox[i].Enlarge_To_Include_Point(b->P._v);
-		bedBox[i].Enlarge_To_Include_Point((b->P + b->N)._v);
+		bedBox[i].Enlarge_To_Include_Point(b.P._v);
+		bedBox[i].Enlarge_To_Include_Point((b.P + b.N)._v);
 	}
 	std::vector<long> topTets, bottomTets;
 	topTets.assign(_bedRays.size(), -1);
@@ -193,15 +209,15 @@ void tetCollisions::findSoftCollisionPairs() {
 				//			float bottomUv[2];
 
 				for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
-					bottomRay* b = _bedRays[j];
+					bottomRay& b = _bedRays[j];
 					if (bedBox[j].Intersection(flapBox[i])) {
 						long* tr = _mt->triangleVertices(_flapBottomTris[i]);
 						Vec3f* tv[3];
 						for (int k = 0; k < 3; ++k)
 							tv[k] = reinterpret_cast<Vec3f*>(_mt->vertexCoordinate(tr[k]));
-						Mat3x3f C(*tv[1] - *tv[0], *tv[2] - *tv[0], -b->N);
-						Vec3f R = C.Robust_Solve_Linear_System(b->P - *tv[0]);
-						if (R[0] < 1e-6f || R[1] < 1e-6f || R[2] < 2e-1f || R[0] + R[1] > 1.0f || R[0] > 1.0f || R[1] > 1.0f || R[2] > 1.0f)  // R[2] determines how deep the collision must go before processing triggered. Bigger makes less sticky.
+						Mat3x3f C(*tv[1] - *tv[0], *tv[2] - *tv[0], -b.N);
+						Vec3f R = C.Robust_Solve_Linear_System(b.P - *tv[0]);
+						if (R[0] < 1e-6f || R[1] < 1e-6f || R[2] < 0.2f || R[0] + R[1] > 1.0f || R[0] > 1.0f || R[1] > 1.0f || R[2] > 1.0f)  // R[2] determines how deep the collision must go before processing triggered. Bigger makes less sticky.
 							continue;
 						if (nearT > R[2]) {
 
@@ -209,7 +225,7 @@ void tetCollisions::findSoftCollisionPairs() {
 							//						bottomUv[0] = R[0];
 							//						bottomUv[1] = R[1];
 
-							bestBottom = b;
+							bestBottom = &b;
 							nearT = R[2];
 
 							if (R[0] + R[1] < 0.66667f)

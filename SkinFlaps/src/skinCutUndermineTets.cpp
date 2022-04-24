@@ -1180,6 +1180,21 @@ bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int un
 		edgeTriangles = &_inExCisionTriangles;
 	else{
 		assert(undermineMaterial == 7);
+		if (_periostealCutEdgeTriangles.empty()) {
+			for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
+				int mat;
+				if ((mat = _mt->triangleMaterial(i)) != 7 && mat != 8)
+					continue;
+				unsigned long* adjs = _mt->triAdjs(i);
+				for (int j = 0; j < 3; ++j) {
+					mat = _mt->triangleMaterial(adjs[j] >> 2);
+					if (mat != 7 && mat != 8 && mat != 1) {
+						_periostealCutEdgeTriangles.push_back(i);
+						break;
+					}
+				}
+			}
+		}
 		edgeTriangles = &_periostealCutEdgeTriangles;
 	}
 	float uv[2] = {0.33f, 0.33f}, d, minD = FLT_MAX;
@@ -1216,7 +1231,8 @@ bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int un
 		closeUndermineHoles(triPath, undermineMaterial);
 	}
 	else {
-		collectOldUndermineData();
+		if(undermineMaterial == 2)  // COURT - should probably do this for periosteal undermines too. Later.
+			collectOldUndermineData();
 		_trisUnderminedNow.clear();
 		_trisUnderminedNow.assign(_mt->numberOfTriangles(), false);
 		for (auto &tp : triPath) {

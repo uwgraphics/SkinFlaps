@@ -31,7 +31,7 @@ void remapTetPhysics::remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt)
 		// quickest first by using old vertex correspondence
 		j = _oldVertexTets[i];
 		if (j < 0)  		// handles deleted vertices after an excise
-			continue;;
+			continue;
 		oldTetsUsed[j] = 1;
 		if (newToOldTets[newVnbt->_vertexTets[i]] < 0)
 			newToOldTets[newVnbt->_vertexTets[i]] = j;

@@ -25,6 +25,7 @@
 // forward declarations
 class vnBccTetrahedra;
 class fence;
+class FacialFlapsGui;
 struct rayTriangleIntersect;
 
 class deepCut : public skinCutUndermineTets
@@ -32,11 +33,11 @@ class deepCut : public skinCutUndermineTets
 public:
 	void setGl3wGraphics(gl3wGraphics *gl3w) { _gl3w = gl3w; }  // for debug - nuke later
 
-	bool inputCorrectFence(fence* fp);
+	bool inputCorrectFence(fence* fp, FacialFlapsGui* ffg);
 	int addDeepPost(const int triangle, const float(&uv)[2], const Vec3d& rayDirection, bool closedEnd);
 	inline void popLastDeepPost() { if(!_deepPosts.empty()) _deepPosts.pop_back(); }
 	inline int numberOfDeepPosts() { return (int)_deepPosts.size(); }
-	bool preventPreviousCrossover(const int postNum);
+	int preventPreviousCrossover(const int postNum);  // COURT make private with new interface
 	void getDeepPosts(std::vector<Vec3f>& xyz, std::vector<Vec3f>& nrm);
 	bool cutDeep();  // data already loaded in _deepPosts in this updated version
 	void clearDeepCutter(){_deepPosts.clear();}
@@ -116,6 +117,8 @@ protected:
 	void makeBilinearPatch(const Vec3d& P00, const Vec3d& P10, const Vec3d& P01, const Vec3d& P11, bilinearPatch& bl);
 	int bilinearRayIntersection(const Vec3d& rayStart, const Vec3d& rayDir, const bilinearPatch& bl, double (&rayParam)[2], Vec2d (&faceParams)[2]);
 	void findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Vec2d> &bUv, const std::vector<std::pair<long, Vec2d> >& deepOuterPolygon, std::list< std::vector<std::pair<long, Vec2d> > >& holes);
+	bool topConnectToPreviousPost(int postNum);
+	bool deepConnectToPreviousPost(int postNum);
 
 };
 

@@ -23,7 +23,7 @@ public:
 	bool empty() { return _fixedCollisionSets.empty() && _bedRays.empty(); }
 	inline void setPdTetPhysics(pdTetPhysics *ptp) { _ptp = ptp; }
 	tetCollisions() : _itCount(0), _initialized(false), _minTime((double)FLT_MAX), _maxTime(0.0){
-		_fixedCollisionSets.clear(); _bedVerts.clear(); _bedVerts.reserve(1024); _flapBottomTris.clear();
+		_fixedCollisionSets.clear(); _flapBottomTris.clear();  // _bedVerts.clear(); _bedVerts.reserve(1024); 
 	}
 	~tetCollisions() {}
 
@@ -41,8 +41,8 @@ private:
 		Vec3f materialNormal;
 		int restIdx;  // only 6 of these in bcc tets
 	};
-	std::vector<bottomRay*> _bedRays;
-	std::unordered_map<int, bottomRay> _bedVerts;
+	std::vector<bottomRay> _bedRays;
+//	std::unordered_map<int, bottomRay> _bedVerts;
 	std::vector<int> _flapBottomTris;
 	std::vector<int> _topTets;
 	std::vector<Vec3f> _topBarys;

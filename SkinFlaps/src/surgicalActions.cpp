@@ -97,7 +97,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		if (sn->getType() != sceneNode::nodeType::MATERIAL_TRIANGLES)
 			return false;
 		materialTriangles *tr = _sg.getMaterialTriangles();
-		float uv[2];
+		float uv[2] = { 0.0f, 0.0f };
 		tr->getBarycentricProjection(triangle, position, uv);
 		int material;
 		float hTx[2];
@@ -112,6 +112,27 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_hooks.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
 			_hooks.setIncisions(&_incisions);
 		}
+
+		// COURT debug use
+/*		for (int j, i = 0; i < tr->numberOfTriangles(); ++i) {
+			long* trp = tr->triangleVertices(i);
+			for (j = 0; j < 3; ++j)
+				if (trp[j] == 5705)
+					break;
+			if (j < 3) {
+				triangle = i;
+				if (j == 1)
+					uv[0] = 1.0f;
+				if (j == 2)
+					uv[1] = 1.0f;
+				_toolState = 0;
+				break;
+			}
+		} */
+//		triangle = 20200;
+//		uv[0] = 0.5585;
+//		uv[1] = 0.24679;
+
 		if ((hookNum = _hooks.addHook(tr, triangle, uv, _strongHooks))>-1)
 		{
 			if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook
@@ -124,6 +145,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 					}
 				);
 			}
+
 			_sutures.selectSuture(-1);
 			_hooks.selectHook(hookNum);
 			char s[80];
@@ -429,7 +451,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			return false;
 		materialTriangles* tr = _sg.getMaterialTriangles();
 		Vec3f cameraPos, dir;
-		_gl3w->getTrianglePickLine(cameraPos._v, dir._v);
+		_gl3w->getTrianglePickLine(cameraPos._v, dir._v);  // this routine only used here as of 3/22/2022
 		_bts.updateSurfaceDraw();
 		perioTri pt;
 		pt.incisionConnect = !_ffg->CtrlOrShiftKeyIsDown();
@@ -805,12 +827,12 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 		if (_selectedSurgObject.substr(0, 3) == "NP_") {	// fence post selected in viewer or incision mode
 			int postNum = atoi(_selectedSurgObject.c_str() + 3);
 			_fence.selectPost(postNum);
-			if (postNum > 0 && !_incisions.inputCorrectFence(&_fence)) {
-				_ffg->sendUserMessage("This post does not connect to the previous one-", "Try again");
-				_fence.deleteLastPost();
-				_incisions.popLastDeepPost();
-				_selectedSurgObject = "";
-			}
+//			if (postNum > 0 && !_incisions.inputCorrectFence(&_fence)) {  / changed to correcting fence problems on <enter> key
+//				_ffg->sendUserMessage("This post does not connect to the previous one-", "Try again");
+//				_fence.deleteLastPost();
+//				_incisions.popLastDeepPost();
+//				_selectedSurgObject = "";
+//			}
 		}
 	}
 	else
@@ -951,16 +973,25 @@ void surgicalActions::onKeyDown(int key)
 		// prevent user from doing a new op until previous one is finished
 		assert(physicsDone);  // physics update thread must be complete before doing next op.
 		if (_toolState == 7){	//periosteal undermine mode
-
-			// COURT - review for multithreading when added back in
-
+			_bts.setPhysicsPause(true);  // should already be done
+			while (!physicsDone)
+				;
 			materialTriangles *mt = _sg.getMaterialTriangles();
 			for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i){
 				if (mt->triangleMaterial(i) == 10)
 					mt->setTriangleMaterial(i, 8);  // 8 is a periosteal triangle that has been undermined
 			}
-			_bts.fixPeriostealPeriferalVertices();
-			_bts.nonTetPhysicsUpdate();
+			_bts.updateSurfaceDraw();
+			physicsDone = false;
+			_ffg->physicsDrag = true;
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+				_bts.fixPeriostealPeriferalVertices();
+				_bts.nonTetPhysicsUpdate();
+				newTopology = true;
+				physicsDone = true;
+				}
+			);
+			_bts.setPhysicsPause(false);
 			if (_historyIt != _historyArray.end()) {
 				json::Array tarr;
 				for (json::Array::ValueVector::iterator it = _historyArray.begin(); it != _historyIt; ++it)
@@ -1058,8 +1089,11 @@ void surgicalActions::onKeyDown(int key)
 				}
 				else {
 					if (_incisions.physicsRecutRequired()){
+						_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
+						while (!physicsDone)  // physics update thread must be complete before doing next op.
+							;
 						physicsDone = false;
-//						_ffg->physicsDrag = true;
+						_ffg->physicsDrag = true;
 						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 							_bts.updateOldPhysicsLattice();
 							newTopology = true;
@@ -1129,11 +1163,7 @@ void surgicalActions::onKeyDown(int key)
 		}
 		else if (_toolState == 6)	// deep cut mode
 		{
-			if (_incisions.numberOfDeepPosts() < 2){
-				_incisions.clearDeepCutter();
-				_ffg->setToolState(0);
-				setToolState(0);
-				_bts.setPhysicsPause(false);
+			if (!_incisions.inputCorrectFence(&_fence, _ffg)) {
 				return;
 			}
 			std::vector<Vec3f> positions, rays;
@@ -1197,6 +1227,7 @@ void surgicalActions::onKeyDown(int key)
 				sendUserMessage("Attempted deepCut failed. Save history to debug.", "PROGRAM ERROR");
 			physicsDone = false;
 			_ffg->physicsDrag = true;
+			_ffg->user_message_flag = false;
 			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
@@ -1704,6 +1735,8 @@ void surgicalActions::nextHistoryAction()
 		{
 			std::string histFile;
 			_ffg->loadFile(_historyDir.c_str(), "hst", _historyDir, histFile);
+			if (histFile.empty())
+				return;
 			std::string title("Skin Flaps Simulator playing - ");
 			title.append(histFile);
 			glfwSetWindowTitle(_ffg->getGLFWwindow(), title.c_str());
@@ -1871,7 +1904,7 @@ void surgicalActions::nextHistoryAction()
 			else {
 				if (_incisions.physicsRecutRequired()) {
 					physicsDone = false;
-//					_ffg->physicsDrag = true;
+					_ffg->physicsDrag = true;
 					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 						_bts.updateOldPhysicsLattice();
 						newTopology = true;
@@ -1912,11 +1945,11 @@ void surgicalActions::nextHistoryAction()
 			}
 			_gl3w->drawAll();
 			glfwSwapBuffers(_ffg->getGLFWwindow());
-			std::this_thread::sleep_for(std::chrono::milliseconds(600));
+			std::this_thread::sleep_for(std::chrono::milliseconds(800));
 			_incisions.undermineSkin();
 			_undermineTriangles.clear();
 			physicsDone = false;
-//			_ffg->physicsDrag = true;
+			_ffg->physicsDrag = true;
 			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
@@ -2184,7 +2217,12 @@ void surgicalActions::nextHistoryAction()
 			startOpen = iObj["openIn"].ToBool();
 			endOpen = iObj["openOut"].ToBool();
 			int pointNum = iObj["pointNumber"].ToInt();
+			materialTriangles* tr = _sg.getMaterialTriangles();
 			_incisions.clearDeepCutter();
+			if (!_fence.isInitialized()) {	// initialize fence
+				_fence.setFenceSize(tr->getDiameter() * 0.01f);
+				_fence.setGl3wGraphics(_gl3w);
+			}
 			_fence.clear();
 			float hTx[2], uv[2];
 			long tri;
@@ -2215,26 +2253,43 @@ void surgicalActions::nextHistoryAction()
 				hVec[1] = pArr[1].ToFloat();
 				hVec[2] = pArr[2].ToFloat();
 				getHistoryAttachPoint(material, hTx, hVec, tri, uv, false);
-				_sg.getMaterialTriangles()->getBarycentricPosition(tri, uv, xyz._v);
+				tr->getBarycentricPosition(tri, uv, xyz._v);
 				pArr = pObj["postNormal"].ToArray();
-				postN.X = -pArr[0].ToFloat();
-				postN.Y = -pArr[1].ToFloat();
-				postN.Z = -pArr[2].ToFloat();
+				postN.X = pArr[0].ToFloat();
+				postN.Y = pArr[1].ToFloat();
+				postN.Z = pArr[2].ToFloat();
 				if (i == pointNum - 1)
 					startOpen = endOpen;
 				else if (i > 0)
 					startOpen = false;
 				else
 					;
-				_incisions.addDeepPost(tri, uv, Vec3d(postN), !startOpen);
+				_fence.addPost(tr, tri, xyz._v, postN._v, false, startOpen);
+//				_incisions.addDeepPost(tri, uv, Vec3d(postN), !startOpen);
 			}
-			for (int i = 1; i < pointNum; ++i) {
-				if (!_incisions.preventPreviousCrossover(i))
-					sendUserMessage("The deepCut in this history file failed.", "PROGRAM ERROR");
+			if (!_incisions.inputCorrectFence(&_fence, _ffg)) {
+				sendUserMessage("The deepCut in this history file failed.", "PROGRAM ERROR");
+				_fence.clear();
+				_incisions.clearDeepCutter();
+				_ffg->setToolState(0);
+				setToolState(0);
+				_bts.setPhysicsPause(false);
+				physicsDone = true;
+				_ffg->physicsDrag = false;
+				return;
 			}
 			_bts.updateSurfaceDraw();
-			if (!_incisions.cutDeep())
+			if (!_incisions.cutDeep()) {
 				sendUserMessage("Attempted deepCut failed. Save history to debug.", "PROGRAM ERROR");
+				_fence.clear();
+				_incisions.clearDeepCutter();
+				_ffg->setToolState(0);
+				setToolState(0);
+				_bts.setPhysicsPause(false);
+				physicsDone = true;
+				_ffg->physicsDrag = false;
+				return;
+			}
 			physicsDone = false;
 			_ffg->physicsDrag = true;
 			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
@@ -2275,7 +2330,14 @@ void surgicalActions::nextHistoryAction()
 			// all periosteal undermine triangles now marked as material 10
 			_incisions.clearCurrentUndermine(8);  // set all periosteal undermined triangles to material 8 and reset.
 			_bts.fixPeriostealPeriferalVertices();
-			_bts.nonTetPhysicsUpdate();
+			physicsDone = false;
+			_ffg->physicsDrag = true;
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+				_bts.nonTetPhysicsUpdate();
+				newTopology = true;
+				physicsDone = true;
+				}
+			);
 			++_historyIt;
 		}
 		else if (_historyIt->HasKey("promoteSutureApproximations"))
@@ -2405,9 +2467,9 @@ bool surgicalActions::closestTexturePick(const float(&txUv)[2], const float tria
 		return true;
 }
 
-bool surgicalActions::saveCurrentObj(const char* objPath) {
+bool surgicalActions::saveCurrentObj(const char* objPath, const char* materialFileName) {
 	materialTriangles* tr = _sg.getMaterialTriangles();
 	if (tr == nullptr)
 		return false;
-	return tr->writeObjFile(objPath);
+	return tr->writeObjFile(objPath, materialFileName);
 }

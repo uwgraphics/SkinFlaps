@@ -113,7 +113,7 @@ void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(
 	GLfloat *mm = sh->getModelViewMatrix();
 	loadIdentity4x4(mm);
 	sh->setColor(_selectedColor);
-	scaleMatrix4x4(mm,_fenceSize*0.1f,_fenceSize*0.1f,_fenceSize*2.0f);
+	scaleMatrix4x4(mm,_fenceSize*0.1f,_fenceSize*0.1f,_fenceSize* 2.5f);
 	Vec3f vz(0.0f,0.0f,1.0f),vn(normal[0], normal[1], normal[2]);
 	vn.normalize();
 	float angle = acos(vn*vz);
@@ -128,12 +128,12 @@ void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(
 	sh->setColor(_selectedColor);
 	scaleMatrix4x4(mm, _fenceSize*0.5f, _fenceSize*0.5f, _fenceSize*0.5f);
 	//	vn already done
-	vn *= _fenceSize * 2.0f;
+	vn *= _fenceSize * 3.0f;
 	translateMatrix4x4(mm, xyz[0] + vn.X, xyz[1] + vn.Y, xyz[2] + vn.Z);
 	_posts.back().spherePos = Vec3f(xyz) + vn;
 
 	vn.set(normal);
-	vn *= _fenceSize * 2;
+	vn *= _fenceSize * 2.5f;
 	_xyz.push_back(Vec3f(xyz) - vn * 0.75f);
 	_xyz.push_back(Vec3f(xyz) + vn * 0.75f);
 	displayRemoveWall();  // now makeWall always true
@@ -148,7 +148,7 @@ void fence::setSpherePos(int postNumber, Vec3f& xyz){
 	Vec3f vn = xyz - fp->xyz;
 	vn.normalize();
 	fp->nrm = vn;
-	vn *= _fenceSize * 2.0f;
+	vn *= _fenceSize * 2.5f;
 	vn += fp->xyz;
 	translateMatrix4x4(mm, vn.X, vn.Y, vn.Z);
 	fp->spherePos = vn;
@@ -156,7 +156,7 @@ void fence::setSpherePos(int postNumber, Vec3f& xyz){
 	mm = fp->cylinderShape->getModelViewMatrix();
 	loadIdentity4x4(mm);
 	fp->cylinderShape->setColor(_selectedColor);
-	scaleMatrix4x4(mm, _fenceSize * 0.1f, _fenceSize * 0.1f, _fenceSize * 2.0f);
+	scaleMatrix4x4(mm, _fenceSize * 0.1f, _fenceSize * 0.1f, _fenceSize * 2.5f);
 	Vec3f vz(0.0f, 0.0f, 1.0f);
 	vn -= fp->xyz;
 	vn.normalize();

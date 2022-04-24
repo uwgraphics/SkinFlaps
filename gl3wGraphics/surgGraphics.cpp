@@ -388,7 +388,7 @@ void surgGraphics::setNewTopology()
 void surgGraphics::getSkinIncisionLines() {
 	_incisionLines.clear();  // indexes into incision lines. 0xffffffff is primitive restart index.
 	std::set<int> tri36used;
-	auto getIncisLine = [&](unsigned long &adj) {
+	auto getIncisLine = [&](int mat0, unsigned long &adj) {
 		int mat, tri = adj >> 2;
 		std::vector<materialTriangles::neighborNode> nei;
 		long vEnd = _mt.triangleVertices(tri)[(adj & 3)], v = _mt.triangleVertices(tri)[((adj & 3) + 1) % 3];
@@ -415,7 +415,7 @@ void surgGraphics::getSkinIncisionLines() {
 				--nit;
 				tri = nit->triangle;
 				mat = _mt.triangleMaterial(tri);
-			} while (mat == 2 || mat == 5);
+			} while ((mat0 == 3 && mat == 2) || (mat0 == 6 && mat != 6));
 			tri36used.insert(nit->triangle);
 			v = nit->vertex;
 		}
@@ -423,26 +423,23 @@ void surgGraphics::getSkinIncisionLines() {
 	};
 	for (int n = _mt.numberOfTriangles(), i = 0; i < n; ++i) {
 		int mat = _mt.triangleMaterial(i);
-		if (mat == 3) {
-			if (tri36used.find(i) != tri36used.end())
-				continue;
+		if (mat == 3) {  // surface skin incision . 2-3 pair
 			unsigned long* adjs = _mt.triAdjs(i);
 			if (_mt.triangleMaterial(adjs[0] >> 2) != 2)  // incision convention
 				continue;
 			// incision start point
-			tri36used.insert(i);
-			getIncisLine(adjs[0]);
+			if(tri36used.insert(i).second)
+				getIncisLine(3, adjs[0]);
 		}
-		if (mat == 6) {
-			if (tri36used.find(i) != tri36used.end())
-				continue;
+		if (mat == 6) {  // deep bed incision. 5-6 pair
 			unsigned long* adjs = _mt.triAdjs(i);
 			for (int j = 0; j < 3; ++j) {
-				if (_mt.triangleMaterial(adjs[j] >> 2) != 5)
+				int aMat = _mt.triangleMaterial(adjs[j] >> 2);
+				if ( aMat == 6 || aMat == 3)  // any different material except 3 which is a non-undermined deep cut
 					continue;
 				// incision start point
-				tri36used.insert(i);
-				getIncisLine(adjs[j]);
+				if(tri36used.insert(i).second)
+					getIncisLine(6, adjs[j]);
 			}
 		}
 	}

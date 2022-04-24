@@ -463,7 +463,7 @@ void bccTetScene::updateSurfaceDraw()
 	for (i = 0; i < numElem; ++i) {
 		if (tr[i].material == 7) {  // periosteal triangle
 			for (k = 0; k < 3; ++k) {
-				const Vec3f *vp = _vnTets.getVertexWeight(tr[i].v[k]);
+				const Vec3f* vp = _vnTets.getVertexWeight(tr[i].v[k]);
 				ap.baryWeight[0] = vp->X;
 				ap.baryWeight[1] = vp->Y;
 				ap.baryWeight[2] = vp->Z;
@@ -496,14 +496,14 @@ void bccTetScene::updateSurfaceDraw()
 	peripheralPos.reserve(n);
 	for (auto &fp : fixPoints) {
 		if (fp.second.isPeriferal) {
-			fixedTets.push_back(fp.first);
-			fixedWeights.push_back(fp.second.baryWeight);
-			fixedPos.push_back(fp.second.pos);
-		}
-		else {
 			peripheralTets.push_back(fp.first);
 			peripheralWeights.push_back(fp.second.baryWeight);
 			peripheralPos.push_back(fp.second.pos);
+		}
+		else {
+			fixedTets.push_back(fp.first);
+			fixedWeights.push_back(fp.second.baryWeight);
+			fixedPos.push_back(fp.second.pos);
 		}
 	}
 #ifndef NO_PHYSICS

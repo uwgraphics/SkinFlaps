@@ -1,6 +1,6 @@
 {
     "dynamicObjects" : {
-        "cleftBag_9_1_20.obj" : {
+        "cleftBag2_9_1_20.obj" : {
             "textureMaps": [
                 1,
                 2,
@@ -45,23 +45,23 @@
         ]
     },
     "textureFiles" : {
-        "unilatCleftLip_9_1_20.jpg" : 1,
-        "unilatCleftLipNrm_9_1_20.jpg" : 2,
+        "unilatCleftLip2_9_1_20.jpg" : 1,
+        "unilatCleftLip2_nrm_9_1_20.jpg" : 2,
         "deepBed_9_1_20.jpg" : 3,
         "deepBedNrm_9_1_20.jpg" : 4
     },
     "tetrahedralProperties" : {
         "minStrain" : 0.6,
-        "maxStrain" : 1.6,
+        "maxStrain" : 1.8,
         "lowTetWeight" : 500.0,
         "highTetWeight" : 1000.0,
         "collisionWeight" : 40000.0,
-        "selfCollisionWeight" :  10000.0,
+        "selfCollisionWeight" :  10.0,
         "fixedWeight" : 10000.0,
         "periferalWeight" : 1.0,
-        "hookWeight" : 500.0,
-        "sutureWeight" : 2000.0,
-        "autoSutureSpacing" : 0.14,
+        "hookWeight" : 65.0,
+        "sutureWeight" : 800.0,
+        "autoSutureSpacing" : 0.02,
         "maxDimSubdivisions" : 180
     },
     "fixedCollisionSets" : {

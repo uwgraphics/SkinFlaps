@@ -129,6 +129,7 @@ public:
 	void premoteSutures();
 
 	inline const std::array<int, 4>& getTetIndices(int tet) { return m_gridDeformer.m_elements[tet]; }  // COURT added
+	inline int numberOfTetConstraints() { return m_gridDeformer.m_constraints.size(); }
 
 private:
 	void updateCollisionConstraints();

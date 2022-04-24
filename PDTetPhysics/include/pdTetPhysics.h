@@ -24,7 +24,8 @@ private:
 
 	T m_stressLimit;
 
-	std::unordered_map<int, int> fixedTetMap, fixedNodeMap;  // QISI nuke fixedNodeMap as no longer used
+//	std::unordered_map<int, int> fixedTetMap, fixedNodeMap;  // QISI nuke fixedNodeMap as no longer used
+	std::vector<int> fixedTetConstraints;
 
 public:
 	/* loaded with model file in history as static variables applied to all tet constraints. Later
@@ -82,20 +83,13 @@ public:
 		m_solver.initializeDeformer(reinterpret_cast<const long(*)[4]>(&tetIndices[0][0]), tetIndices.size(), tetScale * 2);
 		m_deformerInited = true;
 		m_solverInited = false;
-		fixedNodeMap.clear();
+		fixedTetConstraints.clear();
 		return reinterpret_cast<std::array<T, d>(*)>(m_solver.getPositionPtr());
 	}
 
 	/* Doesn’t always follow createNewTetTopology() and may happen without changing
 	 * tets. For example periosteal undermining releases some of these removing some
-	 * Dirichlet constraints but all the tet constraints stay the same.
-
-	 * The setFixedNodes() call will always follow a createNewTetTopology() call
-	 * so it it not necessary to reinit physics after createNewTetTopology().  Physics reinit
-	 * will always happen at the end of setFixedNodes().
-
-	 * QISI: nuke second one later
-	 */
+	 * Dirichlet constraints but all the tet constraints stay the same.	 */
 
 	 // Court's new fixed vertex constraint version to replace setFixedNodes(). Should have done it this way in the first place. Sorry Qisi.
 	// Also with a periosteal undermine there is no topo change, but previous fixed constraints are released so a pd reinit is required?
@@ -104,37 +98,29 @@ public:
 		if (!m_deformerInited)
 			throw std::logic_error("need to init tet topology before setFixedNodes");
 		const T weight[d] = { 0,0,0 };
-		for (auto& tetMap : fixedTetMap)
-			if (tetMap.second >= 0) {
-				m_solver.deleteConstraint(tetMap.second);
-				tetMap.second = -1;
-			}
+
+		// QISI - I see your m_grid_deformer handles tet constraints for hooks and fixed vertices.  Will hooks always be the last?  This is somewhat ugly.  Please advise.
+		if (m_solver.numberOfTetConstraints() >= fixedTetConstraints.size()) {
+			for (auto& tc : fixedTetConstraints)
+				m_solver.deleteConstraint(tc);
+		}
+		fixedTetConstraints.clear();
+
 		assert(fixedTets.size() == fixedWeights.size() && fixedWeights.size() == fixedPositions.size());
 		assert(peripheralTets.size() == peripheralWeights.size() && peripheralWeights.size() == peripheralPositions.size());
-		if (fixedTetMap.empty()) {
-			for (int i = 0; i < fixedTets.size(); i++) {
-				int handle = m_solver.addConstraint(reinterpret_cast<const int(&)[4]>(m_solver.getTetIndices(fixedTets[i])), reinterpret_cast<const T(&)[3]>(fixedWeights[i]), reinterpret_cast<const T(&)[3]>(fixedPositions[i]), m_fixedWeight); // change weight
-				fixedTetMap.insert({ i, handle });
-			}
-			for (int i = 0; i < peripheralTets.size(); i++) {
-				int handle = m_solver.addConstraint(reinterpret_cast<const int(&)[4]>(m_solver.getTetIndices(peripheralTets[i])), reinterpret_cast<const T(&)[3]>(peripheralWeights[i]), reinterpret_cast<const T(&)[3]>(peripheralPositions[i]), m_peripheralWeight); // change weight
-				fixedTetMap.insert({ i, handle });
-			}
+		fixedTetConstraints.reserve(fixedTets.size() + peripheralTets.size());
+		int fts = fixedTets.size();
+		for (int i = 0; i < fts; i++) {
+			int handle = m_solver.addConstraint(reinterpret_cast<const int(&)[4]>(m_solver.getTetIndices(fixedTets[i])), reinterpret_cast<const T(&)[3]>(fixedWeights[i]), reinterpret_cast<const T(&)[3]>(fixedPositions[i]), m_fixedWeight); // change weight
+			fixedTetConstraints.push_back(handle);
 		}
-		else {  // COURT - clear up next with Qisi
-			// assuming fixed node number only decreases after each topo change
-			for (int i = 0; i < fixedTets.size(); i++) {
-				int handle = m_solver.addConstraint(reinterpret_cast<const int(&)[4]>(m_solver.getTetIndices(fixedTets[i])), reinterpret_cast<const T(&)[3]>(fixedWeights[i]), reinterpret_cast<const T(&)[3]>(fixedPositions[i]), m_fixedWeight); // change weight
-				fixedTetMap.insert({ i, handle });
-			}
-			for (int i = 0; i < peripheralTets.size(); i++) {
-				int handle = m_solver.addConstraint(reinterpret_cast<const int(&)[4]>(m_solver.getTetIndices(peripheralTets[i])), reinterpret_cast<const T(&)[3]>(peripheralWeights[i]), reinterpret_cast<const T(&)[3]>(peripheralPositions[i]), m_peripheralWeight); // change weight
-				fixedTetMap.insert({ i, handle });
-			}
+		for (int i = 0; i < peripheralTets.size(); i++) {
+			int handle = m_solver.addConstraint(reinterpret_cast<const int(&)[4]>(m_solver.getTetIndices(peripheralTets[i])), reinterpret_cast<const T(&)[3]>(peripheralWeights[i]), reinterpret_cast<const T(&)[3]>(peripheralPositions[i]), m_peripheralWeight); // change weight
+			fixedTetConstraints.push_back(handle);
 		}
 	}
 
-	inline void setFixedNodes(const std::vector<int> &fixedNodes, const std::array<float, 3> *position, const std::vector<int>& peripheralNodes, const std::array<float, 3>* peripheralPosition) {
+/*	inline void setFixedNodes(const std::vector<int>& fixedNodes, const std::array<float, 3>* position, const std::vector<int>& peripheralNodes, const std::array<float, 3>* peripheralPosition) {
 		// position only contains positions of fixedNodes
 //		assert(false);
 		if (!m_deformerInited)
@@ -175,7 +161,7 @@ public:
 				fixedNodeMap[idx] = handle;
 			}
 		}
-	}
+	} */
 	
 		/*
 	inline void releaseInterfaceNodes(const std::vector<int> &releaseNodes) {
@@ -222,11 +208,6 @@ public:
 		m_hookWeight = hookWeight;
 		m_sutureWeight = sutureWeight;
 		m_stressLimit = stressLimit;
-	}
-
-	inline int addRealSutures(const std::vector<int> &tets0, const std::vector<std::array<float, 3> >(&weights0), const std::vector<int>& tets1, const std::vector<std::array<float, 3> > &weights1, std::vector<int> &constraintIndices) {
-		// QISI and YUTIAN - We need to discuss this.  Is a group add so only one reinit of matrix.  We also need to write a group delete.
-		return 0;
 	}
 
 	/* returns constraint index */
@@ -283,11 +264,6 @@ public:
 		if (!m_solverInited)
 			throw std::logic_error("need to init solver before solve");
 		m_solver.solve();
-	}
-
-	inline void createSoftLevelSet(const std::vector<std::array<float, 3> > &softLevelSetVerts, const std::vector<std::array<int, 3> > &softLevelSetTriangles)
-	{
-		// Qisi write me
 	}
 
 	pdTetPhysics() : m_tetPropsSet(false), m_solverInited(false), m_deformerInited(false), m_levelsetInited(false) {}
