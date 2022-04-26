@@ -1956,7 +1956,6 @@ void surgicalActions::nextHistoryAction()
 				physicsDone = true;
 				}
 			);
-//			_sg.updatePositionsNormalsTangents();
 			++_historyIt;
 		}
 		else if (_historyIt->HasKey("excise"))
@@ -1979,7 +1978,7 @@ void surgicalActions::nextHistoryAction()
 			getHistoryAttachPoint(material, hTx, hVec, tri, uv, false);
 			_incisions.excise(tri);
 			physicsDone = false;
-//			_ffg->physicsDrag = true;
+			_ffg->physicsDrag = true;
 			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
