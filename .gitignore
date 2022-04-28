@@ -352,3 +352,4 @@ MigrationBackup/
 # SkinFlaps specific exceptions to above ignore rules
 !/Model/*
 !/History/*
+/History/junk.hst

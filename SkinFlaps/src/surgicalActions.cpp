@@ -28,8 +28,6 @@ surgicalActions::surgicalActions() : _toolState(0), _originalTriangleNumber(0), 
 
 surgicalActions::~surgicalActions()
 {
-	_selectedSurgObject.clear();
-	_dragTissue.clear();
 }
 
 bool surgicalActions::saveSurgicalHistory(const char *fullFilePath)
@@ -982,6 +980,8 @@ void surgicalActions::onKeyDown(int key)
 					mt->setTriangleMaterial(i, 8);  // 8 is a periosteal triangle that has been undermined
 			}
 			_bts.updateSurfaceDraw();
+			while (!physicsDone)  // physics update thread must be complete before doing next op.
+				;
 			physicsDone = false;
 			_ffg->physicsDrag = true;
 			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
@@ -1152,7 +1152,7 @@ void surgicalActions::onKeyDown(int key)
 			_incisions.undermineSkin();
 			_undermineTriangles.clear();
 			physicsDone = false;
-//			_ffg->physicsDrag = true;
+			_ffg->physicsDrag = true;
 			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;

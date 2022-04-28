@@ -132,7 +132,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 	//	Q = N * _rest[r.restIdx];
 
 	tets.erase(-1);
-	if (!tets.empty()) {
+ 	if (!tets.empty()) {
 		std::vector<long> tetras;
 		tetras.assign(tets.begin(), tets.end());
 		_ptp->addSoftCollisionTets(tetras);
