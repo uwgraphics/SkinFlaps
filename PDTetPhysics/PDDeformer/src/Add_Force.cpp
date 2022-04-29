@@ -37,15 +37,15 @@ void Add_Force(const T_DATA (&x_Blocked)[4][3],
     using WideVectorType = Vector3<WideNumberType>;
 
     using T = typename Tarch::Scalar;
-    T TWO[Tarch::Width];
+    T TWO[Tarch::Width]{};
     for (int i=0; i<Tarch::Width; i++) TWO[i] = 2;
 
-    alignas(sizeof(T_DATA)) T_DATA  F_Blocked[d*d];
-    alignas(sizeof(T_DATA)) T_DATA  R_Blocked[d*d];
+    alignas(sizeof(T_DATA)) T_DATA  F_Blocked[d * d]{};
+    alignas(sizeof(T_DATA)) T_DATA  R_Blocked[d * d]{};
    // alignas(sizeof(T_DATA)) T_DATA  P_Blocked[d*d];
-    alignas(sizeof(T_DATA)) T_DATA  U_Blocked[d*d];
-    alignas(sizeof(T_DATA)) T_DATA  V_Blocked[d*d];
-    alignas(sizeof(T_DATA)) T_DATA  S_Blocked[d]  ;
+    alignas(sizeof(T_DATA)) T_DATA  U_Blocked[d * d]{};
+    alignas(sizeof(T_DATA)) T_DATA  V_Blocked[d * d]{};
+    alignas(sizeof(T_DATA)) T_DATA  S_Blocked[d]{};
 
     WideVectorType v0, v1, v2, v3, v4, v5, v6;
     WideNumberType s0, s1;

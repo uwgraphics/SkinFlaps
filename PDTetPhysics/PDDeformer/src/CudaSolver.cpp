@@ -17,10 +17,10 @@ namespace PhysBAM {
         matrixSize = 0;
         schurSize = 0;
         for (iterator.begin(); !iterator.isEnd(); iterator.next())
-            if (iterator.value(nodeType) == PDSimulation::ActiveNode) {
+            if (iterator.value(nodeType) == NodeType::Active) {
                 matrixSize++;
             }
-            else if (iterator.value(nodeType) == PDSimulation::CollisionNode) {
+            else if (iterator.value(nodeType) == NodeType::Collision) {
                 matrixSize++;
                 schurSize++;
             }
@@ -34,9 +34,9 @@ namespace PhysBAM {
         int activeIdx = 0;
         int collisionIdx = 0;
         for (iterator.begin(); !iterator.isEnd(); iterator.next())
-            if (iterator.value(nodeType) == PDSimulation::ActiveNode)
+            if (iterator.value(nodeType) == NodeType::Active)
                 iterator.value(m_numbering) = activeIdx++;
-            else if (iterator.value(nodeType) == PDSimulation::CollisionNode)
+            else if (iterator.value(nodeType) == NodeType::Collision)
                 iterator.value(m_numbering) = matrixSize - schurSize + collisionIdx++;
             else
                 iterator.value(m_numbering) = -1;
@@ -248,7 +248,7 @@ namespace PhysBAM {
     template <class Discretization, class IntType>
     void CudaSolver<Discretization, IntType>::
         computeE2Tensor(const std::vector<ElementType>& elements,
-            const std::vector<PDSimulation::ElementFlag>& flags,
+            const std::vector<ElementFlag>& flags,
             const std::vector<GradientMatrixType>& gradients,
             const std::vector<T>& restVol, const T mu
         )
@@ -257,7 +257,7 @@ namespace PhysBAM {
         LOG::SCOPE scope("CudaSolver::computeE2Tensor()");
 #endif
         for (int e = 0; e < elements.size(); e++)
-            if (flags[e] == PDSimulation::CollisionEl)
+            if (flags[e] == ElementFlag::CollisionEl)
             {
                 MATRIX_MXN<T> stiffnessMatrix;
                 DiscretizationType::computeElementTensor(stiffnessMatrix, gradients[e], -2 * mu * restVol[e]);

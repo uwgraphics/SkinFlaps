@@ -17,12 +17,12 @@ private:
 	using T = float;
 	static constexpr int d = 3;
 	PDTetSolver<T, d> m_solver;
-	T m_hookWeight;
-	T m_sutureWeight;
-	T m_fixedWeight;
-	T m_peripheralWeight;
+	T m_hookWeight{ 0 };
+	T m_sutureWeight{ 0 };
+	T m_fixedWeight{ 0 };
+	T m_peripheralWeight{ 0 };
 
-	T m_stressLimit;
+	T m_stressLimit{ 1 };
 
 //	std::unordered_map<int, int> fixedTetMap, fixedNodeMap;  // QISI nuke fixedNodeMap as no longer used
 	std::vector<int> fixedTetConstraints;

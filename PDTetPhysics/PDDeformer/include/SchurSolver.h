@@ -11,7 +11,7 @@
 #include "PardisoWrapper.h"
 #include "SimulationFlags.h"
 #include "PDConstraints.h"
-#include "CudaWrapper.h"
+// #include "CudaWrapper.h"
 
 #include "Discretization.h"
 
@@ -37,7 +37,7 @@ template <class Discretization, class IntType> struct SchurSolver {
     static constexpr int elementNodes = d + 1;
     using ElementType = std::array<IndexType, elementNodes>;
     using ElementIndexType = std::array<IndexType, elementNodes>;
-    using NodeArrayType = typename IteratorType::template ContainerType<typename PDSimulation::NodeType>;
+    using NodeArrayType = typename IteratorType::template ContainerType<NodeType>;
     using NumberingArrayType = typename IteratorType::template ContainerType<IntType>;
 
     using Constraint = SoftConstraint<VectorType, elementNodes, IndexType>;
@@ -45,7 +45,7 @@ template <class Discretization, class IntType> struct SchurSolver {
     using CollisionSuture = SlidingConstraint <VectorType, elementNodes, IndexType>;
 
 
-    IntType schurSize;
+    IntType schurSize = IntType(0);
     NumberingArrayType m_numbering; // only number the active nodes, collisionNodes at the bottom
     std::vector<std::map<int, T>> m_tensor;
     T *m_originalValue = nullptr;
