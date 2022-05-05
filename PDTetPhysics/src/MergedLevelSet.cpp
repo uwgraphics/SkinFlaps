@@ -68,15 +68,15 @@ void MergedLevelSet<VectorType>::addLevelSet(const std::string& collisionObjPath
 	pdUtilities::readObj<T, d>(collisionObjPath, triangles, particles);
 	// triangles here need to use 0-based indices
 
-	const int nTris = triangles.size();
-	const int nVerts = particles.size();
+	const size_t nTris = triangles.size();
+	const size_t nVerts = particles.size();
 
 
 	TRIANGULATED_SURFACE<T>* levelset_surface;
 	levelset_surface = TRIANGULATED_SURFACE<T>::Create();
 
-	levelset_surface->particles.array_collection->Add_Elements(nVerts);
-	levelset_surface->mesh.elements.Exact_Resize(nTris);
+	levelset_surface->particles.array_collection->Add_Elements(static_cast<int>(nVerts));
+	levelset_surface->mesh.elements.Exact_Resize(static_cast<int>(nTris));
 	for (int p = 0; p < nVerts; p++)
 		for (int v = 0; v < d; v++)
 			levelset_surface->particles.X(p + 1)(v + 1) = particles[p][v];
@@ -86,7 +86,7 @@ void MergedLevelSet<VectorType>::addLevelSet(const std::string& collisionObjPath
 			levelset_surface->mesh.elements(e + 1)(i + 1) = triangles[e][i] + 1;
 	}
 
-	levelset_surface->mesh.number_nodes = nVerts;
+	levelset_surface->mesh.number_nodes = static_cast<int>(nVerts);
 	levelset_surface->mesh.Initialize_Neighbor_Nodes();
 
 	VectorType maxCorner = VectorType(-FLT_MAX, -FLT_MAX, -FLT_MAX);
@@ -110,7 +110,7 @@ void MergedLevelSet<VectorType>::addLevelSet(const std::string& collisionObjPath
 	LOG::cout << "gridSize: " << gridSize << std::endl;
 	// Compute level set
 
-	int idx = m_levelSet.size();
+	size_t idx = m_levelSet.size();
 	m_levelSet.push_back(nullptr);
 	m_levelSet[idx] = LEVELSET_IMPLICIT_OBJECT<VectorType>::Create();
 	

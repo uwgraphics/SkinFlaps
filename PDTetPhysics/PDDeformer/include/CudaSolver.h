@@ -43,7 +43,7 @@ namespace PhysBAM {
             using ElementIndexType = std::array<IndexType, elementNodes>;
 #endif
 
-            using NodeArrayType = typename IteratorType::template ContainerType<typename PDSimulation::NodeType>;
+            using NodeArrayType = typename IteratorType::template ContainerType<NodeType>;
             using NumberingArrayType = typename IteratorType::template ContainerType<IntType>;
 
             using Constraint = SoftConstraint<VectorType, elementNodes, IndexType>;
@@ -88,7 +88,7 @@ namespace PhysBAM {
                             const std::vector<CollisionSuture> &collisionSutures);
 
             void computeE2Tensor (const std::vector<ElementType> &elements,
-                                  const std::vector<PDSimulation::ElementFlag> &flags,
+                                  const std::vector<ElementFlag> &flags,
                                   const std::vector<GradientMatrixType> &gradients,
                                   const std::vector<T> &restVol, const T mu);
 

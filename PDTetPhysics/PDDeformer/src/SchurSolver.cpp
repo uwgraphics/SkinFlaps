@@ -13,10 +13,10 @@ namespace PhysBAM {
         int numOfActiveNodes = 0;
         schurSize = 0;
         for (iterator.begin(); !iterator.isEnd(); iterator.next())
-            if (iterator.value(nodeType) == PDSimulation::ActiveNode) {
+            if (iterator.value(nodeType) == NodeType::Active) {
                 numOfActiveNodes++;
             }
-            else if (iterator.value(nodeType) == PDSimulation::CollisionNode) {
+            else if (iterator.value(nodeType) == NodeType::Collision) {
                 numOfActiveNodes++;
                 schurSize++;
                // LOG::cout << "Must not have collision nodes" << std::endl;
@@ -27,9 +27,9 @@ namespace PhysBAM {
         int activeIdx = 0;
         int collisionIdx = 0;
         for (iterator.begin(); !iterator.isEnd(); iterator.next())
-            if (iterator.value(nodeType) == PDSimulation::ActiveNode)
+            if (iterator.value(nodeType) == NodeType::Active)
                 iterator.value(m_numbering) = activeIdx++;
-            else if (iterator.value(nodeType) == PDSimulation::CollisionNode)
+            else if (iterator.value(nodeType) == NodeType::Collision)
                 iterator.value(m_numbering) = numOfActiveNodes - schurSize + collisionIdx++;
             else
                 iterator.value(m_numbering) = -1;
@@ -366,7 +366,7 @@ namespace PhysBAM {
         for (int i = 0; i < m_pardiso.n; i++)
             m_pardiso.rowIndex[i + 1] = m_pardiso.rowIndex[i] + (IntType)m_tensor[i].size();
 
-        const IntType& n = m_pardiso.n;
+        // const IntType& n = m_pardiso.n;
 
         size_t idx = 0;
         for (const auto& r : m_tensor)

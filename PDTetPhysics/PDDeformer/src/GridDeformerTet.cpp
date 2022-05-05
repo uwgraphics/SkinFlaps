@@ -18,7 +18,7 @@ namespace PhysBAM {
         //LOG::SCOPE scope("GridDeformerTet::initializeDeformer()");
         m_elementFlags.resize(m_elements.size());
         for (auto & f:m_elementFlags)
-            f=PDSimulation::unCollisionEl;
+            f=ElementFlag::unCollisionEl;
     }
 
     template <class dataType, int dim>
@@ -29,7 +29,7 @@ namespace PhysBAM {
         for (int e = 0; e < m_elements.size(); e++) {
             const auto &element = m_elements[e];
             GradientMatrixType gradientMatrix;
-            T elementRestVolume;
+			T elementRestVolume = 0;
             DiscretizationType::computeGradientMatrixAndRestVolume(element, m_X, gradientMatrix, elementRestVolume);
             m_gradientMatrix.push_back(gradientMatrix);
             m_elementRestVolume.push_back(elementRestVolume);
@@ -47,8 +47,8 @@ namespace PhysBAM {
 		int uncollisionSize = 0;
 		int collisionSize = 0;
 		for (const auto & f : m_elementFlags) {
-			if (f == PDSimulation::unCollisionEl) uncollisionSize++;
-			else if (f == PDSimulation::CollisionEl) collisionSize++;
+			if (f == ElementFlag::unCollisionEl) uncollisionSize++;
+			else if (f == ElementFlag::CollisionEl) collisionSize++;
 			else throw std::logic_error("elements must be either unCollisionEl or CollisionEl");
 		}
 
@@ -112,7 +112,7 @@ namespace PhysBAM {
 
 		// initialize reshaped data
 		for (int e = 0, numOfUncollision = 0, numOfCollision = 0; e < m_elements.size(); e++) {
-			if (m_elementFlags[e] == PDSimulation::unCollisionEl) {
+			if (m_elementFlags[e] == ElementFlag::unCollisionEl) {
 				for (int i = 0; i < d + 1; i++)
 					for (int j = 0; j < d; j++)
 						m_reshapeUncollisionX[numOfUncollision / BlockWidth][i][j][numOfUncollision%BlockWidth] = m_X[m_elements[e][i]](j + 1);
@@ -129,7 +129,7 @@ namespace PhysBAM {
 
 				numOfUncollision++;
 			}
-			else if (m_elementFlags[e] == PDSimulation::CollisionEl) {
+			else if (m_elementFlags[e] == ElementFlag::CollisionEl) {
 				for (int i = 0; i < d + 1; i++)
 					for (int j = 0; j < d; j++)
 						m_reshapeCollisionX[numOfCollision / BlockWidth][i][j][numOfCollision%BlockWidth] = m_X[m_elements[e][i]](j + 1);
@@ -142,7 +142,7 @@ namespace PhysBAM {
 				m_reshapeCollisionMuLow[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_muLow[e];
 				m_reshapeCollisionMuHigh[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_muHigh[e];
 				m_reshapeCollisionRangeMax[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_rangeMax[e];
-				m_reshapeCollisionRangeMin[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_rangeMax[e];
+				m_reshapeCollisionRangeMin[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_rangeMin[e];
 				numOfCollision++;
 			}
 			else throw std::logic_error("elements must be either unCollisionEl or CollisionEl");
@@ -152,7 +152,7 @@ namespace PhysBAM {
 		std::vector<std::vector<int>> reshapeUncollisionIndices(m_X.size());
 		std::vector<std::vector<int>> reshapeCollisionIndices(m_X.size());
 		for (int e = 0, numOfUncollision = 0, numOfCollision = 0; e < m_elements.size(); e++) {
-			if (m_elementFlags[e] == PDSimulation::unCollisionEl) {
+			if (m_elementFlags[e] == ElementFlag::unCollisionEl) {
 				int blockIndex = numOfUncollision / BlockWidth;
 				int blockOffset = numOfUncollision % BlockWidth;
 				for (int v = 0; v < d + 1; v++) {
@@ -162,7 +162,7 @@ namespace PhysBAM {
 				}
 				numOfUncollision++;
 			}
-			else if (m_elementFlags[e] == PDSimulation::CollisionEl) {
+			else if (m_elementFlags[e] == ElementFlag::CollisionEl) {
 				int blockIndex = numOfCollision / BlockWidth;
 				int blockOffset = numOfCollision % BlockWidth;
 				for (int v = 0; v < d + 1; v++) {
@@ -181,7 +181,7 @@ namespace PhysBAM {
 		m_reshapeCollisionIndicesOffsets[0] = 0;
 		m_reshapeUncollisionIndicesValues.clear();
 		m_reshapeCollisionIndicesValues.clear();
-		for (int i = 0; i < m_X.size(); i++) {
+		for (size_t i = 0; i < m_X.size(); i++) {
 			m_reshapeUncollisionIndicesOffsets[i + 1] = m_reshapeUncollisionIndicesOffsets[i] + (int)reshapeUncollisionIndices[i].size();
 			m_reshapeCollisionIndicesOffsets[i + 1] = m_reshapeCollisionIndicesOffsets[i] + (int)reshapeCollisionIndices[i].size();
 			for (const auto offset : reshapeUncollisionIndices[i])
@@ -210,12 +210,12 @@ namespace PhysBAM {
 					m_reshapeCollisionElement[b][v][e] = 0;
 
 		for (int e = 0, numOfUncollision = 0, numOfCollision = 0; e < m_elements.size(); e++) {
-			if (m_elementFlags[e] == PDSimulation::unCollisionEl) {
+			if (m_elementFlags[e] == ElementFlag::unCollisionEl) {
 				for (int v = 0; v < d + 1; v++)
 					m_reshapeUncollisionElement[numOfUncollision / BlockWidth][v][numOfUncollision%BlockWidth] = m_elements[e][v];
 				numOfUncollision++;
 			}
-			else if (m_elementFlags[e] == PDSimulation::CollisionEl) {
+			else if (m_elementFlags[e] == ElementFlag::CollisionEl) {
 				for (int v = 0; v < d + 1; v++)
 					m_reshapeCollisionElement[numOfCollision / BlockWidth][v][numOfCollision%BlockWidth] = m_elements[e][v];
 				numOfCollision++;
@@ -225,7 +225,7 @@ namespace PhysBAM {
 	}
 
     template <class dataType, int dim>
-    void GridDeformerTet<std::vector<VECTOR<dataType,dim>>>::updatePositionBasedState(const PDSimulation::ElementFlag flag, const dataType rangeMin, const dataType rangeMax)
+    void GridDeformerTet<std::vector<VECTOR<dataType,dim>>>::updatePositionBasedState(const ElementFlag flag/*, const dataType rangeMin, const dataType rangeMax*/)
     {
         //LOG::SCOPE scope("GridDeformerTet::updatePositionBasedState()");
         /*
@@ -250,10 +250,10 @@ namespace PhysBAM {
           }
         */
 
-        if (flag == PDSimulation::unCollisionEl) {
+        if (flag == ElementFlag::unCollisionEl) {
             blockX<T, BlockWidth>(&m_X[0](1), &m_reshapeUncollisionElement[0][0][0], m_nUncollisionBlocks, &m_reshapeUncollisionX[0][0][0][0]);
         }
-        else if (flag == PDSimulation::CollisionEl) {
+        else if (flag == ElementFlag::CollisionEl) {
             blockX<T, BlockWidth>(&m_X[0](1), &m_reshapeCollisionElement[0][0][0], m_nCollisionBlocks, &m_reshapeCollisionX[0][0][0][0]);
         }
         else
@@ -350,17 +350,17 @@ namespace PhysBAM {
 			const auto& e = DiscretizationType::getElementIndex(m_elements[i]);
 			bool isR2 = true;
 			for (const auto& idx : e)
-				if (IteratorType::at(m_nodeType, idx) != PDSimulation::CollisionNode) {
+				if (IteratorType::at(m_nodeType, idx) != NodeType::Collision) {
 					isR2 = false;
 					break;
 				}
 			if (isR2)
-				m_elementFlags[i] = PDSimulation::CollisionEl;
+				m_elementFlags[i] = ElementFlag::CollisionEl;
 		}
 	}
 
     template <class dataType, int dim>
-    void GridDeformerTet<std::vector<VECTOR<dataType,dim>>>::addElasticForce(std::vector<VECTOR<dataType, dim>> &SIMDf, const PDSimulation::ElementFlag flag, const dataType rangeMin, const dataType rangeMax, const dataType weightProportion) const
+    void GridDeformerTet<std::vector<VECTOR<dataType,dim>>>::addElasticForce(std::vector<VECTOR<dataType, dim>> &SIMDf, const ElementFlag flag /*, const dataType rangeMin, const dataType rangeMax, const dataType weightProportion */ ) const
     {
         //alignas(sizeof(T)*BlockWidth) T muLow[BlockWidth];
         //alignas(sizeof(T)*BlockWidth) T muHigh[BlockWidth];
@@ -372,71 +372,81 @@ namespace PhysBAM {
         //for (int i = 0; i < BlockWidth; i++) strainMin[i] = rangeMin;
         //for (int i = 0; i < BlockWidth; i++) strainMax[i] = rangeMax;
 
-        if (flag == PDSimulation::unCollisionEl) {
+        if (flag == ElementFlag::unCollisionEl) {
 #ifdef _WIN32
 			BlockedShapeMatrixType reshapeUncollisionf = reinterpret_cast<BlockedShapeMatrixType>(_aligned_malloc(m_nUncollisionBlocks*BlockWidth*(d + 1)*d * sizeof(T), Alignment));
 #else
 			BlockedShapeMatrixType reshapeUncollisionf = reinterpret_cast<BlockedShapeMatrixType>(aligned_alloc(Alignment, m_nUncollisionBlocks*BlockWidth*(d+1)*d*sizeof(T)));
 #endif
-
-            for (int b = 0; b < m_nUncollisionBlocks; b++)
-                for (int v = 0; v < d + 1; v++)
-                    for (int i = 0; i < d; i++)
-                        for (int e = 0; e < BlockWidth; e++)
-                            reshapeUncollisionf[b][v][i][e] = 0;
+			if (reshapeUncollisionf) {
+				for (int b = 0; b < m_nUncollisionBlocks; b++)
+					for (int v = 0; v < d + 1; v++)
+						for (int i = 0; i < d; i++)
+							for (int e = 0; e < BlockWidth; e++)
+								reshapeUncollisionf[b][v][i][e] = 0;
 
 #pragma omp parallel for
-            for (int be = 0; be < m_nUncollisionBlocks; be++) {
-				for (int ee = 0; ee < BlockWidth; ee += Tarch::Width)
-					Add_Force<Tarch, T[BlockWidth]>(reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(m_reshapeUncollisionX[be][0][0][ee]),
-						reinterpret_cast<T(&)[d * d][BlockWidth]>(m_reshapeUncollisionGradientMatrix[be][0][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionElementRestVolume[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionMuLow[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionMuHigh[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionRangeMin[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionRangeMax[be][ee]),
-						reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(reshapeUncollisionf[be][0][0][ee]));
-            }
+				for (int be = 0; be < m_nUncollisionBlocks; be++) {
+					for (int ee = 0; ee < BlockWidth; ee += Tarch::Width)
+						Add_Force<Tarch, T[BlockWidth]>(reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(m_reshapeUncollisionX[be][0][0][ee]),
+							reinterpret_cast<T(&)[d * d][BlockWidth]>(m_reshapeUncollisionGradientMatrix[be][0][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionElementRestVolume[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionMuLow[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionMuHigh[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionRangeMin[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeUncollisionRangeMax[be][ee]),
+							reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(reshapeUncollisionf[be][0][0][ee]));
+				}
 
-            unblockAddForce<T, BlockWidth>(&reshapeUncollisionf[0][0][0][0], &m_reshapeUncollisionIndicesOffsets[0], &m_reshapeUncollisionIndicesValues[0], (int)m_X.size(), &SIMDf[0](1));
+				unblockAddForce<T, BlockWidth>(&reshapeUncollisionf[0][0][0][0], &m_reshapeUncollisionIndicesOffsets[0], &m_reshapeUncollisionIndicesValues[0], (int)m_X.size(), &SIMDf[0](1));
 #ifdef _WIN32
-			_aligned_free(reshapeUncollisionf);
+				_aligned_free(reshapeUncollisionf);
 #else
-            free(reshapeUncollisionf);
+				free(reshapeUncollisionf);
 #endif
+			}
+			else {
+				std::cerr << "Not enough space for reshapeUncollisionf" << std::endl;
+				exit(1);
+			}
         }
-        else if (flag == PDSimulation::CollisionEl) {
+        else if (flag == ElementFlag::CollisionEl) {
 #ifdef _WIN32
 			BlockedShapeMatrixType reshapeCollisionf = reinterpret_cast<BlockedShapeMatrixType>(_aligned_malloc(m_nCollisionBlocks*BlockWidth*(d + 1)*d * sizeof(T), Alignment));
 #else
 			BlockedShapeMatrixType reshapeCollisionf = reinterpret_cast<BlockedShapeMatrixType>(aligned_alloc(Alignment, m_nCollisionBlocks*BlockWidth*(d+1)*d*sizeof(T)));
 #endif
-
-            for (int b = 0; b < m_nCollisionBlocks; b++)
-                for (int v = 0; v < d + 1; v++)
-                    for (int i = 0; i < d; i++)
-                        for (int e = 0; e < BlockWidth; e++)
-                            reshapeCollisionf[b][v][i][e] = 0;
+			if (reshapeCollisionf) {
+				for (int b = 0; b < m_nCollisionBlocks; b++)
+					for (int v = 0; v < d + 1; v++)
+						for (int i = 0; i < d; i++)
+							for (int e = 0; e < BlockWidth; e++)
+								reshapeCollisionf[b][v][i][e] = 0;
 
 #pragma omp parallel for
-            for (int be = 0; be < m_nCollisionBlocks; be++) {
-				for (int ee = 0; ee < BlockWidth; ee += Tarch::Width)
-					Add_Force<Tarch, T[BlockWidth]>(reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(m_reshapeCollisionX[be][0][0][ee]),
-						reinterpret_cast<T(&)[d * d][BlockWidth]>(m_reshapeCollisionGradientMatrix[be][0][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionElementRestVolume[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionMuLow[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionMuHigh[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionRangeMin[be][ee]),
-						reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionRangeMax[be][ee]),
-						reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(reshapeCollisionf[be][0][0][ee]));
-            }
+				for (int be = 0; be < m_nCollisionBlocks; be++) {
+					for (int ee = 0; ee < BlockWidth; ee += Tarch::Width)
+						Add_Force<Tarch, T[BlockWidth]>(reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(m_reshapeCollisionX[be][0][0][ee]),
+							reinterpret_cast<T(&)[d * d][BlockWidth]>(m_reshapeCollisionGradientMatrix[be][0][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionElementRestVolume[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionMuLow[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionMuHigh[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionRangeMin[be][ee]),
+							reinterpret_cast<T(&)[BlockWidth]>(m_reshapeCollisionRangeMax[be][ee]),
+							reinterpret_cast<T(&)[d + 1][d][BlockWidth]>(reshapeCollisionf[be][0][0][ee]));
+				}
 
-            unblockAddForce<T, BlockWidth>(&reshapeCollisionf[0][0][0][0], &m_reshapeCollisionIndicesOffsets[0], &m_reshapeCollisionIndicesValues[0], (int)m_X.size(), &SIMDf[0](1));
+				unblockAddForce<T, BlockWidth>(&reshapeCollisionf[0][0][0][0], &m_reshapeCollisionIndicesOffsets[0], &m_reshapeCollisionIndicesValues[0], (int)m_X.size(), &SIMDf[0](1));
 #ifdef _WIN32
-			_aligned_free(reshapeCollisionf);
+				_aligned_free(reshapeCollisionf);
 #else
-			free(reshapeCollisionf);
+				free(reshapeCollisionf);
 #endif
+			}
+			else {
+				std::cerr << "Not enough space for reshapeCollisionf" << std::endl;
+				exit(1);
+			}
         }
     }
 
@@ -502,7 +512,7 @@ namespace PhysBAM {
 		
     }
 
-/*void addElasticForce(StateVariableType &f, const PDSimulation::ElementFlag flag, const T weightProportion) const {
+/*void addElasticForce(StateVariableType &f, const ElementFlag flag, const T weightProportion) const {
             //LOG::SCOPE scope("GridDeformerTet::addElasticForce()");
             {
                 for (int e = 0; e < m_elements.size(); e++)

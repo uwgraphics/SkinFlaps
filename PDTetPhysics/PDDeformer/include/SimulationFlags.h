@@ -5,9 +5,5 @@
 
 #pragma once
 
-namespace PDSimulation {
-
-    enum NodeType { InactiveNode = 0, ActiveNode = 1, DirichletNode = 2, CollisionNode = 3 };
-    enum ElementFlag {unCollisionEl = 1, CollisionEl = 2};
-
-}
+    enum class NodeType { Inactive = 0, Active = 1, Dirichlet = 2, Collision = 3 };
+    enum class ElementFlag {unCollisionEl = 1, CollisionEl = 2};

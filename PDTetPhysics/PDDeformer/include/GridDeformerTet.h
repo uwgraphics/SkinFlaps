@@ -56,7 +56,7 @@ namespace PhysBAM {
 
         using MatrixType = MATRIX<T, d>;
         using DiagonalMatrixType = DIAGONAL_MATRIX<T, d>;
-        using NodeArrayType = typename IteratorType::template ContainerType<PDSimulation::NodeType>;
+        using NodeArrayType = typename IteratorType::template ContainerType<NodeType>;
 
         using Tarch = typename SIMD_Numeric_Kernel::template SIMDArchitectureAVX2<T>;
         static constexpr int BlockWidth = 16;
@@ -77,7 +77,7 @@ namespace PhysBAM {
         std::vector<T> m_rangeMin;
         std::vector<T> m_rangeMax;
 
-        std::vector<PDSimulation::ElementFlag> m_elementFlags;
+        std::vector<ElementFlag> m_elementFlags;
         std::vector<T> m_elementRestVolume;
 
         std::vector<Constraint> m_constraints;
@@ -89,8 +89,8 @@ namespace PhysBAM {
         std::vector<GradientMatrixType> m_gradientMatrix;
 
         // reshaped data
-        int m_nUncollisionBlocks;
-        int m_nCollisionBlocks;
+        int m_nUncollisionBlocks = 0;
+        int m_nCollisionBlocks = 0;
         BlockedShapeMatrixType m_reshapeUncollisionX;
         BlockedShapeMatrixType m_reshapeCollisionX;
         BlockedMatrixType m_reshapeUncollisionGradientMatrix;
@@ -98,15 +98,15 @@ namespace PhysBAM {
         BlockedScalarType m_reshapeUncollisionElementRestVolume;
         BlockedScalarType m_reshapeCollisionElementRestVolume;
 
-        BlockedScalarType m_reshapeCollisionMuLow;
-        BlockedScalarType m_reshapeCollisionMuHigh;
-        BlockedScalarType m_reshapeCollisionRangeMin;
-        BlockedScalarType m_reshapeCollisionRangeMax;
+        BlockedScalarType m_reshapeCollisionMuLow = nullptr;
+        BlockedScalarType m_reshapeCollisionMuHigh = nullptr;
+        BlockedScalarType m_reshapeCollisionRangeMin = nullptr;
+        BlockedScalarType m_reshapeCollisionRangeMax = nullptr;
 
-        BlockedScalarType m_reshapeUncollisionMuLow;
-        BlockedScalarType m_reshapeUncollisionMuHigh;
-        BlockedScalarType m_reshapeUncollisionRangeMin;
-        BlockedScalarType m_reshapeUncollisionRangeMax;
+        BlockedScalarType m_reshapeUncollisionMuLow = nullptr;
+        BlockedScalarType m_reshapeUncollisionMuHigh = nullptr;
+        BlockedScalarType m_reshapeUncollisionRangeMin = nullptr;
+        BlockedScalarType m_reshapeUncollisionRangeMax = nullptr;
 
         // auxilary structure
         std::vector<int> m_reshapeUncollisionIndicesOffsets;
@@ -118,9 +118,9 @@ namespace PhysBAM {
 
         // std::function<void(const GeometryType &, const NodeArrayType &, StateVariableType &)> m_clearDirichlet;
 
-		GridDeformerTet(T muIn = 100) /*:m_uniformMu(muIn)*/ {
-			m_nCollisionBlocks = 0;
-			m_nCollisionBlocks = 0;
+		GridDeformerTet() /*:m_uniformMu(muIn)*/ {
+			//m_nCollisionBlocks = 0;
+			//m_nCollisionBlocks = 0;
 
 			m_reshapeUncollisionX = nullptr;
 			m_reshapeCollisionX = nullptr;
@@ -138,10 +138,10 @@ namespace PhysBAM {
         void initializeDeformer();
         void initializeUndeformedState();
 		void initializeAuxiliaryStructures();
-        void updatePositionBasedState(const PDSimulation::ElementFlag flag, const T rangeMin = 1, const T rangeMax = 1);
+        void updatePositionBasedState(const ElementFlag flag/*, const T rangeMin = 1, const T rangeMax = 1*/);
         void addCollisionForce(StateVariableType &f) const;
         void addConstraintForce(StateVariableType &f) const;
-        void addElasticForce(StateVariableType &SIMDf, const PDSimulation::ElementFlag flag, const T rangeMin, const T rangeMax, const T weightProportion) const;
+        void addElasticForce(StateVariableType &SIMDf, const ElementFlag flag /*, const T rangeMin, const T rangeMax, const T weightProportion */ ) const;
         void clearDirichlet(StateVariableType &var) {
             /*
             for (RANGE_ITERATOR<d> nodeIterator(geometry.m_nodeRange); nodeIterator.Valid(); nodeIterator.Next()) {
@@ -153,7 +153,7 @@ namespace PhysBAM {
             }
             */
             for (IteratorType iterator(var); !iterator.isEnd(); iterator.next())
-                if (iterator.value(m_nodeType) == PDSimulation::DirichletNode)
+                if (iterator.value(m_nodeType) == NodeType::Dirichlet)
                     iterator.value(var) = VectorType();
         }
 
