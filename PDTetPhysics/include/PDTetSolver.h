@@ -78,9 +78,9 @@ public:
 		std::cout << "    m_rangeMax         = " << m_rangeMax << std::endl;
 		std::cout << "    m_collisionStiff   = " << m_collisionStiffness << std::endl;
 	}
-	void initializeDeformer(const long (*elements)[d+1], const T (*x)[d], const size_t nEls, const size_t nNodes);
+	void initializeDeformer(const int (*elements)[d+1], const T (*x)[d], const size_t nEls, const size_t nNodes);
 
-	void initializeDeformer(const long(*elements)[d + 1], const size_t nEls, const T tetSize);
+	void initializeDeformer(const int(*elements)[d + 1], const size_t nEls, const T tetSize);
 	
 	int addConstraint(const long tet, const T(&barycentricWeight)[d], const T(&hookPosition)[d], const T stiffness, const T limit = std::numeric_limits<T>::max());  // returns constraint index
 

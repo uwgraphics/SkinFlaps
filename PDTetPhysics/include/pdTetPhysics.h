@@ -79,8 +79,8 @@ public:
 
 	inline bool solverInitialized() { return m_solverInited; }
 
-	inline std::array<float, 3>* createBccTetStructure(const std::vector< std::array<long, 4> > &tetIndices, float tetScale) {
-		m_solver.initializeDeformer(reinterpret_cast<const long(*)[4]>(&tetIndices[0][0]), tetIndices.size(), tetScale * 2);
+	inline std::array<float, 3>* createBccTetStructure(const std::vector< std::array<int, 4> > &tetIndices, float tetScale) {
+		m_solver.initializeDeformer(reinterpret_cast<const int(*)[4]>(&tetIndices[0][0]), tetIndices.size(), tetScale * 2);
 		m_deformerInited = true;
 		m_solverInited = false;
 		fixedTetConstraints.clear();
