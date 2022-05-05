@@ -433,7 +433,7 @@ void PDTetSolver<T, d>::updateCollisionSutures(const long length, const long* to
 
 
 template<class T, int d>
-inline void PDTetSolver<T, d>::initializeDeformer(const long(*elements)[d + 1], const T(*x)[d], const size_t nEls, const size_t nNodes)
+inline void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], const T(*x)[d], const size_t nEls, const size_t nNodes)
 {
 	using namespace PhysBAM;
 	m_gridDeformer.deallocateAuxiliaryStructures();
@@ -473,7 +473,7 @@ inline void PDTetSolver<T, d>::initializeDeformer(const long(*elements)[d + 1], 
 }
 
 template<class T, int d>
-void PDTetSolver<T, d>::initializeDeformer(const long(*elements)[d + 1], const size_t nEls, const T gridSize)
+void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], const size_t nEls, const T gridSize)
 {
 	static_assert(d == 3, "this operation only support 3 dimension");
 	using namespace PhysBAM;
