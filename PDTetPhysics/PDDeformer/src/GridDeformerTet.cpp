@@ -142,7 +142,7 @@ namespace PhysBAM {
 				m_reshapeCollisionMuLow[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_muLow[e];
 				m_reshapeCollisionMuHigh[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_muHigh[e];
 				m_reshapeCollisionRangeMax[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_rangeMax[e];
-				m_reshapeCollisionRangeMin[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_rangeMax[e];
+				m_reshapeCollisionRangeMin[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_rangeMin[e];
 				numOfCollision++;
 			}
 			else throw std::logic_error("elements must be either unCollisionEl or CollisionEl");
