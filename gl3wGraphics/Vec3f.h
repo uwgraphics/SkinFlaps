@@ -39,7 +39,7 @@ class Vec3f
         Vec3f(value_type (&v)[3]) { _v[0]=v[0]; _v[1]=v[1]; _v[2]=v[2]; }
 		Vec3f(const short(&v)[3]) { _v[0] = (value_type)v[0]; _v[1] = (value_type)v[1]; _v[2] = (value_type)v[2]; }
 		Vec3f(const unsigned short(&v)[3]) { _v[0] = (value_type)v[0]; _v[1] = (value_type)v[1]; _v[2] = (value_type)v[2]; }
-		Vec3f(long(&v)[3]) { _v[0] = (value_type)v[0]; _v[1] = (value_type)v[1]; _v[2] = (value_type)v[2]; }
+		Vec3f(int(&v)[3]) { _v[0] = (value_type)v[0]; _v[1] = (value_type)v[1]; _v[2] = (value_type)v[2]; }
 		Vec3f(const double(&v)[3]) { _v[0] = (value_type)v[0]; _v[1] = (value_type)v[1]; _v[2] = (value_type)v[2]; }
 
         inline bool operator == (const Vec3f& v) const { return _v[0]==v._v[0] && _v[1]==v._v[1] && _v[2]==v._v[2]; }

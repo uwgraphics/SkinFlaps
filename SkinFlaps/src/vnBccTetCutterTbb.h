@@ -52,23 +52,23 @@ public:
 			return hash_funct(lli);
 		}
 	};
-	std::unordered_map<std::array<short, 3>, long, arrayShort3Hasher> _interiorNodes;
+	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> _interiorNodes;
 	typedef tbb::concurrent_vector< std::array<short, 3> > LocusVec;
 	LocusVec _nodeLoci;
 	struct planeLineCrossing {
-		unsigned long solidRight : 1;
-		unsigned long triangle : 31;
+		unsigned int solidRight : 1;
+		unsigned int triangle : 31;
 	};
 	typedef std::multimap<double, planeLineCrossing> PLANE_LINE;
 	struct triSegment2 {  // plane polygon segment.  These should be strung together to form a closed ring.
 		Vec2d uv;	// 2D coord of triangle's entering edge intersection with plane
-		long triangle;  // triangle immediately following this intersection in a polygon.
+		int triangle;  // triangle immediately following this intersection in a polygon.
 	};
 	typedef std::multimap<std::pair<short, short>, std::vector<triSegment2> >::iterator PFIT;
 	struct vnTetFace {
 		std::vector<int> edgeTriangles;
 		std::vector<int> interiorTriangles;
-		std::array<unsigned long, 3> tetNodes[2];
+		std::array<unsigned int, 3> tetNodes[2];
 		unsigned short interiorNodes;  // bit 0 is vertex 0 is interior through bit 2 as vertex 2 is interior. 0 is no interior vertices
 		unsigned short set;  // planeSet from 0-5
 	};
@@ -83,7 +83,7 @@ public:
 private:
 	std::vector<bccTetCentroid> _vertexTetLoci;
 	struct tetType {
-		std::array<long, 4> tetNodes;
+		std::array<int, 4> tetNodes;
 		bccTetCentroid centroid;
 	};
 	tbb::concurrent_vector<tetType> _tets;
@@ -96,6 +96,6 @@ private:
 	void createVirtualNodedSurfaceTets();
 	void createSurfaceTetNodes();
 	void fillNonVnTetCenter();
-	void tetConnectedSurface(bccTetCentroid tc, std::set<long>& triangles, std::vector<long>& vertices);
+	void tetConnectedSurface(bccTetCentroid tc, std::set<int>& triangles, std::vector<int>& vertices);
 };
 #endif	// #ifndef _VN_BCC_TET_CUTTER_TBB_

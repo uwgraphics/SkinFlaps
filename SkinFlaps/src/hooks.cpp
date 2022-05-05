@@ -129,7 +129,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	translateMatrix4x4(om,xyz[0],xyz[1],xyz[2]);
 	Vec3f gridLocus, bw;
 	if (_deepCut->getMaterialTriangles() != nullptr && _ptp->solverInitialized()){  // COURT - won't need second condition
-		long tetIdx = _deepCut->parametricMTtriangleTet(triangle, uv, gridLocus);
+		int tetIdx = _deepCut->parametricMTtriangleTet(triangle, uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;
 			deleteHook(_hookNow);
@@ -158,7 +158,7 @@ bool hooks::updateHookPhysics(){
 			continue;
 		}
 		Vec3f gridLocus, bw;
-		long tetIdx = _deepCut->parametricMTtriangleTet(hit->second.triangle, hit->second.uv, gridLocus);
+		int tetIdx = _deepCut->parametricMTtriangleTet(hit->second.triangle, hit->second.uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;
 			deleteHook(_hookNow);

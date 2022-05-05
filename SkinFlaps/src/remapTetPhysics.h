@@ -19,13 +19,13 @@ public:
 	~remapTetPhysics();
 	
 private:
-	std::vector<long> _oldFixedNodes;
+	std::vector<int> _oldFixedNodes;
 	std::vector<Vec3f> _oldNodePositions;
-	std::vector<std::array<long, 4> > _oldTets;
+	std::vector<std::array<int, 4> > _oldTets;
 	std::vector<bccTetCentroid> _oldCentroids;
-	std::unordered_multimap<long long, long> _oldTetHash;
-	std::vector<long> _oldVertexTets;
-	std::vector<long> _newToOldNodes;
+	std::unordered_multimap<long long, int> _oldTetHash;
+	std::vector<int> _oldVertexTets;
+	std::vector<int> _newToOldNodes;
 };
 
 #endif  // __REMAP_TET_PHYSICS__

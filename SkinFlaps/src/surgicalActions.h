@@ -39,9 +39,9 @@ public:
 	bool loadHistory(const char *historyDir, const char *historyFile);
 	void nextHistoryAction();
 	bool historyEmpty()	{return _historyArray.size()<1;}
-	bool setHistoryAttachPoint(const long triangle, const float(&uv)[2], int &material, float(&historyTexture)[2], Vec3f &historyVec);
+	bool setHistoryAttachPoint(const int triangle, const float(&uv)[2], int &material, float(&historyTexture)[2], Vec3f &historyVec);
 	// Input an attach point in current environment. Outputs a material, texture, and displacement for storage in a history file.
-	bool getHistoryAttachPoint(const int material, const float(&historyTexture)[2], const Vec3f &displacement, long &triangle, float(&uv)[2], bool findEdge);
+	bool getHistoryAttachPoint(const int material, const float(&historyTexture)[2], const Vec3f &displacement, int &triangle, float(&uv)[2], bool findEdge);
 	// Input a history attach point from history file. Outputs closest triangle, and parametric uv coord in current environment.
 	bool saveSurgicalHistory(const char *fullFilePath);
 	const char* getSceneDirectory() { return _sceneDir.c_str(); }
@@ -79,8 +79,8 @@ private:
 	};
 	std::vector<undermineTriangle> _undermineTriangles;  // user entered undermine texture points
 	struct perioTri {
-		unsigned long incisionConnect : 1;
-		unsigned long periostealTriangle : 31;
+		unsigned int incisionConnect : 1;
+		unsigned int periostealTriangle : 31;
 	};
 	std::list<perioTri> _periostealUndermineTriangles;
 	fence _fence;

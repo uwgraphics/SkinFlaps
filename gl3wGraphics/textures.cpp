@@ -176,7 +176,7 @@ GLbyte* textures::gltReadTGABits(const char *szFileName, GLint *iWidth, GLint *i
 {
     FILE *pFile;			// File pointer
     TGAHEADER tgaHeader;		// TGA file header
-    unsigned long lImageSize;		// Size in bytes of image
+    unsigned int lImageSize;		// Size in bytes of image
     short sDepth;			// Pixel depth;
     GLbyte	*pBits = NULL;          // Pointer to bits
     // Default/Failed values

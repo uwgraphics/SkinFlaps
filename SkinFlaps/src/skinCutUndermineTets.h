@@ -40,9 +40,9 @@ public:
 	bool addUndermineTriangle(const int triangle, const int undermineMaterial, bool incisionConnect);
 	void undermineSkin();  // completes a user specified undermine
 	void clearCurrentUndermine(const int underminedTissue);
-	void excise(const long triangle);
-	long parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f &gridLocus);
-	long parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus);
+	void excise(const int triangle);
+	int parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f &gridLocus);
+	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus);
 	bool physicsRecutRequired(){ return _solidRecutRequired; }
 	bool setDeepBed(materialTriangles *mt, const std::string &deepBedPath, vnBccTetrahedra *activeVnt);
 	inline static void setVnBccTetrahedra(vnBccTetrahedra *activeVnt) { _vbt = activeVnt;  }
@@ -59,37 +59,37 @@ protected:
 	static vnBccTetrahedra *_vbt;  // above surface embedded in these current cut tets.
 	struct deepPoint{
 		Vec3f gridLocus;
-		long deepMtVertex;  // get tet & barycentrics from here when > -1
+		int deepMtVertex;  // get tet & barycentrics from here when > -1
 	};
-	static std::unordered_map<long, deepPoint> _deepBed;
+	static std::unordered_map<int, deepPoint> _deepBed;
 	// next is data of previously undermined triangles. _prevUnd2 are all previouslu undermined top triangles. Rest are previous undermines containing a non-duplicated deep vertex.  All are sorted vectors except _prevBot5.
 	// filled before each undermine by collectOldUndermineData()
 	std::vector<int> _prevUnd2, _prevBot4, _prevEdge3;
-	std::map<long, std::vector<long> > _prevBedSingles;
+	std::map<int, std::vector<int> > _prevBedSingles;
 	std::vector<bool> _trisUnderminedNow;  // triangles turned on in current undermine
-	std::vector<long> _inExCisionTriangles;  // material 2 triangles at the edge of an incision or excision
-	std::vector<long> _periostealCutEdgeTriangles;  // periosteal triangles at the edge of a deepCut
+	std::vector<int> _inExCisionTriangles;  // material 2 triangles at the edge of an incision or excision
+	std::vector<int> _periostealCutEdgeTriangles;  // periosteal triangles at the edge of a deepCut
 	std::unordered_map<int, Vec3f> _collisionSpokes, _deepSpokesNow;
-	long _prevUndermineTriangle, _firstTopVertex;
+	int _prevUndermineTriangle, _firstTopVertex;
 	bool _startOpen, _endOpen, _solidRecutRequired;
 
-	long deepPointTetWeight(const std::unordered_map<long, deepPoint>::iterator &dit, Vec3f &baryWeight);  // return deepPoint tet number and baryweight from its grid locus
-	long addSurfaceVertex(const long tet, const Vec3f &gridLocus);  // ? nuke
-	long createDeepBedVertex(std::unordered_map<long, deepPoint>::iterator &dit);
-	long addTinEdgeVertex(const Vec3f &closePoint, const Vec3f &nextConnectedPoint);
-	long TinSub(const long edgeTriangle, const float edgeParam);
-	long flapBottomTet(const long topTet, const Vec3f &bottomGridLocus);
-	bool topDeepSplit(std::vector<long> &topV, std::vector<long> &deepV, bool frontSplit, bool backSplit);
-	bool topDeepSplit_Sub(std::list<long> &topVerts, std::list<long> &deepVerts, bool frontSplit, bool backSplit);
-	bool planeCutSurfaceLine(const long startTopV, const long endTopV, const long startDeepV, const long endDeepV, std::list<long> &newTopVerts, std::list<long> &newDeepVerts);
-	void createFlapTopBottomVertices(const long topTriangle, float(&uv)[2], long &topVertex, long &bottomVertex);
-	void flapSurfaceSplitter(const long startVertex, const long endVertex, std::list<long> &vertexCutLine, std::vector<long> &oppositeVertices);
+	int deepPointTetWeight(const std::unordered_map<int, deepPoint>::iterator &dit, Vec3f &baryWeight);  // return deepPoint tet number and baryweight from its grid locus
+	int addSurfaceVertex(const int tet, const Vec3f &gridLocus);  // ? nuke
+	int createDeepBedVertex(std::unordered_map<int, deepPoint>::iterator &dit);
+	int addTinEdgeVertex(const Vec3f &closePoint, const Vec3f &nextConnectedPoint);
+	int TinSub(const int edgeTriangle, const float edgeParam);
+	int flapBottomTet(const int topTet, const Vec3f &bottomGridLocus);
+	bool topDeepSplit(std::vector<int> &topV, std::vector<int> &deepV, bool frontSplit, bool backSplit);
+	bool topDeepSplit_Sub(std::list<int> &topVerts, std::list<int> &deepVerts, bool frontSplit, bool backSplit);
+	bool planeCutSurfaceLine(const int startTopV, const int endTopV, const int startDeepV, const int endDeepV, std::list<int> &newTopVerts, std::list<int> &newDeepVerts);
+	void createFlapTopBottomVertices(const int topTriangle, float(&uv)[2], int &topVertex, int &bottomVertex);
+	void flapSurfaceSplitter(const int startVertex, const int endVertex, std::list<int> &vertexCutLine, std::vector<int> &oppositeVertices);
 	// next set are for undermining
-	bool trianglePath(const long triStart, const long endTriangle, const int searchMaterial, std::vector<long> &triPath);
-	bool closeUndermineHoles(std::vector<long> &trianglePath, const int undermineMaterial);
-	void showPriorUndermine(long priorTriangle);
+	bool trianglePath(const int triStart, const int endTriangle, const int searchMaterial, std::vector<int> &triPath);
+	bool closeUndermineHoles(std::vector<int> &trianglePath, const int undermineMaterial);
+	void showPriorUndermine(int priorTriangle);
 	void collectOldUndermineData();
-	long cloneTexture(long textureIndex);
+	int cloneTexture(int textureIndex);
 	bool testIncisionsDeepBed();  // Looks for intersections of the deep bed with the deep surface of the object.  For debugging.
 
 	// What follows describes an incision convention which must be adhered to throughout these routines to facilitate not only this code

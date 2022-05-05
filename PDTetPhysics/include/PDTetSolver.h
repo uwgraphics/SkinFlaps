@@ -95,7 +95,7 @@ public:
 		m_gridDeformer.m_constraints[hookHandle].m_stiffness = 0;
 	}
 
-	int addSuture(const long (&tets)[2], const T (&barycentricWeights)[2][d], const T stiffness);  // returns constraint index
+	int addSuture(const int (&tets)[2], const T (&barycentricWeights)[2][d], const T stiffness);  // returns constraint index
 
 	void deleteSuture(const int sutureHandle) {
 		if (sutureHandle < m_gridDeformer.m_sutures.size())
@@ -113,8 +113,8 @@ public:
 
 	void reInitializeSolver();  
 
-	void addCollisionProxies(const long *tets, const T (*weights)[d], size_t length);
-	void addSelfCollisionElements(const long* tets, size_t length);
+	void addCollisionProxies(const int *tets, const T (*weights)[d], size_t length);
+	void addSelfCollisionElements(const int* tets, size_t length);
 
 	inline void addLevelSet(const std::string s) { m_levelSetPaths.push_back(s); }
 
@@ -134,7 +134,7 @@ public:
 private:
 	void updateCollisionConstraints();
 public:
-	void updateCollisionSutures(const long length, const long* topI, const long* botI, const T* topW, const T* botW, const T* normal); // this should be private and handled by PDSolver it self in future iterations
+	void updateCollisionSutures(const int length, const int* topI, const int* botI, const T* topW, const T* botW, const T* normal); // this should be private and handled by PDSolver it self in future iterations
 
 	inline void releaseSolver() {
 		if (m_gridDeformer.m_collisionConstraints.size()) {

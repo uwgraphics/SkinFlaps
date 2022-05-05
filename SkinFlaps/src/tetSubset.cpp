@@ -69,7 +69,7 @@ bool tetSubset::createSubset(vnBccTetrahedra* vbt, const std::string name, float
 			}
 			int nIntersects = 0;
 			for (int n = mt.numberOfTriangles(), i = 0; i < n; ++i) {
-				long* tr = mt.triangleVertices(i);
+				int* tr = mt.triangleVertices(i);
 				Vec3f triV[3];
 				for (int j = 0; j < 3; ++j) {
 					float* fp = mt.vertexCoordinate(tr[j]);
@@ -106,7 +106,7 @@ void tetSubset::sendTetSubsets(vnBccTetrahedra* vbt, const materialTriangles* mt
 	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (mt->triangleMaterial(i) != 5)
 			continue;
-		const long* tr = mt->triangleVertices(i);
+		const int* tr = mt->triangleVertices(i);
 		for (int j = 0; j < 3; ++j)
 			tets5.insert(vbt->getVertexTetrahedron(tr[j]));
 	}

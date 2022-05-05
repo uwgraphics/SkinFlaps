@@ -48,11 +48,11 @@ private:
 	std::vector<Vec3f> _topBarys;
 	struct fixedCollisionSet {
 		std::string levelSetFilename;
-		std::vector<long> vertices;
+		std::vector<int> vertices;
 	};
 	std::list< fixedCollisionSet> _fixedCollisionSets;
 
-	long parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus, bccTetCentroid& tC);
+	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus, bccTetCentroid& tC);
 
 	double _minTime, _maxTime;
 

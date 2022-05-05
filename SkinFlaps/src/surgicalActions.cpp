@@ -113,7 +113,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 
 		// COURT debug use
 /*		for (int j, i = 0; i < tr->numberOfTriangles(); ++i) {
-			long* trp = tr->triangleVertices(i);
+			int* trp = tr->triangleVertices(i);
 			for (j = 0; j < 3; ++j)
 				if (trp[j] == 5705)
 					break;
@@ -250,7 +250,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_sutures.setSurgicalActions(this);
 		}
 		int i = 0, edg, triMat = tr->triangleMaterial(triangle);
-		long eTri = triangle;
+		int eTri = triangle;
 		float param, uv[2];
 		tr->getBarycentricProjection(triangle, position, uv);
 		if (triMat == 2) {
@@ -277,7 +277,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			eTri = aTE >> 2;
 			edg = aTE & 3;
 			Vec3f V0, V1, P(position);
-			long* tp = tr->triangleVertices(eTri);
+			int* tp = tr->triangleVertices(eTri);
 			tr->getVertexCoordinate(tp[edg], V0._v);
 			tr->getVertexCoordinate(tp[(edg + 1) % 3], V1._v);
 			V1 -= V0;
@@ -481,7 +481,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			setToolState(0);
 		}
 		float uv4[2], uv5[2];
-		long tri4, tri5;
+		int tri4, tri5;
 		if (material == 2) {
 			tr->closestPoint(position, tri4, uv4, 4);
 			tr->closestPoint(position, tri5, uv5, 5);
@@ -572,7 +572,7 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 				return false;
 			tr = _sg.getMaterialTriangles();
 		}
-		long eTri = triangle;
+		int eTri = triangle;
 		int edge, triMat = tr->triangleMaterial(triangle);
 		float param, uv[2];
 		auto invalidate = [&]() {
@@ -626,7 +626,7 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 			eTri = aTE >> 2;
 			edge = aTE & 3;
 			Vec3f V0, V1, P(position);
-			long* tp = tr->triangleVertices(eTri);
+			int* tp = tr->triangleVertices(eTri);
 			tr->getVertexCoordinate(tp[edge], V0._v);
 			tr->getVertexCoordinate(tp[(edge + 1) % 3], V1._v);
 			V1 -= V0;
@@ -1272,7 +1272,7 @@ bool surgicalActions::loadScene(const char *sceneDirectory, const char *sceneFil
 	return ret;
 }
 
-bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv)[2], int &material, float(&historyTexture)[2], Vec3f &historyVec)
+bool surgicalActions::setHistoryAttachPoint(const int triangle, const float(&uv)[2], int &material, float(&historyTexture)[2], Vec3f &historyVec)
 {  // Input an attach point in current environment. Outputs a historyTriangle, historyUv, and historyVec for storage in a history file.
 	// This attachment point is created by program with variable physics state at time of incisions.  For this reason move away a safe distance to an original triangle and use
 	// historyVec to find closest original location.  historyVec is in material coords so less sensitive to physics state.
@@ -1307,7 +1307,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 		tp[1] = uv[1];
 	}
 	auto isBorderTriangle = [mtp, material](int tri) ->bool {  // on incision edge?
-		unsigned long *adjs;
+		unsigned int *adjs;
 		adjs = mtp->triAdjs(tri);
 		for (int i = 0; i < 3; ++i) {
 			int mat = mtp->triangleMaterial(adjs[i] >> 2);
@@ -1319,7 +1319,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 	historyVec.set(0.0f, 0.0f, 0.0f);
 	if (!isBorderTriangle(triangle)) {
 		Vec2f tx;
-		long *tr = mtp->triangleTextures(triangle);
+		int *tr = mtp->triangleTextures(triangle);
 		float *fp = mtp->getTexture(tr[0]);
 		tx.set(fp[0], fp[1]);
 		tx *= 1.0f - tp[0] - tp[1];
@@ -1332,9 +1332,9 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 		return true;
 	}
 	auto vbt = _bts.getVirtualNodedBccTetrahedra();
-	auto triangleNormal = [mtp, vbt](const long tri) -> const Vec3f {
+	auto triangleNormal = [mtp, vbt](const int tri) -> const Vec3f {
 		Vec3f N, vM[3];
-		long *tr = mtp->triangleVertices(tri);
+		int *tr = mtp->triangleVertices(tri);
 		for (int j = 0; j < 3; ++j)
 			vbt->vertexGridLocus(tr[j], vM[j]);
 		vM[1] -= vM[0];
@@ -1345,7 +1345,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 	};
 	// get material coord displacement direction
 	Vec3f planeN, edgeN;
-	unsigned long *adjs = mtp->triAdjs(triangle);
+	unsigned int *adjs = mtp->triAdjs(triangle);
 	int eNum = 0;
 	edgeN.set(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < 3; ++i) {
@@ -1359,7 +1359,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 	if(eNum > 1)
 		edgeN.normalize();
 	planeN = edgeN ^ triangleNormal(triangle);
-	long *tr = mtp->triangleVertices(triangle);
+	int *tr = mtp->triangleVertices(triangle);
 	vbt->vertexGridLocus(tr[0], historyVec);
 	historyVec *= 1.0f - tp[0] - tp[1];
 	for (int i = 0; i<2; ++i){
@@ -1369,7 +1369,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 	}
 	float d = planeN * historyVec, tetSizeSq = (float)vbt->getTetUnitSize();
 	tetSizeSq *= tetSizeSq;
-	long nextTri = triangle;
+	int nextTri = triangle;
 	int lastEdge = -1;
 	do {
 		tr = mtp->triangleVertices(nextTri);
@@ -1435,7 +1435,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 							}
 
 						}
-						long* triTx = mtp->triangleTextures(nextTri);
+						int* triTx = mtp->triangleTextures(nextTri);
 						Vec2f tx;
 						float *fp = mtp->getTexture(triTx[0]);
 						tx.set(fp[0], fp[1]);
@@ -1450,7 +1450,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 						return true;
 					}
 					else {
-						unsigned long adj = mtp->triAdjs(nextTri)[lastEdge];
+						unsigned int adj = mtp->triAdjs(nextTri)[lastEdge];
 						nextTri = adj >> 2;
 //						lastEdge = ((adj & 3) + 1) %3;
 						lastEdge = adj & 3;
@@ -1470,18 +1470,18 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 	struct nearTri {
 		bool borderTriangle;
 		Vec3f centroid;
-		long triangle;
+		int triangle;
 	} nt;
 	nt.borderTriangle = false;
 	nt.triangle = triangle;
 	std::multimap<float, nearTri> nearTris;
 	nearTris.insert(std::make_pair(0.0f, nt));
 	auto ntit = nearTris.begin();
-	std::set<long> trisDone;
+	std::set<int> trisDone;
 	while (ntit != nearTris.end()) {
 		ntit->second.borderTriangle = false;
 		for (int i = 0; i < 3; ++i) {
-			unsigned long adj = mtp->triAdjs(ntit->second.triangle)[i];
+			unsigned int adj = mtp->triAdjs(ntit->second.triangle)[i];
 			int mat = mtp->triangleMaterial(adj >> 2);
 			if ((mat > 2 && mat < 4) || mat == 6) {  // hard intermaterial cut edge to move away from
 				ntit->second.borderTriangle = true;
@@ -1491,7 +1491,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 				continue;
 			else {
 				nt.triangle = adj >> 2;
-				long *tr = mtp->triangleVertices(adj >> 2);
+				int *tr = mtp->triangleVertices(adj >> 2);
 				Vec3f v;
 				nt.centroid = { 0.0f, 0.0f, 0.0f };
 				for (int j = 0; j < 3; ++j) {
@@ -1503,7 +1503,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 		}
 		if (!ntit->second.borderTriangle) {
 			historyVec -= ntit->second.centroid;
-			long *ttx = mtp->triangleTextures(ntit->second.triangle);
+			int *ttx = mtp->triangleTextures(ntit->second.triangle);
 			Vec2f tx, vt;
 			tx.set(0.0f, 0.0f);
 			for (int i = 0; i < 3; ++i) {
@@ -1523,7 +1523,7 @@ bool surgicalActions::setHistoryAttachPoint(const long triangle, const float(&uv
 	return false;
 }
 
-bool surgicalActions::getHistoryAttachPoint(const int material, const float(&historyTexture)[2], const Vec3f &displacement, long &triangle, float(&uv)[2], bool findEdge)
+bool surgicalActions::getHistoryAttachPoint(const int material, const float(&historyTexture)[2], const Vec3f &displacement, int &triangle, float(&uv)[2], bool findEdge)
 {  // Input a history attach point from history file. Outputs a triangle, and parametric uv coord in current environment.
 	materialTriangles *mtp = _sg.getMaterialTriangles();
 	std::vector<Vec2f> triTex;
@@ -1542,7 +1542,7 @@ bool surgicalActions::getHistoryAttachPoint(const int material, const float(&his
 			if (mtp->triangleMaterial(k) != material && mtp->triangleMaterial(k) != 10)  // in an undermine may already have been labelled as 10
 				continue;
 		}
-		long *tr = mtp->triangleTextures(k);
+		int *tr = mtp->triangleTextures(k);
 		float *fp;
 		for (int j = 0; j < 3; ++j) {
 			fp = mtp->getTexture(tr[j]);
@@ -1585,14 +1585,14 @@ bool surgicalActions::getHistoryAttachPoint(const int material, const float(&his
 	Vec3f triV[3], N, V, startV;
 	// switch to material coords to minimize effect of varying physics state
 	auto vbt = _bts.getVirtualNodedBccTetrahedra();
-	long *tr = mtp->triangleVertices(k);
+	int *tr = mtp->triangleVertices(k);
 	for (int j = 0; j < 3; ++j)
 		vbt->vertexGridLocus(tr[j], triV[j]);
 	startV = triV[0] * (1.0f - uv[0] - uv[1]) + triV[1] * uv[0] + triV[2] * uv[1];
 	V = (triV[1] - triV[0])^(triV[2] - triV[0]);
 	N = displacement ^ V;
 	float d = N * startV, dsqFinal = displacement.length2();
-	long nextTri = k;
+	int nextTri = k;
 	int lastEdge = -1;
 	do {
 		tr = mtp->triangleVertices(nextTri);
@@ -1626,7 +1626,7 @@ bool surgicalActions::getHistoryAttachPoint(const int material, const float(&his
 						return true;
 					}
 					else {
-						unsigned long adj = mtp->triAdjs(nextTri)[lastEdge];
+						unsigned int adj = mtp->triAdjs(nextTri)[lastEdge];
 						int nextMaterial = mtp->triangleMaterial(adj>>2);
 						if (nextMaterial == 8)
 							nextMaterial = 7;
@@ -1769,7 +1769,7 @@ void surgicalActions::nextHistoryAction()
 			if (tr == NULL)
 				return;
 			json::Object hookObj = (*_historyIt)["addHook"].ToObject();
-			long hookNum, triangle;
+			int hookNum, triangle;
 			int material;
 			float uv[2], historyTx[2];
 			assert(hookObj.HasKey("material"));
@@ -1880,7 +1880,7 @@ void surgicalActions::nextHistoryAction()
 					return;
 				}
 				json::Object ipObj = iObj["incisionPoint"].ToObject();
-				long tri;
+				int tri;
 				int material;
 				float hTx[2], uv[2];
 				material = ipObj["material"].ToInt();
@@ -1922,7 +1922,7 @@ void surgicalActions::nextHistoryAction()
 			_bts.updateSurfaceDraw();
 			json::Array pArr, uArr = (*_historyIt)["undermine"].ToArray();
 			float hTx[2], uv[2];
-			long tri;
+			int tri;
 			int material;
 			Vec3f hVec;
 			json::Object uObj, pObj;
@@ -1963,7 +1963,7 @@ void surgicalActions::nextHistoryAction()
 			json::Object exciseObj = (*_historyIt)["excise"].ToObject();
 			json::Array pArr;
 			float hTx[2], uv[2];
-			long tri;
+			int tri;
 			int material;
 			Vec3f hVec;
 			material = exciseObj["material"].ToInt();
@@ -2006,7 +2006,7 @@ void surgicalActions::nextHistoryAction()
 			hTx[0] = pArr[0].ToFloat();
 			hTx[1] = pArr[1].ToFloat();
 			pArr.Clear();
-			long eTri;
+			int eTri;
 			getHistoryAttachPoint(4, hTx, hVec, eTri, uv, false);
 			auto triEdge = [&](float(&uv)[2]) {
 				if (uv[0] + uv[1] > 0.67f) {  // force to an edge
@@ -2066,7 +2066,7 @@ void surgicalActions::nextHistoryAction()
 			hVec[1] = pArr[1].ToFloat();
 			hVec[2] = pArr[2].ToFloat();
 			material = sutureObj["material0"].ToInt();
-			long eTri;
+			int eTri;
 			getHistoryAttachPoint(material, hTx, hVec, eTri, uv, material == 2 ? true : false);
 			assert(material == tr->triangleMaterial(eTri));
 			if (material == 2) {
@@ -2224,7 +2224,7 @@ void surgicalActions::nextHistoryAction()
 			}
 			_fence.clear();
 			float hTx[2], uv[2];
-			long tri;
+			int tri;
 			int material;
 			Vec3f hVec, postN, xyz;
 			json::Object uObj, pObj;
@@ -2304,7 +2304,7 @@ void surgicalActions::nextHistoryAction()
 			_bts.updateSurfaceDraw();
 			json::Array pArr, uArr = (*_historyIt)["periostealUndermine"].ToArray();
 			float hTx[2], uv[2];
-			long tri;
+			int tri;
 			int material;
 			Vec3f hVec;
 			json::Object uObj, pObj;
@@ -2370,7 +2370,7 @@ bool surgicalActions::texturePickCode(const int triangle, const float (&uv)[2], 
 	// COURT
 	materialTriangles *tri = NULL;  //  _bts.getElasticSkinGraphics()->getMaterialTriangles();
 
-	long *tr = tri->triangleTextures(triangle);
+	int *tr = tri->triangleTextures(triangle);
 	if(tri->triangleMaterial(triangle)<0)
 		return false;
 	for(int j,i=0; i<3; ++i) {
@@ -2398,7 +2398,7 @@ bool surgicalActions::closestTexturePick(const float(&txUv)[2], const float tria
 
 	std::vector<materialTriangles::matTriangle> *tArr = tri->getTriangleArray();
 	int i,j,n=(int)tArr->size();
-	long *tr;
+	int *tr;
 	float *tx[3],minErr=1e30f,minDuv=1000.0f;
 	float minimax[4];
 	for(i=0; i<n; ++i)	{

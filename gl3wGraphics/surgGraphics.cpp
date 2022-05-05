@@ -390,10 +390,10 @@ void surgGraphics::setNewTopology()
 void surgGraphics::getSkinIncisionLines() {
 	_incisionLines.clear();  // indexes into incision lines. 0xffffffff is primitive restart index.
 	std::set<int> tri36used;
-	auto getIncisLine = [&](int mat0, unsigned long &adj) {
+	auto getIncisLine = [&](int mat0, unsigned int &adj) {
 		int mat, tri = adj >> 2;
 		std::vector<materialTriangles::neighborNode> nei;
-		long vEnd = _mt.triangleVertices(tri)[(adj & 3)], v = _mt.triangleVertices(tri)[((adj & 3) + 1) % 3];
+		int vEnd = _mt.triangleVertices(tri)[(adj & 3)], v = _mt.triangleVertices(tri)[((adj & 3) + 1) % 3];
 		_incisionLines.push_back(_mt.triangleTextures(tri)[(adj & 3)]);
 		GLuint firstVert = _incisionLines.back();
 
@@ -408,7 +408,7 @@ void surgGraphics::getSkinIncisionLines() {
 				std::cout << "incision span was " << len2 << " at vertex " << v << "\n";
 			lastPos = newPos;
 
-			long* tr = _mt.triangleVertices(tri);
+			int* tr = _mt.triangleVertices(tri);
 			for (int i = 0; i < 3; ++i) {
 				if (tr[i] == v) {
 					_incisionLines.push_back(_mt.triangleTextures(tri)[i]);
@@ -441,7 +441,7 @@ void surgGraphics::getSkinIncisionLines() {
 		if (mat < 0)
 			continue;
 		if (mat == 3) {  // surface skin incision . 2-3 pair
-			unsigned long* adjs = _mt.triAdjs(i);
+			unsigned int* adjs = _mt.triAdjs(i);
 			if (_mt.triangleMaterial(adjs[0] >> 2) != 2)  // incision convention
 				continue;
 			// incision start point
@@ -449,7 +449,7 @@ void surgGraphics::getSkinIncisionLines() {
 				getIncisLine(3, adjs[0]);
 		}
 		if (mat == 6) {  // deep bed incision. 5-6 pair
-			unsigned long* adjs = _mt.triAdjs(i);
+			unsigned int* adjs = _mt.triAdjs(i);
 			for (int j = 0; j < 3; ++j) {
 				int aMat = _mt.triangleMaterial(adjs[j] >> 2);
 				if ( aMat == 6 || aMat == 3)  // any different material except 3 which is a non-undermined deep cut
@@ -588,9 +588,9 @@ void surgGraphics::draw(void)
 	GLuint start = 0, end = 0;
 	glEnable(GL_POLYGON_OFFSET_FILL);
 	glPolygonOffset(1.0, 1.0);
-	long mat = -1, t=0, nTris = _mt.numberOfTriangles();
+	int mat = -1, t=0, nTris = _mt.numberOfTriangles();
 	while (t < nTris){
-		long tMat = _mt.triangleMaterial(t);
+		int tMat = _mt.triangleMaterial(t);
 		if (tMat < 0){  // deleted triangle
 			end = (t << 1) + t;
 			glDrawElements(GL_TRIANGLES, (GLsizei)(end - start), GL_UNSIGNED_INT, (const GLvoid*)(sizeof(GLuint)*start));

@@ -41,7 +41,7 @@ public:
 	void getDeepPosts(std::vector<Vec3f>& xyz, std::vector<Vec3f>& nrm);
 	bool cutDeep();  // data already loaded in _deepPosts in this updated version
 	void clearDeepCutter(){_deepPosts.clear();}
-	long addPeriostealUndermineTriangle(const int topTriangle, const Vec3f &linePickDirection, const bool incisionConnect);  // can only follow a deepCut through periosteum.
+	int addPeriostealUndermineTriangle(const int topTriangle, const Vec3f &linePickDirection, const bool incisionConnect);  // can only follow a deepCut through periosteum.
 	deepCut() { _deepXyz.clear(); _deepPosts.clear(); }
 	deepCut(const deepCut&) = delete;
 	deepCut& operator=(const deepCut&) = delete;
@@ -49,12 +49,12 @@ public:
 
 protected:
 	bool _startOpen, _endOpen;
-	std::vector<std::array<long, 3> > _firstSideTriangles;  // new triangles produced on first side of the cut. in sort order so can do binary search, but not usually consecutive.
+	std::vector<std::array<int, 3> > _firstSideTriangles;  // new triangles produced on first side of the cut. in sort order so can do binary search, but not usually consecutive.
 	struct surfaceCutLine {  // a cut line intersecting a cutting triangle with the embedded surface
 		int rtiPostTo;
 		int rtiIndexTo;
 		double lowestV;  // smallest v value of the bilinear surface in an interpost scl
-		std::list<long> deepVerts;  // sequential deep mtTriangle vertices for this intersect line
+		std::list<int> deepVerts;  // sequential deep mtTriangle vertices for this intersect line
 	};
 	struct rayTriangleIntersect {
 		int triangle;
@@ -94,7 +94,7 @@ protected:
 	static float _cutSpacingInv;  // spacing between interior cut points inverted
 	int _preDeepCutVerts;
 	int _previousSkinTopEnd, _loopSkinTopBegin;
-	std::list<std::list<long> > _holePolyLines;  // pair first is deepVert, second topVert
+	std::list<std::list<int> > _holePolyLines;  // pair first is deepVert, second topVert
 
 	void bilinearNormal(const double& u, const double& v, const bilinearPatch& bl, Vec3d& normal) {
 		normal = bl.e11 * u + bl.e00 * (1.0 - u);
@@ -107,8 +107,8 @@ protected:
 	bool rayIntersectMaterialTriangles(const Vec3d& rayStart, const Vec3d& rayDirection, std::vector<rayTriangleIntersect>& intersects);
 	bool connectToPreviousPost(int postNum);
 	double surfacePath(rayTriangleIntersect& from, const rayTriangleIntersect& to, const bilinearPatch* holeBl, const bool cutPath, double& minimumBilinearV);
-	void cutSkinLine(int startV, int endV, std::vector<unsigned long>& te, std::vector<float>& params, bool Tin, bool Tout, surfaceCutLine& scl);
-	void cutDeepSurface(int startV, int endV, std::vector<unsigned long>& te, std::vector<float>& params, surfaceCutLine& scl);
+	void cutSkinLine(int startV, int endV, std::vector<unsigned int>& te, std::vector<float>& params, bool Tin, bool Tout, surfaceCutLine& scl);
+	void cutDeepSurface(int startV, int endV, std::vector<unsigned int>& te, std::vector<float>& params, surfaceCutLine& scl);
 	bool connectOpenEnd(int postNum, int &interpostEnd);
 	bool deepCutQuad(int postNum);
 	void getDeepCutLine(rayTriangleIntersect& top, rayTriangleIntersect& bot);  // in material loci, not yet projected onto spatial plane
@@ -116,7 +116,7 @@ protected:
 	void rayBilinearPatchIntersection(Vec3d& rayStart, Vec3d& rayN, const Vec3d& P00, const Vec3d& P10, const Vec3d& P01, const Vec3d& P11, double(&rayParam)[2], double(&faceParam)[2][2]);
 	void makeBilinearPatch(const Vec3d& P00, const Vec3d& P10, const Vec3d& P01, const Vec3d& P11, bilinearPatch& bl);
 	int bilinearRayIntersection(const Vec3d& rayStart, const Vec3d& rayDir, const bilinearPatch& bl, double (&rayParam)[2], Vec2d (&faceParams)[2]);
-	void findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Vec2d> &bUv, const std::vector<std::pair<long, Vec2d> >& deepOuterPolygon, std::list< std::vector<std::pair<long, Vec2d> > >& holes);
+	void findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Vec2d> &bUv, const std::vector<std::pair<int, Vec2d> >& deepOuterPolygon, std::list< std::vector<std::pair<int, Vec2d> > >& holes);
 	bool topConnectToPreviousPost(int postNum);
 	bool deepConnectToPreviousPost(int postNum);
 

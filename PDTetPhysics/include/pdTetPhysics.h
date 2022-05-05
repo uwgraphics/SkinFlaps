@@ -38,19 +38,19 @@ public:
 		m_solver.addLevelSet(collisionObjPath);
 	}
 
-	void addSoftCollisionTets(const std::vector<long> &tets) {
+	void addSoftCollisionTets(const std::vector<int> &tets) {
 		m_solver.addSelfCollisionElements(&tets[0], tets.size());
 	}
 
-	void addFixedCollisionSet(const std::string &levelSetFile, const std::vector<long> &tets, const std::vector<std::array<float, 3> > &weights) {
+	void addFixedCollisionSet(const std::string &levelSetFile, const std::vector<int> &tets, const std::vector<std::array<float, 3> > &weights) {
 		if (!m_levelsetInited)
 			addCollisionObject(levelSetFile);
 		inputCollisionProxies(tets, weights);
 			// called after every topological change as tets and weights will change.  Check to see if levelSetFile has already been loaded.  This only needs to be done on initial load and not repeated.
 	}
 
-	void currentSoftCollisionPairs(const std::vector<long> &topTets, const std::vector<std::array<float, 3> > &topBarys,
-		const std::vector<long> &bottomTets, const std::vector<std::array<float, 3> > &bottomBarys, const std::vector<std::array<float, 3> > &collisionNormals) {
+	void currentSoftCollisionPairs(const std::vector<int> &topTets, const std::vector<std::array<float, 3> > &topBarys,
+		const std::vector<int> &bottomTets, const std::vector<std::array<float, 3> > &bottomBarys, const std::vector<std::array<float, 3> > &collisionNormals) {
 		assert(topTets.size() == topBarys.size() && topTets.size() == bottomTets.size() && topTets.size() == bottomBarys.size() && topTets.size() == collisionNormals.size());
 
 		if (topTets.size())
@@ -178,7 +178,7 @@ public:
 	*/
 
 	/* returns constraint index */
-	inline int addHook(const long tet, const std::array<float, 3> &barycentricWeight, const std::array<float, 3> &hookPosition, bool strong = false) {
+	inline int addHook(const int tet, const std::array<float, 3> &barycentricWeight, const std::array<float, 3> &hookPosition, bool strong = false) {
 		if (!m_deformerInited)
 			throw std::logic_error("need to init tet topology before addHook");
 		int number;
@@ -211,7 +211,7 @@ public:
 	}
 
 	/* returns constraint index */
-	inline int addSuture(const long(&tets)[2], const std::array<float, 3>(&barycentricWeights)[2]) {
+	inline int addSuture(const int(&tets)[2], const std::array<float, 3>(&barycentricWeights)[2]) {
 		if (!m_deformerInited)
 			throw std::logic_error("need to init tet topology before addSuture");
 		// m_solverInited = false;
@@ -253,7 +253,7 @@ public:
 	}
 	public:
 
-	inline void inputCollisionProxies(const std::vector<long> &tets, const std::vector<std::array<float, 3> > &weights) {
+	inline void inputCollisionProxies(const std::vector<int> &tets, const std::vector<std::array<float, 3> > &weights) {
 		if (!m_deformerInited)
 			throw std::logic_error("need to init tet topology before add proxies");
 		m_solver.addCollisionProxies(&tets[0], reinterpret_cast<const T(*)[d]>(&weights[0]), tets.size());

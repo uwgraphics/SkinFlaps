@@ -46,13 +46,13 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 				return;
 		}
 		_flapBottomTris.push_back(triangle);
-		long* tr = _mt->triangleVertices(triangle);
+		int* tr = _mt->triangleVertices(triangle);
 		for (int j = 0; j < 3; ++j)
 			tets.insert(_vnt->getVertexTetrahedron(tr[j]));
 	};
 	std::set<int> hingeVerts;
 	auto inputBedTriangle = [&](int triangle) {
-		long* tr = _mt->triangleVertices(triangle);
+		int* tr = _mt->triangleVertices(triangle);
 		bottomRay* br[3];
 		Vec3f matPos[3];
 		for (int j = 0; j < 3; ++j) {
@@ -124,7 +124,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 	// _bedRay crossover ignored since will only use shortest one
 
 	//	// run test - results verified
-	//	const long *nodes = _vnt->tetNodes(tet);
+	//	const int *nodes = _vnt->tetNodes(tet);
 	//	Vec3f cols[3];
 	//	for (int i = 1; i < 4; ++i)
 	//		cols[i-1] = _vnt->nodeSpatialCoordinate(nodes[i]) - _vnt->nodeSpatialCoordinate(nodes[0]);
@@ -133,7 +133,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 
 	tets.erase(-1);
  	if (!tets.empty()) {
-		std::vector<long> tetras;
+		std::vector<int> tetras;
 		tetras.assign(tets.begin(), tets.end());
 		_ptp->addSoftCollisionTets(tetras);
 	}
@@ -151,14 +151,14 @@ void tetCollisions::findSoftCollisionPairs() {
 	flapBox.assign(_flapBottomTris.size(), bb);
 	bedBox.assign(_bedRays.size(), bb);
 	for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
-		long* tr = _mt->triangleVertices(_flapBottomTris[i]);
+		int* tr = _mt->triangleVertices(_flapBottomTris[i]);
 		for (int j = 0; j < 3; ++j)
 			flapBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(*_mt->vertexCoordinate(tr[j])));
 	}
 
 	int badTri;
 	for (size_t n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i) {
-		long* tr = _mt->triangleVertices(i);
+		int* tr = _mt->triangleVertices(i);
 		for(j=0; j<3; ++j)
 			if (tr[j] == 8987) {
 				int mat = _mt->triangleMaterial(i);
@@ -171,7 +171,7 @@ void tetCollisions::findSoftCollisionPairs() {
 
 	for (size_t n = _bedRays.size(), i = 0; i < n; ++i) {
 		bottomRay& b = _bedRays[i];
-		const long* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(b.vertex));
+		const int* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(b.vertex));
 		const Vec3f* bw = _vnt->getVertexWeight(b.vertex);
 		const Vec3f* sc[4];
 		sc[0] = &_vnt->nodeSpatialCoordinate(nodes[0]);
@@ -189,7 +189,7 @@ void tetCollisions::findSoftCollisionPairs() {
 		bedBox[i].Enlarge_To_Include_Point(b.P._v);
 		bedBox[i].Enlarge_To_Include_Point((b.P + b.N)._v);
 	}
-	std::vector<long> topTets, bottomTets;
+	std::vector<int> topTets, bottomTets;
 	topTets.assign(_bedRays.size(), -1);
 	bottomTets.assign(_bedRays.size(), -1);
 	std::vector<std::array<float, 3> > topBarys, bottomBarys, collisionNormals;
@@ -211,7 +211,7 @@ void tetCollisions::findSoftCollisionPairs() {
 				for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
 					bottomRay& b = _bedRays[j];
 					if (bedBox[j].Intersection(flapBox[i])) {
-						long* tr = _mt->triangleVertices(_flapBottomTris[i]);
+						int* tr = _mt->triangleVertices(_flapBottomTris[i]);
 						Vec3f* tv[3];
 						for (int k = 0; k < 3; ++k)
 							tv[k] = reinterpret_cast<Vec3f*>(_mt->vertexCoordinate(tr[k]));
@@ -300,9 +300,9 @@ void tetCollisions::findSoftCollisionPairs() {
 	_ptp->currentSoftCollisionPairs(topTets, topBarys, bottomTets, bottomBarys, collisionNormals);
 }
 
-long tetCollisions::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus, bccTetCentroid &tC)
+int tetCollisions::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus, bccTetCentroid &tC)
 {  // in material coords
-	long* tr = _mt->triangleVertices(mtTriangle);
+	int* tr = _mt->triangleVertices(mtTriangle);
 	Vec3f tV[3];
 	for (int i = 0; i < 3; ++i)
 		_vnt->vertexGridLocus(tr[i], tV[i]);
@@ -316,7 +316,7 @@ long tetCollisions::parametricMTtriangleTet(const int mtTriangle, const float(&u
 	return -1;
 
 	// find candidate cubes
-	std::list<long> cc, tp;
+	std::list<int> cc, tp;
 	auto pr = _vnt->getTetHash()->equal_range(tC.ll);
 	while (pr.first != pr.second) {
 		cc.push_back(pr.first->second);
@@ -346,7 +346,7 @@ float tetCollisions::inverse_rsqrt(float number)
 	float x2 = number * 0.5F;
 	float y = number;
 	// evil floating point bit level hacking 
-	long i = *(long *)&y;
+	int i = *(int *)&y;
 	// value is pre-assumed 
 	i = 0x5f3759df - (i >> 1);
 	y = *(float *)&i;
@@ -360,11 +360,11 @@ void tetCollisions::addFixedCollisionSet(materialTriangles* mt, const std::strin
 //	return;
 
 	insidePolygon ip;
-	std::set<long> collisionVertices;
+	std::set<int> collisionVertices;
 	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (mt->triangleMaterial(i) != 2)
 			continue;
-		const long* tr = mt->triangleTextures(i);
+		const int* tr = mt->triangleTextures(i);
 		for (int j = 0; j < 3; ++j) {
 			const float* fp = mt->getTexture(tr[j]);
 			Vec2f V(fp[0], fp[1]);
@@ -382,7 +382,7 @@ void tetCollisions::updateFixedCollisions(materialTriangles *mt, vnBccTetrahedra
 	_mt = mt;
 	_vnt = vnt;
 	for (auto& fc : _fixedCollisionSets) {
-		std::vector<long> tets;
+		std::vector<int> tets;
 		std::vector<std::array<float, 3> > weights;
 		tets.reserve(fc.vertices.size());
 		weights.reserve(fc.vertices.size());

@@ -23,7 +23,7 @@ void remapTetPhysics::getOldPhysicsData(vnBccTetrahedra *oldVnbt)
 
 void remapTetPhysics::remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt)
 {  // all new physics nodes are clones of old ones.  After a pure topo change their spatial positions will remain identical as no new forces have yet been applied.
-	std::vector<long> newToOldTets;
+	std::vector<int> newToOldTets;
 	newToOldTets.assign(newVnbt->tetNumber(), -1);
 	std::vector<char> oldTetsUsed;
 	oldTetsUsed.assign(_oldTets.size(), 0);
@@ -68,7 +68,7 @@ void remapTetPhysics::remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt)
 	for (int n = newToOldTets.size(), j, i = 0; i < n; ++i){
 		if (newToOldTets[i] < 0)
 			continue;
-		long *oldNodes = _oldTets[newToOldTets[i]].data(), *newNodes = newVnbt->_tetNodes[i].data();
+		int *oldNodes = _oldTets[newToOldTets[i]].data(), *newNodes = newVnbt->_tetNodes[i].data();
 		for(j=0; j<4; ++j){
 			if (_newToOldNodes[newNodes[j]] < 0)
 				_newToOldNodes[newNodes[j]] = oldNodes[j];
@@ -82,10 +82,10 @@ void remapTetPhysics::remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt)
 	for (int n = newToOldTets.size(), i = 0; i < n; ++i){
 		if (newToOldTets[i] > -1)
 			continue;
-		long *newNodes = newVnbt->_tetNodes[i].data();
+		int *newNodes = newVnbt->_tetNodes[i].data();
 		auto npair = _oldTetHash.equal_range(newVnbt->_tetCentroids[i].ll);
 		assert(npair.first != npair.second);
-		long *oldN;
+		int *oldN;
 		if (std::distance(npair.first, npair.second) == 1){  // this singleton match is certain. Always replace.
 			oldN = _oldTets[npair.first->second].data();  // this singleton old tet was used for the _vertexTet match in the beginning
 			for (int j = 0; j < 4; ++j){
@@ -98,7 +98,7 @@ void remapTetPhysics::remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt)
 		}
 		else{
 			// find best matched old cube. Last resort only replace node correspondence if desperate.
-			long matched, bestOldCube, nMatched = -1;
+			int matched, bestOldCube, nMatched = -1;
 			while (npair.first != npair.second){
 				oldN = _oldTets[npair.first->second].data();
 				matched = 0;

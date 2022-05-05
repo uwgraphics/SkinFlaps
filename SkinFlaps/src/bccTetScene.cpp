@@ -538,10 +538,10 @@ void bccTetScene::createTetLatticeDrawing()
 		*(ngp++) = fp[2];
 		++ngp;
 	}
-	std::set<std::pair<long, long> > segs;
+	std::set<std::pair<int, int> > segs;
 	for (int n = _vnTets.tetNumber(), i=0; i<n; ++i){
-		std::pair<long, long> ll;
-		const long* tetNodes = _vnTets.tetNodes(i);
+		std::pair<int, int> ll;
+		const int* tetNodes = _vnTets.tetNodes(i);
 		for (int j = 0; j < 3; ++j){
 			for (int k = j+1; k < 4; ++k){
 				ll.first = std::min(tetNodes[j], tetNodes[k]);

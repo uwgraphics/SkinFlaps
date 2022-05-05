@@ -177,14 +177,14 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 		int mat = _mt->triangleMaterial(ri.triangle);
 		float uv[2] = { (float)ri.uv[0], (float)ri.uv[1] };
 		if (mat == 2) {
-			long topVertex, bottomVertex;
+			int topVertex, bottomVertex;
 			createFlapTopBottomVertices(ri.triangle, uv, topVertex, bottomVertex);
 			ri.mat2Vert = topVertex;
 			ri.deepVert = bottomVertex;
 		}
 		else if (mat == 1 || (mat > 4 && mat < 10)) {
 			Vec3f gridLocus, bw;
-			long tet = parametricMTtriangleTet(ri.triangle, uv, gridLocus);
+			int tet = parametricMTtriangleTet(ri.triangle, uv, gridLocus);
 			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
 			ri.deepVert = _mt->addNewVertexInMidTriangle(ri.triangle, uv);
 			assert(ri.deepVert == _vbt->_vertexTets.size());
@@ -219,13 +219,13 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 		makeBilinearPatch(P00, P10, P01, P11, _deepPosts[i].bl);
 	}
 	// make skin incisions and collect all connected deep surface lines on incised surface for split later
-	std::list<std::list<long> > surfacePolyLines;  // deepVert lines
-	surfacePolyLines.push_back(std::list <long>());
+	std::list<std::list<int> > surfacePolyLines;  // deepVert lines
+	surfacePolyLines.push_back(std::list <int>());
 	bool setTopLoopBegin = true;
 	for (auto oit = outerLoop.begin(); oit != outerLoop.end(); ++oit) {
 		if (*oit == nullptr) {
 			if (surfacePolyLines.empty() || !surfacePolyLines.back().empty())
-				surfacePolyLines.push_back(std::list<long>());
+				surfacePolyLines.push_back(std::list<int>());
 			setTopLoopBegin = true;
 			continue;
 		}
@@ -277,7 +277,7 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 		}
 	}
 	// now get all interior solid vertices on posts
-	std::set<long> nonDupedVertices;
+	std::set<int> nonDupedVertices;
 	for (int np = _deepPosts.size(), i = 0; i < np; i++) {
 		auto &dti = _deepPosts[i].triIntersects;
 		bool openEnd, openSolid;
@@ -314,7 +314,7 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 	ptex.pos = -1;
 	ptex.tex = -1;
 	std::map<int, posTex> oppositeSideVertices;  // relates vertices on first side of cut to opposite side which are created here.
-	auto dupVertex = [&](long vert) {
+	auto dupVertex = [&](int vert) {
 		auto pr = oppositeSideVertices.insert(std::make_pair(vert, ptex));
 		if (pr.second) {
 			if (nonDupedVertices.find(vert) != nonDupedVertices.end())  // no dup
@@ -334,14 +334,14 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 		}
 	}
 	// do surfaceCutLine splits of original surface
-	auto splitSurface = [&](std::list<std::list<long> >& spl) {
+	auto splitSurface = [&](std::list<std::list<int> >& spl) {
 		for (auto& sp : spl) {
 			auto vit = sp.begin();
 			++vit;
 			if (sp.front() == sp.back())  // closed polygon
 				sp.push_back(oppositeSideVertices[*vit].pos);  // new end point after first replace
-			unsigned long adj = 0xffffffff;
-			long vNow = *vit, * tr;
+			unsigned int adj = 0xffffffff;
+			int vNow = *vit, *tr;
 			for (int nt = _mt->numberOfTriangles(), k, j = 0; j < nt; ++j) {
 				if (_mt->triangleMaterial(j) == 2)  // must be a deep triangle
 					continue;
@@ -358,8 +358,8 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 			assert(adj != 0xffffffff);
 			++vit;
 			while (vit != sp.end()) {
-				long loopV = -1;
-				unsigned long topAdj, botAdj = _mt->triAdjs(adj >> 2)[adj & 3];
+				int loopV = -1;
+				unsigned int topAdj, botAdj = _mt->triAdjs(adj >> 2)[adj & 3];
 				if (_mt->triangleMaterial(botAdj >> 2) == 3) {  // correct the _deepBed entry for the top node if an incision edge
 					// from incision convention
 					topAdj = _mt->triAdjs(botAdj >> 2)[1];
@@ -383,7 +383,7 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 					tr = _mt->triangleVertices(adj >> 2);
 					tr[adj & 3] = oppositeSideVertices[vNow].pos;
 					if (_mt->triangleMaterial(adj >> 2) != 3) {
-						long* txp = _mt->triangleTextures(adj >> 2);
+						int* txp = _mt->triangleTextures(adj >> 2);
 						if (lastTx != txp[adj & 3]) {  // remember possible texture seam crossing
 							lastTx = txp[adj & 3];
 							newTx = _mt->addTexture();
@@ -408,7 +408,7 @@ bool deepCut::cutDeep()  // data already loaded in _deepPosts
 	// fill in new cut surface triangles
 	auto addDeepTriangles = [&](std::vector<materialTriangles::matTriangle>& tris) {
 		for(auto &t : tris){
-			long V[3], T[3];
+			int V[3], T[3];
 			// remove any degenrate triangles along straight line of non-duped vertices
 			V[0] = t.v[0];
 			V[1] = t.v[2];
@@ -469,7 +469,7 @@ bool deepCut::interiorSpatialTet(const Vec3f pos, int& tet, Vec3f& baryWeight) {
 			boundingBox<float> bb;
 			bb.Empty_Box();
 			Vec3f* vp[4];
-			long* tn = _vbt->_tetNodes[i].data();
+			int* tn = _vbt->_tetNodes[i].data();
 			for (int j = 0; j < 4; ++j) {
 				vp[j] = &_vbt->_nodeSpatialCoords[tn[j]];
 				bb.Enlarge_To_Include_Point(vp[j]->_v);
@@ -587,7 +587,7 @@ bool deepCut::deepCutQuad(int postNum) {
 	// get CW quad border
 	auto& pti0 = _deepPosts[postNum - 1].triIntersects;
 	auto& pti1 = _deepPosts[postNum].triIntersects;
-	std::list<long> poly, tmp;
+	std::list<int> poly, tmp;
 	poly.assign(pti0[0].scl.deepVerts.begin(), pti0[0].scl.deepVerts.end());
 	bool openEnd = false, lastDeep = false;
 	int interPostIdx = -1;
@@ -671,7 +671,7 @@ bool deepCut::deepCutQuad(int postNum) {
 	if (poly.back() == poly.front())
 		poly.pop_back();
 	poly.reverse(); // to make CCW
-	std::vector<std::pair<long, Vec2d> > deepOuterPolygon;
+	std::vector<std::pair<int, Vec2d> > deepOuterPolygon;
 	deepOuterPolygon.reserve(poly.size());
 	// put in missing uv coords for this quad
 	Vec2d minC(DBL_MAX, DBL_MAX), maxC(-DBL_MAX, -DBL_MAX);
@@ -716,7 +716,7 @@ bool deepCut::deepCutQuad(int postNum) {
 		_mt->setTexture(bTx.back(), tex);
 	}
 	int holesSize = 0;
-	std::list< std::vector<std::pair<long, Vec2d> > > holes;
+	std::list< std::vector<std::pair<int, Vec2d> > > holes;
 	findCutInteriorHoles(bl, bUv, deepOuterPolygon, holes);
 	for (auto hole : holes)
 		holesSize += hole.size();
@@ -872,7 +872,7 @@ bool deepCut::updateDeepSpatialCoordinates()
 			}
 		}
 		Vec3f bw;
-		long botTet = deepPointTetWeight(dbit, bw);
+		int botTet = deepPointTetWeight(dbit, bw);
 		if (botTet < 0) {
 			_deepXyz.clear();  // COURT - this is bad.  Input deepBed needs to be recomputed.
 			return false;
@@ -916,7 +916,7 @@ bool deepCut::getDeepSpatialCoordinates()
 			}
 		}
 		Vec3f bw;
-		long botTet = deepPointTetWeight(dbit, bw);
+		int botTet = deepPointTetWeight(dbit, bw);
 		if (botTet < 0) {  // COURt if there are a lot of these or any occur over an important area of the model should recompute deep bed.
 			std::cout << "Deep bed point at vertex " << dbit->first << " with deep vertex " << dbit->second.deepMtVertex << " not in a tet.\n";
 		}
@@ -1084,7 +1084,7 @@ int deepCut::addDeepPost(const int triangle, const float (&uv)[2], const Vec3d& 
 	_deepPosts.push_back(deepPost());
 	_deepPosts.back().closedEnd = closedEnd;
 	_deepPosts.back().rayDirection = rayDirection;
-	long* tr = _mt->triangleVertices(triangle);
+	int* tr = _mt->triangleVertices(triangle);
 	Vec3d rayStart;
 	if (_deepXyz[tr[0]].X == DBL_MAX || _deepXyz[tr[1]].X == DBL_MAX || _deepXyz[tr[2]].X == DBL_MAX) {  // invalid top triangle
 		rayStart = Vec3d((const float (&)[3])*_mt->vertexCoordinate(tr[0])) * (1.0 - uv[0] - uv[1]);
@@ -1180,10 +1180,10 @@ bool deepCut::rayIntersectMaterialTriangles(const Vec3d& rayStart, const Vec3d& 
 	Vec3d P, T[3], N;
 	// do slightly permissive find
 	for (int n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i) {
-		long tm = _mt->triangleMaterial(i);
+		int tm = _mt->triangleMaterial(i);
 		if (tm == 3 || tm == 4 || tm < 0)  // only look for permissible deep cut triangles.
 			continue;
-		long* tr = _mt->triangleVertices(i);
+		int* tr = _mt->triangleVertices(i);
 		tbb.Empty_Box();
 		for (j = 0; j < 3; ++j) {
 			if (_deepXyz[tr[j]].X > 1e22)  // invalid vertex, thus so is this triangle
@@ -1276,9 +1276,9 @@ bool deepCut::rayIntersectMaterialTriangles(const Vec3d& rayStart, const Vec3d& 
 	return true;
 }
 
-long deepCut::addPeriostealUndermineTriangle(const int triangle, const Vec3f &linePickDirection, bool incisionConnect)
+int deepCut::addPeriostealUndermineTriangle(const int triangle, const Vec3f &linePickDirection, bool incisionConnect)
 {
-	long perioTri = 0x7fffffff, mat = _mt->triangleMaterial(triangle);
+	int perioTri = 0x7fffffff, mat = _mt->triangleMaterial(triangle);
 	if (mat == 7 || mat == 8 || mat == 10)  // a periosteal triangle possibly in the middle of an undermine
 		perioTri = triangle;
 	else{
@@ -1422,20 +1422,20 @@ int deepCut::bilinearRayIntersection(const Vec3d& rayStart, const Vec3d& rayDir,
 	return nSols;
 }
 
-void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Vec2d>& bUv, const std::vector<std::pair<long, Vec2d> >& deepOuterPolygon, std::list< std::vector<std::pair<long, Vec2d> > >& holes) {
+void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Vec2d>& bUv, const std::vector<std::pair<int, Vec2d> >& deepOuterPolygon, std::list< std::vector<std::pair<int, Vec2d> > >& holes) {
 	holes.clear();
 	boundingBox<double> bb;
 	bb.Empty_Box();
 	for (auto& bp : deepOuterPolygon)
 		bb.Enlarge_To_Include_Point(_deepXyz[bp.first]._v);
 	std::vector<Vec2d> uvs;
-	std::vector<unsigned long> tes;
+	std::vector<unsigned int> tes;
 	std::vector<double> params;
-	std::map<unsigned long, int> teMap;
+	std::map<unsigned int, int> teMap;
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (_mt->triangleMaterial(i) < 0)
 			continue;
-		long* tr = _mt->triangleVertices(i);
+		int* tr = _mt->triangleVertices(i);
 		for (int j = 0; j < 3; ++j) {
 			int last = tr[j], next = j < 2 ? tr[j + 1] : tr[0];
 			if (next < last && last < _preDeepCutVerts) {  // only do edge once and don't do new deep cut edges
@@ -1464,7 +1464,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 	if (tes.empty())
 		return;
 	struct holePoint {
-		unsigned long te;
+		unsigned int te;
 		double param;
 		Vec2d uv;
 	}hp;
@@ -1476,7 +1476,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 		hp.uv = uvs[idx];
 		holesIn.back().push_back(hp);
 		auto lowestV = holesIn.back().begin();
-		unsigned long lastTe = tes[idx], te;
+		unsigned int lastTe = tes[idx], te;
 		tes[idx] = 3;
 		while (true) {
 			// get 2 possible opposite te and check for path
@@ -1554,20 +1554,20 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 	for (auto& hole : holesIn) {
 		if (hole.empty())
 			continue;
-		std::vector<unsigned long> topTe;
+		std::vector<unsigned int> topTe;
 		std::vector<float> topParams;
 		std::list<Vec2d> topUvs;
-		long deepStart = -1, topStart = -1;
+		int deepStart = -1, topStart = -1;
 		surfaceCutLine scl;
 		bool Tin = false, closedLoop = true;
-		unsigned long backTeRev = _mt->triAdjs(hole.back().te >> 2)[hole.back().te & 3];
+		unsigned int backTeRev = _mt->triAdjs(hole.back().te >> 2)[hole.back().te & 3];
 		int splitTri, splitEdge;
 		float splitParam;
 		int prevMat = _mt->triangleMaterial(hole.front().te >> 2), Ttriangle = -1;
 		for (auto pt = hole.begin(); pt != hole.end(); ++pt) {
 			splitTri = pt->te >> 2, splitEdge = pt->te & 3;
 			splitParam = (float)pt->param;
-			long* tr = _mt->triangleVertices(splitTri);
+			int* tr = _mt->triangleVertices(splitTri);
 			if (_mt->triangleMaterial(splitTri) == 4) {  // mat 5 march to an undermine border edge. Pop back on top
 				closedLoop = false;
 				for (auto& db : _deepBed) {
@@ -1609,7 +1609,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 					}
 					else {
 						assert(_mt->triangleMaterial(adjs[0] >> 2) == 5 && _mt->triangleMaterial(_mt->triAdjs(splitTri)[0]>>2) == 2);
-						unsigned long backTe = _mt->triAdjs(topTe.back() >> 2)[topTe.back() & 3];
+						unsigned int backTe = _mt->triAdjs(topTe.back() >> 2)[topTe.back() & 3];
 						int tv = TinSub(splitTri, splitParam);
 						topUvs.push_back(pt->uv);
 						topTe.back() = _mt->triAdjs(backTe >> 2)[backTe & 3];
@@ -1652,14 +1652,14 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 							uv[1] = splitParam;
 							uv[0] = 1.0f - splitParam;
 						}
-						long topVertex, bottomVertex;
+						int topVertex, bottomVertex;
 						createFlapTopBottomVertices(splitTri, uv, topVertex, bottomVertex);
 						topStart = topVertex;
 						_loopSkinTopBegin = topStart;
 					}
 					else {
 						Vec3f gridLocus;
-						long tet = parametricMTedgeTet(splitTri, splitEdge, splitParam, gridLocus);
+						int tet = parametricMTedgeTet(splitTri, splitEdge, splitParam, gridLocus);
 						int bedVertex = _mt->splitTriangleEdge(splitTri, splitEdge, splitParam);
 						assert(bedVertex == _vbt->_vertexTets.size());
 						_vbt->_vertexTets.push_back(tet);
@@ -1681,7 +1681,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 		if (prevMat == 2) {
 			if (closedLoop) {
 				cutSkinLine(topStart, -1, topTe, topParams, false, false, scl);
-				std::list<long> topVerts, botVerts;
+				std::list<int> topVerts, botVerts;
 				topVerts.push_back(topStart);
 				botVerts.push_back(scl.deepVerts.front());
 				auto dbit = _deepBed.begin();
@@ -1709,8 +1709,8 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 				cutDeepSurface(deepStart, -1, topTe, topParams, scl);
 			}
 		}
-		//		std::list< std::vector<std::pair<long, Vec2d> > >& holes
-		holes.push_back(std::vector<std::pair<long, Vec2d> >());
+		//		std::list< std::vector<std::pair<int, Vec2d> > >& holes
+		holes.push_back(std::vector<std::pair<int, Vec2d> >());
 		if(topUvs.size() != scl.deepVerts.size())
 			throw(std::logic_error("Program error in interior hole surface cutter."));
 		auto uit = topUvs.begin();
@@ -1718,7 +1718,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch& bl, const std::vector<Ve
 			holes.back().push_back(std::make_pair(dv, *uit));
 			++uit;
 		}
-		_holePolyLines.push_back(std::list<long>());
+		_holePolyLines.push_back(std::list<int>());
 		_holePolyLines.back().splice(_holePolyLines.back().begin(), scl.deepVerts);
 		_holePolyLines.back().push_back(_holePolyLines.back().front());  // closed loop code
 	}
@@ -1869,8 +1869,8 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 			minimumBilinearV = faceParams[0].Y;
 		return true;
 	};
-	unsigned long te = 0xffffffff;
-	long *tr;
+	unsigned int te = 0xffffffff;
+	int *tr;
 	int nEdges = 1, prevMat;
 	// next lambda is for difficult triangles whose edges don't cut cleanly with bilinearRayIntersection()
 	auto triangleEdgeCuts = [&](int tri, int(&edges)[2], double(&eParams)[2], Vec2d (&fParams)[2]) ->int{
@@ -1912,7 +1912,7 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 			return -1;
 		return eNum;
 	};
-	auto getStartEndTE = [&](const rayTriangleIntersect &rti) ->unsigned long{
+	auto getStartEndTE = [&](const rayTriangleIntersect &rti) ->unsigned int{
 		std::vector<materialTriangles::neighborNode> nei;
 		_mt->getNeighbors(rti.mat2Vert < 0 ? rti.deepVert : rti.mat2Vert, nei);
 		E = _deepXyz[nei.back().vertex];
@@ -1970,15 +1970,15 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 		if ((te = getStartEndTE(from)) == 3)
 			throw(std::logic_error("Program error start/ending a deepCut."));
 	}
-	std::vector<unsigned long> topTe;
+	std::vector<unsigned int> topTe;
 	std::vector<float> topParams;
 	if (cutPath) {
 		topTe.push_back(te);
 		topParams.push_back(1.0f - (float)rayParams[0]);
 	}
-	long deepStart = from.deepVert, topStart = from.mat2Vert;
-	long TinTri = -1, ToutTri = -1;
-	unsigned long UinTe = 3, UoutTe = 3;
+	int deepStart = from.deepVert, topStart = from.mat2Vert;
+	int TinTri = -1, ToutTri = -1;
+	unsigned int UinTe = 3, UoutTe = 3;
 	float TinParam, ToutParam, UinParam, UoutParam;
 	bool Tin = false;
 	do{
@@ -2071,8 +2071,8 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 				if (nE.X == DBL_MAX) {  // signals invalid triangle beyond an undermined edge
 					UoutTe = te;
 					UoutParam = 1.0f - (float)rayParams[0];
-					long v50 = _deepBed[tr[splitEdge]].deepMtVertex;
-					long v51 = _deepBed[tr[(splitEdge + 1) % 3]].deepMtVertex;
+					int v50 = _deepBed[tr[splitEdge]].deepMtVertex;
+					int v51 = _deepBed[tr[(splitEdge + 1) % 3]].deepMtVertex;
 					assert(v50 > -1 && v51 > -1);
 					std::vector<materialTriangles::neighborNode> nei;
 					_mt->getNeighbors(v51, nei);
@@ -2080,7 +2080,7 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 					while (nit != nei.end()) {
 						if (nit->vertex == v50) {
 							assert(_mt->triangleMaterial(nit->triangle) == 5);
-							long* trp = _mt->triangleVertices(nit->triangle);
+							int* trp = _mt->triangleVertices(nit->triangle);
 							int k;
 							for (k = 0; k < 3; ++k) {
 								if (trp[k] == v50)
@@ -2112,7 +2112,7 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 						if (ToutTri > -1) {
 							topTe.pop_back();
 							topParams.pop_back();
-							unsigned long ate;
+							unsigned int ate;
 							if(!topTe.empty())
 								ate = _mt->triAdjs(topTe.back() >> 2)[topTe.back() & 3];
 							int tv = TinSub(ToutTri, ToutParam);
@@ -2126,13 +2126,13 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 							Tin = false;
 						}
 						if (UinTe != 3) {
-							unsigned long ate = _mt->triAdjs(UinTe >> 2)[UinTe & 3];
+							unsigned int ate = _mt->triAdjs(UinTe >> 2)[UinTe & 3];
 							assert(_deepBed[_mt->triangleVertices(ate >> 2)[((ate & 3) + 2) % 3]].deepMtVertex < 0);
-							std::list<long> topVerts, deepVerts;
+							std::list<int> topVerts, deepVerts;
 							topVerts.push_back( _mt->triangleVertices(UinTe >> 2)[((UinTe&3)+2)%3]);
 							deepVerts.push_back(_deepBed[topVerts.back()].deepMtVertex);
 							float uv[2] = {0.333f, 0.333f};
-							long bottomVertex;
+							int bottomVertex;
 							createFlapTopBottomVertices(UinTe >> 2, uv, topStart, bottomVertex);
 							topVerts.push_back(topStart);
 							deepVerts.push_back(bottomVertex);
@@ -2159,12 +2159,12 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 							UinTe = 3;
 						}
 						if (UoutTe != 3) {
-							unsigned long ate = _mt->triAdjs(UoutTe >> 2)[UoutTe & 3];
-							std::list<long> topVerts, deepVerts;
+							unsigned int ate = _mt->triAdjs(UoutTe >> 2)[UoutTe & 3];
+							std::list<int> topVerts, deepVerts;
 							topVerts.push_back(_mt->triangleVertices(UoutTe >> 2)[((UoutTe & 3) + 2) % 3]);
 							deepVerts.push_back(_deepBed[topVerts.back()].deepMtVertex);
 							float uv[2] = { 0.333f, 0.333f };
-							long topVertex, bottomVertex;
+							int topVertex, bottomVertex;
 							createFlapTopBottomVertices(UoutTe >> 2, uv, topVertex, bottomVertex);
 							topVerts.push_back(topVertex);
 							deepVerts.push_back(bottomVertex);
@@ -2183,7 +2183,7 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 							}
 							topTe.pop_back();
 							topParams.pop_back();
-							unsigned long teEnd = _mt->triAdjs(topTe.back() >> 2)[topTe.back() & 3];
+							unsigned int teEnd = _mt->triAdjs(topTe.back() >> 2)[topTe.back() & 3];
 							createFlapTopBottomVertices(ate >> 2, uv, topVertex, bottomVertex);
 							topVerts.push_back(topVertex);
 							deepVerts.push_back(bottomVertex);
@@ -2203,7 +2203,7 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 							topParams.pop_back();
 							cutDeepSurface(deepStart, -1, topTe, topParams, from.scl);
 							float uv[2] = { 0.0f, 0.0f };
-							long topVertex, bottomVertex;
+							int topVertex, bottomVertex;
 							if (splitEdge < 1)
 								uv[0] = lastParam;
 							else if (splitEdge > 1)
@@ -2226,8 +2226,8 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 							topTe.pop_back();
 							topParams.pop_back();
 							float uv[2] = { 0.0f, 0.0f };
-							long topVertex, bottomVertex;
-							unsigned long lastTe = _mt->triAdjs(topTe.back()>>2)[topTe.back()&3], adj = _mt->triAdjs(splitTri)[splitEdge];
+							int topVertex, bottomVertex;
+							unsigned int lastTe = _mt->triAdjs(topTe.back()>>2)[topTe.back()&3], adj = _mt->triAdjs(splitTri)[splitEdge];
 							if ((adj&3) < 1)
 								uv[0] = 1.0f - lastParam;
 							else if ((adj & 3) > 1)
@@ -2303,14 +2303,14 @@ double deepCut::surfacePath(rayTriangleIntersect& from, const rayTriangleInterse
 	return len;
 }
 
-void deepCut::cutDeepSurface(int startV, int endV, std::vector<unsigned long>& te, std::vector<float>& params, surfaceCutLine& scl) {
+void deepCut::cutDeepSurface(int startV, int endV, std::vector<unsigned int>& te, std::vector<float>& params, surfaceCutLine& scl) {
 	if ((scl.deepVerts.empty() || startV != scl.deepVerts.back()) && startV > -1)
 		scl.deepVerts.push_back(startV);
 	auto pit = params.begin();
 	for (auto& t : te) {
 		Vec3f gridLocus;
-		long tri = t >> 2, edge = t & 3;
-		long tet = parametricMTedgeTet(tri, edge, *pit, gridLocus);
+		int tri = t >> 2, edge = t & 3;
+		int tet = parametricMTedgeTet(tri, edge, *pit, gridLocus);
 		int bedVertex = _mt->splitTriangleEdge(tri, edge, *pit);
 		assert(bedVertex == _vbt->_vertexTets.size());
 		_vbt->_vertexTets.push_back(tet);
@@ -2323,13 +2323,13 @@ void deepCut::cutDeepSurface(int startV, int endV, std::vector<unsigned long>& t
 		scl.deepVerts.push_back(endV);
 }
 
-void deepCut::cutSkinLine(int startV, int endV, std::vector<unsigned long>& te, std::vector<float>& params, bool Tin, bool Tout, surfaceCutLine& scl) {
+void deepCut::cutSkinLine(int startV, int endV, std::vector<unsigned int>& te, std::vector<float>& params, bool Tin, bool Tout, surfaceCutLine& scl) {
 	if (startV == _previousSkinTopEnd)
 		Tin = true;
 	if(endV == _loopSkinTopBegin)
 		Tout = true;
 	auto pit = params.begin();
-	std::list<long> topVerts, botVerts;
+	std::list<int> topVerts, botVerts;
 	topVerts.push_back(startV);
 	auto dbit = _deepBed.find(startV);
 	if (dbit == _deepBed.end() || dbit->second.deepMtVertex < 0)
@@ -2346,7 +2346,7 @@ void deepCut::cutSkinLine(int startV, int endV, std::vector<unsigned long>& te, 
 			uv[1] = *pit;
 			uv[0] = 1.0f - *pit;
 		}
-		long topVertex, bottomVertex;
+		int topVertex, bottomVertex;
 		createFlapTopBottomVertices(tri, uv, topVertex, bottomVertex);
 		topVerts.push_back(topVertex);
 		botVerts.push_back(bottomVertex);

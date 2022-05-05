@@ -4,7 +4,7 @@
 // Date: 6/2/2019
 // Purpose: Interactive skin-mucosal incision class which operates in spatial coordinates. Requires setup with a triangulated subdermal surface corresponding to skin-mucosal surface of
 //    closed manifold surface surrounding elastic solid modelled as virtual noded cubes.  Both superficial and deep surfaces in material coordinates on setup.
-//    Allows user to make depth and normal agnostic incisions on skin-mucosa in spatial coordinates.  Also allows undermining of flaps along an incision line
+//    Allows user to make depth and normal agnostic incisions on skin-mucosa in spatial coordinates.  Also allows undermining of flaps aint an incision line
 //    away from the deep bed.  Updates both the virtual noded cubes and the surface model.
 ////////////////////////////////////////////////////////////////////////////
 
@@ -26,7 +26,7 @@
 #include "gl3wGraphics.h"
 
 // could also have done a singleton class, but more cumbersome
-std::unordered_map<long, skinCutUndermineTets::deepPoint> skinCutUndermineTets::_deepBed;
+std::unordered_map<int, skinCutUndermineTets::deepPoint> skinCutUndermineTets::_deepBed;
 gl3wGraphics* skinCutUndermineTets::_gl3w;
 materialTriangles* skinCutUndermineTets::_mt;
 vnBccTetrahedra* skinCutUndermineTets::_vbt;
@@ -43,12 +43,12 @@ bool skinCutUndermineTets::skinCut(std::vector<Vec3f> &topCutPoints, std::vector
 	_firstTopVertex = -1;
 	if (topCutPoints.size() < 2)
 		return false;
-	std::vector<long> topMtVertices, deepVertexLine;
+	std::vector<int> topMtVertices, deepVertexLine;
 	topMtVertices.assign(topCutPoints.size(), -1);
 	deepVertexLine.assign(topCutPoints.size(), -1);
 	float uv[2];
 	for (int n=topCutPoints.size(),i = 0; i < n; ++i){
-		long tri = _mt->numberOfTriangles();
+		int tri = _mt->numberOfTriangles();
 		_mt->closestPoint(topCutPoints[i]._v, tri, uv);
 		Vec3f v3;
 		_mt->getBarycentricPosition(tri, uv, v3._v);
@@ -77,9 +77,9 @@ bool skinCutUndermineTets::skinCut(std::vector<Vec3f> &topCutPoints, std::vector
 	return true;
 }
 
-long skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f &gridLocus)
+int skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f &gridLocus)
 {
-	long *tr = _mt->triangleVertices(triangle);
+	int *tr = _mt->triangleVertices(triangle);
 	Vec3f tV[2];
 	_vbt->vertexGridLocus(tr[edge], tV[0]);
 	_vbt->vertexGridLocus(tr[(edge + 1) % 3], tV[1]);
@@ -91,7 +91,7 @@ long skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edg
 	if (tC.ll == _vbt->tetCentroid(_vbt->_vertexTets[tr[(edge + 1) % 3]])->ll)
 		return _vbt->_vertexTets[tr[(edge + 1) % 3]];
 	// find candidate cubes
-	std::list<long> cc, tp;
+	std::list<int> cc, tp;
 	auto pr = _vbt->_tetHash.equal_range(tC.ll);
 	while (pr.first != pr.second){
 		cc.push_back(pr.first->second);
@@ -113,9 +113,9 @@ long skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edg
 	return -1;
 }
 
-long skinCutUndermineTets::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus)
+int skinCutUndermineTets::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus)
 {  // in material coords
-	long *tr = _mt->triangleVertices(mtTriangle);
+	int *tr = _mt->triangleVertices(mtTriangle);
 	Vec3f tV[3];
 	for (int i = 0; i < 3; ++i)
 		_vbt->vertexGridLocus(tr[i], tV[i]);
@@ -127,7 +127,7 @@ long skinCutUndermineTets::parametricMTtriangleTet(const int mtTriangle, const f
 			return _vbt->_vertexTets[tr[i]];
 	}
 	// find candidate cubes
-	std::list<long> cc, tp;
+	std::list<int> cc, tp;
 	auto pr = _vbt->_tetHash.equal_range(tC.ll);
 	while (pr.first != pr.second){
 		cc.push_back(pr.first->second);
@@ -149,12 +149,12 @@ long skinCutUndermineTets::parametricMTtriangleTet(const int mtTriangle, const f
 	return -1;
 }
 
-long skinCutUndermineTets::createDeepBedVertex(std::unordered_map<long, deepPoint>::iterator &dit)
+int skinCutUndermineTets::createDeepBedVertex(std::unordered_map<int, deepPoint>::iterator &dit)
 {
 	if (dit->second.deepMtVertex > -1)
 		return dit->second.deepMtVertex;
 	Vec3f bw;
-	long tet = deepPointTetWeight(dit, bw);
+	int tet = deepPointTetWeight(dit, bw);
 	if (tet < 0)
 		return -1;
 	dit->second.deepMtVertex = _mt->numberOfVertices();
@@ -168,12 +168,12 @@ long skinCutUndermineTets::createDeepBedVertex(std::unordered_map<long, deepPoin
 	return dit->second.deepMtVertex;
 }
 
-long skinCutUndermineTets::addSurfaceVertex(const long tet, const Vec3f &gridLocus)
+int skinCutUndermineTets::addSurfaceVertex(const int tet, const Vec3f &gridLocus)
 {  // adds both here and to materialTriangles. Return -1 means gridLocus not in tet.
 	Vec3f bw;
 	_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
 	assert(bw[0] >= 0.0f && bw[1] >= 0.0f && bw[2] >= 0.0f && bw[0] <= 1.0f && bw[1] <= 1.0f && bw[2] <= 1.0f && bw[0] + bw[1] + bw[2] <= 1.0f);
-	long newVert = _vbt->vertexNumber();
+	int newVert = _vbt->vertexNumber();
 	_vbt->_vertexTets.push_back(tet);
 	_vbt->_barycentricWeights.push_back(bw);
 	assert(_mt->numberOfVertices() == newVert);
@@ -185,13 +185,13 @@ long skinCutUndermineTets::addSurfaceVertex(const long tet, const Vec3f &gridLoc
 	return newVert;
 }
 
-void skinCutUndermineTets::createFlapTopBottomVertices(const long topTriangle, float (&uv)[2], long &topVertex, long &bottomVertex)
+void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, float (&uv)[2], int &topVertex, int &bottomVertex)
 {  // If uv == 0, 0 || uv == 1, 0 || uv == 0, 1 existing topVertex returned, otherwise new one created. Creates/gets a corresponding bottomVertex.
 	// If topTriangle already part of a flap a bottom vertex will be added. If no flap present an unconnected bottom edge vertex will be created.
 	// If a flap bottom does not already exists on input, bottomVertex will be negated on output.
 	assert(_mt->triangleMaterial(topTriangle) == 2);
 	// look for a flap bottom replicant of topTriangle if it exists.
-	long deepVerts[3], *tr = _mt->triangleVertices(topTriangle);
+	int deepVerts[3], *tr = _mt->triangleVertices(topTriangle);
 	int bottomTriangle = 0, n = _mt->numberOfTriangles(), j = -1;
 	Vec3f deepLocus, gridLocus;
 	float mult;
@@ -285,7 +285,7 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const long topTriangle, f
 		auto dbit1 = _deepBed.find(tr[(edge + 1) % 3]);
 		assert(dbit0 != _deepBed.end() && dbit1 != _deepBed.end());
 		Vec3f gridLocus;
-		long tet = parametricMTedgeTet(topTriangle, edge, param, gridLocus);
+		int tet = parametricMTedgeTet(topTriangle, edge, param, gridLocus);
 		topVertex = _mt->splitTriangleEdge(topTriangle, edge, param);
 		assert(topVertex == _vbt->_vertexTets.size());
 		_vbt->_vertexTets.push_back(tet);
@@ -340,9 +340,9 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const long topTriangle, f
 		return;
 	}
 	// New vertex to be created in mid triangle
-	long tet = parametricMTtriangleTet(topTriangle, uv, dp.gridLocus);
+	int tet = parametricMTtriangleTet(topTriangle, uv, dp.gridLocus);
 	topVertex = _mt->addNewVertexInMidTriangle(topTriangle, uv);
-	long topTexture = _mt->numberOfTextures() - 1;  // texture of this new vertex
+	int topTexture = _mt->numberOfTextures() - 1;  // texture of this new vertex
 	assert(topVertex == _vbt->_vertexTets.size());
 	_vbt->_vertexTets.push_back(tet);
 	Vec3f bw;
@@ -358,7 +358,7 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const long topTriangle, f
 		bottomVertex = pr.first->second.deepMtVertex;
 		return;
 	}
-	long *trBot = _mt->triangleVertices(bottomTriangle);
+	int *trBot = _mt->triangleVertices(bottomTriangle);
 	for (j = 0; j < 3; ++j){
 		if (trBot[j] == deepVerts[0])
 			break;
@@ -390,9 +390,9 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const long topTriangle, f
 	_deepBed.emplace(topVertex, dp);
 }
 
-bool skinCutUndermineTets::topDeepSplit(std::vector<long> &topV, std::vector<long> &deepV, bool frontSplit, bool backSplit)
+bool skinCutUndermineTets::topDeepSplit(std::vector<int> &topV, std::vector<int> &deepV, bool frontSplit, bool backSplit)
 {
-	std::list<long> newTopVerts, newDeepVerts, tV, dV;
+	std::list<int> newTopVerts, newDeepVerts, tV, dV;
 	for (int n = (int)topV.size(), i = 1; i < n; ++i){
 		tV.push_back(topV[i - 1]);
 		dV.push_back(deepV[i - 1]);
@@ -411,7 +411,7 @@ bool skinCutUndermineTets::topDeepSplit(std::vector<long> &topV, std::vector<lon
 		dV.pop_back();
 		if(!topDeepSplit_Sub(tV, dV, false, false))
 			return false;
-		std::list<long> deepV, topV;
+		std::list<int> deepV, topV;
 		topV.push_back(tV.back());
 		deepV.push_back(dV.back());
 		topV.push_back(tV.front());
@@ -421,11 +421,11 @@ bool skinCutUndermineTets::topDeepSplit(std::vector<long> &topV, std::vector<lon
 	return topDeepSplit_Sub(tV, dV, frontSplit, backSplit);
 }
 
-bool skinCutUndermineTets::topDeepSplit_Sub(std::list<long> &topVerts, std::list<long> &deepVerts, bool frontSplit, bool backSplit){
+bool skinCutUndermineTets::topDeepSplit_Sub(std::list<int> &topVerts, std::list<int> &deepVerts, bool frontSplit, bool backSplit){
 	// broken into subroutine for later deep cut use
 	// split top
-	std::vector<long> oppVerts, oppTxs, oppBotVerts;
-	long startVertex = -1, endVertex = -1;
+	std::vector<int> oppVerts, oppTxs, oppBotVerts;
+	int startVertex = -1, endVertex = -1;
 	if (frontSplit)
 		startVertex = deepVerts.front();
 	if (backSplit)
@@ -518,7 +518,7 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<long> &topVerts, std::list
 		// just finished a string of unconnected bottom vertices. If not done look for a flap bottom to cut.
 		if (dvit != deepVerts.begin())
 			startVertex = -1;
-		std::list<long> dVsub;
+		std::list<int> dVsub;
 		while (true) {
 			dVsub.push_back(*dvit);
 			++dvit;
@@ -527,19 +527,19 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<long> &topVerts, std::list
 		}
 		if (dVsub.size() > 1)
 			_solidRecutRequired = true;
-		long endV;  // COURT - not yet using endV
+		int endV;  // COURT - not yet using endV
 		if (dvit != deepVerts.end())
 			endV = -1;
 		else
 			endV = endVertex;
-		std::vector<long> oppBotSub;
+		std::vector<int> oppBotSub;
 		flapSurfaceSplitter(startVertex, endV, dVsub, oppBotSub);  // endVertex
 		for (auto& obs : oppBotSub)
 			oppBotVerts[i++] = obs;
 	}
 	// create all the new texture coords for incision edges here. Texture seams OK
 	float pathLen = 0.0f;
-	std::vector<long> topTx, botTx, oppTopTx, oppBotTx;
+	std::vector<int> topTx, botTx, oppTopTx, oppBotTx;
 	topTx.reserve(oppVerts.size()); botTx.reserve(oppVerts.size()); oppTopTx.reserve(oppVerts.size()); oppBotTx.reserve(oppVerts.size());
 	int txId = _mt->numberOfTextures();
 	float tx[2] = { 0.0f, pathLen };
@@ -566,12 +566,12 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<long> &topVerts, std::list
 	auto tvit = topVerts.begin();
 	dvit = deepVerts.begin();
 	// for new flapCutter()
-	long triV[3], triTx[3], lastTv = *tvit, lastDv = *dvit;
+	int triV[3], triTx[3], lastTv = *tvit, lastDv = *dvit;
 	++tvit;  ++dvit;
 	i = 1;
 	// see incision convention in the header file.
 	// Two opposing quads will be triangulated in that format.
-	auto triangulateQuad = [&](long lt, long t) {
+	auto triangulateQuad = [&](int lt, int t) {
 		Vec3f lv, vn;
 		_mt->getVertexCoordinate(lt, lv._v);
 		_mt->getVertexCoordinate(t, vn._v);
@@ -662,7 +662,7 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<long> &topVerts, std::list
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (_mt->triangleMaterial(i) != 2)
 			continue;
-		unsigned long* adjs = _mt->triAdjs(i);
+		unsigned int* adjs = _mt->triAdjs(i);
 		for (int j = 0; j < 3; ++j) {
 			assert(adjs[j] != 3);
 			if (_mt->triangleMaterial(adjs[j] >> 2) == 3) {
@@ -674,7 +674,7 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<long> &topVerts, std::list
 	return true;
 }
 
-void skinCutUndermineTets::flapSurfaceSplitter(const long startVertex, const long endVertex, std::list<long> &vertexCutLine, std::vector<long> &oppositeVertices)
+void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int endVertex, std::list<int> &vertexCutLine, std::vector<int> &oppositeVertices)
 {  // divides an _mt surface along a continuous vertexCutLine into two free edge sides in places where the cutting surface is already connected to the _mt surface.
 	// Produces an oppositeVertices array of new or repeat vertices corresponding to vertexCutLine.  If cut successful, oppositeVertex will contain the corresponding
 	// newly created vertices.  If not cut the vertex from vertexCutLine is simply repeated in oppositeVertex. startVertex and endVertex are present to allow Tin and Tout.
@@ -703,7 +703,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const long startVertex, const lon
 		++nit;
 	}
 	assert(nit != nei.end());
-	long *tr = _mt->triangleVertices(nit->triangle);
+	int *tr = _mt->triangleVertices(nit->triangle);
 	for (int j = 0; j < 3; ++j){
 		if (tr[j] == lastV && tr[(j + 1) % 3] == *tvit){
 			tri = nit->triangle;
@@ -717,8 +717,8 @@ void skinCutUndermineTets::flapSurfaceSplitter(const long startVertex, const lon
 		Vec3f v;
 		_mt->getVertexCoordinate(*tvit, v._v);
 		_mt->setVertexCoordinate(oppositeVertices[ovn], v._v);
-		long lastTx, txId, materialNow = _mt->triangleMaterial(tri);
-		long* ttx = _mt->triangleTextures(tri);
+		int lastTx, txId, materialNow = _mt->triangleMaterial(tri);
+		int* ttx = _mt->triangleTextures(tri);
 		lastTx = txId = ttx[vertIdx];;
 		const float* fp = _mt->getTexture(txId);
 		float tx[2] = { *fp, fp[1] };
@@ -735,7 +735,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const long startVertex, const lon
 		tr = _mt->triangleVertices(tri);
 		tr[vertIdx] = oppositeVertices[ovn];
 		_mt->triangleTextures(tri)[vertIdx] = txId;
-		unsigned long adj;
+		unsigned int adj;
 		lastV = *tvit;
 		++tvit;
 		while (tr[(vertIdx + 1) % 3] != *tvit) {
@@ -744,11 +744,11 @@ void skinCutUndermineTets::flapSurfaceSplitter(const long startVertex, const lon
 			tri = adj >> 2;
 			vertIdx = ((adj & 3) + 1) % 3;
 			tr = _mt->triangleVertices(tri);
-			long* ttx = _mt->triangleTextures(tri);
+			int* ttx = _mt->triangleTextures(tri);
 			assert(tr[vertIdx] == lastV);
 			tr[vertIdx] = oppositeVertices[ovn];
 			if (ttx[vertIdx] != lastTx) {  // crossed a texure seam
-				long twoTx[2];
+				int twoTx[2];
 				twoTx[0] = txId;
 				fp = _mt->getTexture(ttx[vertIdx]);
 				tx[0] = fp[0]; tx[1] = fp[1];
@@ -771,7 +771,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const long startVertex, const lon
 		oppositeVertices[ovn] = vertexCutLine.back();
 }
 
-bool skinCutUndermineTets::planeCutSurfaceLine(const long startTopV, const long endTopV, const long startDeepV, const long endDeepV, std::list<long> &newTopVerts, std::list<long> &newDeepVerts)
+bool skinCutUndermineTets::planeCutSurfaceLine(const int startTopV, const int endTopV, const int startDeepV, const int endDeepV, std::list<int> &newTopVerts, std::list<int> &newDeepVerts)
 {
 	newTopVerts.clear();
 	newDeepVerts.clear();
@@ -787,8 +787,8 @@ bool skinCutUndermineTets::planeCutSurfaceLine(const long startTopV, const long 
 	if (planeN.normalize() < 1e-24)
 		return false;
 	planeD = planeN*endP;
-	auto intersectTriEdge = [&](const long triNum, const int edgeNum, float &edgeParam, Vec3f &intersect) ->bool{
-		long *tr = _mt->triangleVertices(triNum);
+	auto intersectTriEdge = [&](const int triNum, const int edgeNum, float &edgeParam, Vec3f &intersect) ->bool{
+		int *tr = _mt->triangleVertices(triNum);
 		Vec3f V, W;
 		V.set((const float(&)[3])*_mt->vertexCoordinate(tr[edgeNum]));
 		W.set((const float(&)[3])*_mt->vertexCoordinate(tr[(edgeNum + 1) % 3]));
@@ -799,12 +799,12 @@ bool skinCutUndermineTets::planeCutSurfaceLine(const long startTopV, const long 
 		intersect = W*edgeParam + V*(1.0f - edgeParam);
 		return true;
 	};
-	unsigned long i, j, n = _mt->numberOfTriangles();
+	unsigned int i, j, n = _mt->numberOfTriangles();
 	float edgeParam;
 	for (i = 0; i < n; ++i){
 		if (_mt->triangleMaterial(i) != 2)
 			continue;
-		long *tr = _mt->triangleVertices(i);
+		int *tr = _mt->triangleVertices(i);
 		for (j = 0; j < 3; ++j)
 			if (tr[j] == startTopV)
 				break;
@@ -821,7 +821,7 @@ bool skinCutUndermineTets::planeCutSurfaceLine(const long startTopV, const long 
 	}
 	if (i == n)  // no path start
 		return false;
-	std::vector<unsigned long> triEdges;
+	std::vector<unsigned int> triEdges;
 	std::vector<float> edgeParams;
 	triEdges.push_back(_mt->triAdjs(i)[j]);
 	assert(triEdges.back() != 3);
@@ -864,7 +864,7 @@ bool skinCutUndermineTets::planeCutSurfaceLine(const long startTopV, const long 
 			uv[1] = 1.0f - (float)edgeParams[i];
 		else
 			assert(false);
-		long topV, botV;
+		int topV, botV;
 		createFlapTopBottomVertices(j >> 2, uv, topV, botV);
 		newTopVerts.push_back(topV);
 		newDeepVerts.push_back(botV);
@@ -872,7 +872,7 @@ bool skinCutUndermineTets::planeCutSurfaceLine(const long startTopV, const long 
 	return true;
 }
 
-bool skinCutUndermineTets::trianglePath(const long triStart, const long endTriangle, const int searchMaterial,  std::vector<long> &triPath)
+bool skinCutUndermineTets::trianglePath(const int triStart, const int endTriangle, const int searchMaterial,  std::vector<int> &triPath)
 {  // used in undermining
 	if (triStart == endTriangle){
 		triPath.assign(1,triStart);
@@ -889,14 +889,14 @@ bool skinCutUndermineTets::trianglePath(const long triStart, const long endTrian
 	_mt->getBarycentricPosition(endTriangle, uv, vf1._v);
 	planeNrm = planeNrm^(vf0 - vf1);
 	float planeD = planeNrm*vf1;
-	std::vector<unsigned long> triEdges, try2;
+	std::vector<unsigned int> triEdges, try2;
 	std::vector<float> params, try2P;
-	long mat;
-	auto planeDist = [&](long v) ->float{
+	int mat;
+	auto planeDist = [&](int v) ->float{
 		Vec3f v3((float(&)[3])*_mt->vertexCoordinate(v));
 		return v3*planeNrm - planeD;
 	};
-	long count = 0, *tr = _mt->triangleVertices(triStart);
+	int count = 0, *tr = _mt->triangleVertices(triStart);
 	float dNow, dNext, d;
 	// two possible triangle paths in a closed manifold surface.
 	for (int i = 0; i < 3; ++i) {
@@ -905,7 +905,7 @@ bool skinCutUndermineTets::trianglePath(const long triStart, const long endTrian
 		if (std::signbit(dNow) == std::signbit(dNext))
 			continue;
 		++count;
-		unsigned long te = _mt->triAdjs(triStart)[i];
+		unsigned int te = _mt->triAdjs(triStart)[i];
 		while ((te >> 2) != triStart && te != 3 && (te >> 2) != endTriangle) {
 			mat = _mt->triangleMaterial(te >> 2);
 			if (mat != searchMaterial && mat != 10) {
@@ -983,10 +983,10 @@ bool skinCutUndermineTets::trianglePath(const long triStart, const long endTrian
 			triPath.push_back(tp >> 2);
 		return true;
 	}
-	auto pathLength = [&](std::vector<unsigned long> &tre, std::vector<float> & prm) ->float {
+	auto pathLength = [&](std::vector<unsigned int> &tre, std::vector<float> & prm) ->float {
 		float dist = 0.0f;
 		Vec3f vtx0, vtx1, vtxL;
-		long *trV;
+		int *trV;
 		for (int n = (int)tre.size(), i = 0; i < n; ++i) {
 			trV = _mt->triangleVertices(tre[i] >> 2);
 			_mt->getVertexCoordinate(trV[tre[i] & 3], vtx0._v);
@@ -1031,7 +1031,7 @@ bool skinCutUndermineTets::setDeepBed(materialTriangles *mt, const std::string &
 	char s[400];
 	while (!istr.eof())
 	{
-		long topVert;
+		int topVert;
 		istr.getline(s, 399);
 		sscanf(s, "%ld %f %f %f", &topVert, &dp.gridLocus.X, &dp.gridLocus.Y, &dp.gridLocus.Z);
 		// deep point guaranteed to be inside tet grid
@@ -1043,14 +1043,14 @@ bool skinCutUndermineTets::setDeepBed(materialTriangles *mt, const std::string &
 	return true;
 }
 
-long skinCutUndermineTets::deepPointTetWeight(const std::unordered_map<long, deepPoint>::iterator &dit, Vec3f &baryWeight)
+int skinCutUndermineTets::deepPointTetWeight(const std::unordered_map<int, deepPoint>::iterator &dit, Vec3f &baryWeight)
 {  // return deepPoint tet number and baryweight from its grid locus
 	bccTetCentroid tc;
 	_vbt->gridLocusToTetCentroid(dit->second.gridLocus, tc);
 	_vbt->gridLocusToBarycentricWeight(dit->second.gridLocus, tc, baryWeight);
 	if (*_vbt->tetCentroid(_vbt->getVertexTetrahedron(dit->first)) == tc)
 		return _vbt->getVertexTetrahedron(dit->first);
-	std::list<long> lt, tp;
+	std::list<int> lt, tp;
 	_vbt->centroidTets(tc, lt);
 	assert(!lt.empty());
 	if (lt.size() < 2)
@@ -1062,11 +1062,11 @@ long skinCutUndermineTets::deepPointTetWeight(const std::unordered_map<long, dee
 	return -1L;
 }
 
-long skinCutUndermineTets::flapBottomTet(const long topTet, const Vec3f &bottomGridLocus)
+int skinCutUndermineTets::flapBottomTet(const int topTet, const Vec3f &bottomGridLocus)
 {  // material coord flap bottom tet finder. Return -1 signals error in deep bed data input
 	bccTetCentroid tc;
 	_vbt->gridLocusToTetCentroid(bottomGridLocus, tc);
-	std::list<long> lt, tp;
+	std::list<int> lt, tp;
 	_vbt->centroidTets(tc, lt);
 	if (lt.empty())
 		return -1;
@@ -1086,12 +1086,12 @@ void skinCutUndermineTets::collectOldUndermineData()
 	_prevEdge3.clear();
 	_prevBedSingles.clear();
 	// flap bottom has its reverse mirror image topology on the top
-	std::vector<long> bot4;
+	std::vector<int> bot4;
 	bot4.reserve(300);
 	for (int n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i) {
 		if (_mt->triangleMaterial(i) != 2)
 			continue;
-		long* tr = _mt->triangleVertices(i);
+		int* tr = _mt->triangleVertices(i);
 		int deepV[3];
 		for (j = 0; j < 3; ++j){
 			auto dvit = _deepBed.find(tr[j]);
@@ -1121,11 +1121,11 @@ void skinCutUndermineTets::collectOldUndermineData()
 	}
 	if (bot4.empty())
 		return;
-	std::vector<long> f3;
-	std::set<long> f4;
-	std::vector<long> emptyTex;
+	std::vector<int> f3;
+	std::set<int> f4;
+	std::vector<int> emptyTex;
 	emptyTex.reserve(4);
-	auto addSingle = [&](long v, long tx) {
+	auto addSingle = [&](int v, int tx) {
 		auto pr = _prevBedSingles.insert(std::make_pair(v, emptyTex));
 		auto tex = pr.first->second.begin();
 		while (tex != pr.first->second.end()) {
@@ -1137,12 +1137,12 @@ void skinCutUndermineTets::collectOldUndermineData()
 			pr.first->second.push_back(tx);
 	};
 	for (auto& bt : bot4) {
-		unsigned long* adjs = _mt->triAdjs(bt);
+		unsigned int* adjs = _mt->triAdjs(bt);
 		for (int j = 0; j < 3; ++j) {
 			if (_mt->triangleMaterial(adjs[j] >> 2) == 5) {  // potentially alterable flap bottom edge as contains unduplicated vertices
 				f4.insert(bt);
-				long* tr = _mt->triangleVertices(bt);
-				long* ttx = _mt->triangleTextures(bt);
+				int* tr = _mt->triangleVertices(bt);
+				int* ttx = _mt->triangleTextures(bt);
 				addSingle(tr[j], ttx[j]);
 				addSingle(tr[(j+1)%3], ttx[(j + 1) % 3]);
 			}
@@ -1154,14 +1154,14 @@ void skinCutUndermineTets::collectOldUndermineData()
 	}
 	_prevEdge3.reserve(f3.size());
 	for (auto& ef : f3) {
-		long* tr = _mt->triangleVertices(ef);
+		int* tr = _mt->triangleVertices(ef);
 		for (int j = 0; j < 3; ++j) {
 			if (_prevBedSingles.find(tr[j]) != _prevBedSingles.end())
 				_prevEdge3.push_back(ef);
 		}
 	}
 	for (auto& bt : bot4) {
-		long* tr = _mt->triangleVertices(bt);
+		int* tr = _mt->triangleVertices(bt);
 		for (int j = 0; j < 3; ++j) {
 			if (_prevBedSingles.find(tr[j]) != _prevBedSingles.end()) {
 				f4.insert(bt);
@@ -1175,7 +1175,7 @@ void skinCutUndermineTets::collectOldUndermineData()
 
 bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int undermineMaterial, bool incisionConnect)
 {
-	std::vector<long> *edgeTriangles;
+	std::vector<int> *edgeTriangles;
 	if (undermineMaterial == 2)
 		edgeTriangles = &_inExCisionTriangles;
 	else{
@@ -1185,7 +1185,7 @@ bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int un
 				int mat;
 				if ((mat = _mt->triangleMaterial(i)) != 7 && mat != 8)
 					continue;
-				unsigned long* adjs = _mt->triAdjs(i);
+				unsigned int* adjs = _mt->triAdjs(i);
 				for (int j = 0; j < 3; ++j) {
 					mat = _mt->triangleMaterial(adjs[j] >> 2);
 					if (mat != 7 && mat != 8 && mat != 1) {
@@ -1198,10 +1198,10 @@ bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int un
 		edgeTriangles = &_periostealCutEdgeTriangles;
 	}
 	float uv[2] = {0.33f, 0.33f}, d, minD = FLT_MAX;
-	std::vector<long> triPath;
+	std::vector<int> triPath;
 	if (incisionConnect) {
 		Vec3f newP, now;
-		long closeT = -1;
+		int closeT = -1;
 		_mt->getBarycentricPosition(triangle, uv, newP._v);
 		for (auto &tIdx : *edgeTriangles) {
 			_mt->getBarycentricPosition(tIdx, uv, now._v);
@@ -1217,7 +1217,7 @@ bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int un
 			return false;
 	}
 	if (_prevUndermineTriangle > -1) {
-		std::vector<long> tep2;
+		std::vector<int> tep2;
 		if (!trianglePath(triangle, _prevUndermineTriangle, undermineMaterial, tep2))
 			return false;
 		if(!triPath.empty())
@@ -1245,7 +1245,7 @@ bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int un
 }
 
 void skinCutUndermineTets::undermineSkin() {
-	std::vector<long> undTris, newTris;
+	std::vector<int> undTris, newTris;
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (_mt->triangleMaterial(i) != 10)
 			continue;
@@ -1253,16 +1253,16 @@ void skinCutUndermineTets::undermineSkin() {
 		undTris.push_back(i);
 	}
 	struct deepVtx {
-		long deepV;
-		std::vector<long> deepTx;
+		int deepV;
+		std::vector<int> deepTx;
 	}empDv;
 	empDv.deepV = -1;
 	empDv.deepTx.clear();
 	empDv.deepTx.reserve(4);
-	std::unordered_map<long, deepVtx> undV;
+	std::unordered_map<int, deepVtx> undV;
 	undV.reserve(undTris.size() << 1);
-	auto findPrevTexture = [&](long tx, std::vector<long> &prevTex) ->long {
-		long ret = -1;
+	auto findPrevTexture = [&](int tx, std::vector<int> &prevTex) ->int {
+		int ret = -1;
 		float *pt, *fp = _mt->getTexture(tx);
 		for (auto t : prevTex) {
 			pt = _mt->getTexture(t);
@@ -1276,8 +1276,8 @@ void skinCutUndermineTets::undermineSkin() {
 	for(auto &t : undTris){
 		if (!std::binary_search(_prevUnd2.begin(), _prevUnd2.end(), t)) {
 			newTris.push_back(t);
-			long *top = _mt->triangleVertices(t);
-			long* topTx = _mt->triangleTextures(t);
+			int *top = _mt->triangleVertices(t);
+			int* topTx = _mt->triangleTextures(t);
 			for (int j = 0; j < 3; ++j) {
 				auto pr = undV.insert(std::make_pair(top[j], empDv));
 				if (pr.second) {
@@ -1289,12 +1289,12 @@ void skinCutUndermineTets::undermineSkin() {
 						pr.first->second.deepV = createDeepBedVertex(dit); // puts result in dit
 					}
 				}
-				long pt = -1;  // previous texture index
+				int pt = -1;  // previous texture index
 				auto pb = _prevBedSingles.find(pr.first->second.deepV);
 				if (pb != _prevBedSingles.end()) {
 					pt = findPrevTexture(topTx[j], pb->second);
 					if (pt > -1) {
-						long pt2 = findPrevTexture(pt, pr.first->second.deepTx);
+						int pt2 = findPrevTexture(pt, pr.first->second.deepTx);
 						if (pt2 < 0)
 							pr.first->second.deepTx.push_back(pt);
 						else
@@ -1311,11 +1311,11 @@ void skinCutUndermineTets::undermineSkin() {
 	}
 	// all top vertices are doubled (for bed and flap bottom) except vertices on an edge with both sides material 2 and one triangle undermined and the other not.
 	// because all of undTris searched, previous undermines taken into account
-	std::set<long> oneDeepV;
-	std::vector<long> underminedEdgeTris;
+	std::set<int> oneDeepV;
+	std::vector<int> underminedEdgeTris;
 	for (auto &tri : newTris) {
 		for (int k = 0; k < 3; ++k) {
-			long t = (_mt->triAdjs(tri)[k] >> 2);
+			int t = (_mt->triAdjs(tri)[k] >> 2);
 			if (_mt->triangleMaterial(t) == 2 && !std::binary_search(undTris.begin(), undTris.end(), t)) {
 				oneDeepV.insert(_mt->triangleVertices(tri)[k]);
 				oneDeepV.insert(_mt->triangleVertices(tri)[(k + 1) % 3]);
@@ -1325,12 +1325,12 @@ void skinCutUndermineTets::undermineSkin() {
 		}
 	}
 	for (auto nt : newTris) {  // create flap bed
-		long vd[3], dTx[3], * top = _mt->triangleVertices(nt), *tx = _mt->triangleTextures(nt);
+		int vd[3], dTx[3], * top = _mt->triangleVertices(nt), *tx = _mt->triangleTextures(nt);
 		for (int i = 0; i < 3; ++i) {
 			auto dv = undV.find(top[i]);
 			assert(dv != undV.end());
 			vd[i] = dv->second.deepV;
-			long pt = findPrevTexture(tx[i], dv->second.deepTx);
+			int pt = findPrevTexture(tx[i], dv->second.deepTx);
 			assert(pt > -1);
 			dTx[i] = pt;
 			auto sit = _collisionSpokes.find(top[i]);
@@ -1339,11 +1339,11 @@ void skinCutUndermineTets::undermineSkin() {
 		}
 		_mt->addTriangle(vd, 5, dTx);
 	}
-	std::map<long, deepVtx*> bottomDoubles;
+	std::map<int, deepVtx*> bottomDoubles;
 	for (auto& uv : undV) {
 		if (oneDeepV.find(uv.first) == oneDeepV.end()) {  // should be doubled
 			float vtx[3];
-			long oldV = uv.second.deepV;
+			int oldV = uv.second.deepV;
 			_mt->getVertexCoordinate(oldV, vtx);
 			uv.second.deepV = _mt->addVertices(1);
 			_mt->setVertexCoordinate(uv.second.deepV, vtx);
@@ -1360,10 +1360,10 @@ void skinCutUndermineTets::undermineSkin() {
 		}
 	}
 	for (auto nt : newTris) {
-		long vb[3], bTx[3], * top = _mt->triangleVertices(nt), *ttx = _mt->triangleTextures(nt);
+		int vb[3], bTx[3], * top = _mt->triangleVertices(nt), *ttx = _mt->triangleTextures(nt);
 		for (int i = 0; i < 3; ++i) {
 			auto dv = undV.find(top[i])->second;  // no need to test find. already done in bed creation
-			long pt = findPrevTexture(ttx[i], dv.deepTx);
+			int pt = findPrevTexture(ttx[i], dv.deepTx);
 			assert(pt > -1);
 			if (i < 2) {
 				vb[1 - i] = dv.deepV;
@@ -1377,10 +1377,10 @@ void skinCutUndermineTets::undermineSkin() {
 		_mt->addTriangle(vb, 4, bTx);
 	}
 	// now fix old undermined tris with a single deep vertex needing to be doubled
-	auto fixEdgeTris = [&](long topT) {  // will also fix its lower successor per incision convention. Textures already assigned by incision process.
-		long* tr = _mt->triangleVertices(topT);
-		long* trBot = _mt->triangleVertices(topT + 1);
-		long v0 = undV[tr[0]].deepV, v1 = undV[tr[1]].deepV;
+	auto fixEdgeTris = [&](int topT) {  // will also fix its lower successor per incision convention. Textures already assigned by incision process.
+		int* tr = _mt->triangleVertices(topT);
+		int* trBot = _mt->triangleVertices(topT + 1);
+		int v0 = undV[tr[0]].deepV, v1 = undV[tr[1]].deepV;
 		trBot[0] = v1;
 		trBot[1] = v0;
 		if (_mt->triAdjs(topT)[1] >> 2 == topT + 1)
@@ -1391,15 +1391,15 @@ void skinCutUndermineTets::undermineSkin() {
 		}
 	};
 	auto fixOldTris = [&](int tri) {
-		long *tr = _mt->triangleVertices(tri);
-		long* ttx = _mt->triangleTextures(tri);
+		int *tr = _mt->triangleVertices(tri);
+		int* ttx = _mt->triangleTextures(tri);
 		for (int i = 0; i < 3; ++i) {
 			auto dd = bottomDoubles.find(tr[i]);
 			if (dd != bottomDoubles.end()) {
 				tr[i] = dd->second->deepV;
 				if (_mt->triangleMaterial(tri) == 4) {  // leave fat textures as they are
 					// texture seams are a terrible pain
-					long pt = findPrevTexture(ttx[i], dd->second->deepTx);
+					int pt = findPrevTexture(ttx[i], dd->second->deepTx);
 					if (pt < 0) {
 						pt = cloneTexture(ttx[i]);
 						dd->second->deepTx.push_back(pt);
@@ -1430,15 +1430,15 @@ void skinCutUndermineTets::clearCurrentUndermine(const int underminedTissue){
 	_prevUndermineTriangle = -1;
 }
 
-void skinCutUndermineTets::showPriorUndermine(long priorTriangle)
+void skinCutUndermineTets::showPriorUndermine(int priorTriangle)
 {
 	int undermineMaterial = _mt->triangleMaterial(priorTriangle);
-	std::deque<long> prevUnd;
+	std::deque<int> prevUnd;
 	prevUnd.push_front(priorTriangle);
 	// non-recursively flood fill this hole with previously undermined top triangles
 	while (!prevUnd.empty()) {
 		for (int j = 0; j < 3; ++j) {
-			long tri = _mt->triAdjs(prevUnd.front())[j] >> 2;
+			int tri = _mt->triAdjs(prevUnd.front())[j] >> 2;
 			if (_trisUnderminedNow[tri] || _mt->triangleMaterial(tri) != undermineMaterial || !std::binary_search(_prevUnd2.begin(), _prevUnd2.end(), tri))
 				continue;
 			_trisUnderminedNow[tri] = true;
@@ -1449,22 +1449,22 @@ void skinCutUndermineTets::showPriorUndermine(long priorTriangle)
 	}
 }
 
-bool skinCutUndermineTets::closeUndermineHoles(std::vector<long> &trianglePath, const int undermineMaterial)
+bool skinCutUndermineTets::closeUndermineHoles(std::vector<int> &trianglePath, const int undermineMaterial)
 {
-	std::list<std::vector<long> > holes;
+	std::list<std::vector<int> > holes;
 	for (auto &t : trianglePath)
 		_trisUnderminedNow[t] = true;
 	// find hole seeds on either side of path
 	auto tunCopy = _trisUnderminedNow;
-	holes.push_back(std::vector<long>());
+	holes.push_back(std::vector<int>());
 	for (auto &t : trianglePath){
 		for (int i = 0; i < 3; ++i) {
-			long tri = _mt->triAdjs(t)[i] >> 2;
+			int tri = _mt->triAdjs(t)[i] >> 2;
 			if (tunCopy[tri] || _mt->triangleMaterial(tri) != undermineMaterial)
 				continue;
 			tunCopy[tri] = true;
 			holes.back().push_back(tri);
-			std::deque<long> holeQ;
+			std::deque<int> holeQ;
 			holeQ.push_front(tri);
 			// non-recursively flood fill this hole
 			while (!holeQ.empty()) {
@@ -1479,7 +1479,7 @@ bool skinCutUndermineTets::closeUndermineHoles(std::vector<long> &trianglePath, 
 				holeQ.pop_front();
 			}
 			if (!holes.back().empty())  // seed grew. start another hole
-				holes.push_back(std::vector<long>());
+				holes.push_back(std::vector<int>());
 		}
 	}
 	if (holes.back().empty())
@@ -1506,10 +1506,10 @@ bool skinCutUndermineTets::closeUndermineHoles(std::vector<long> &trianglePath, 
 	return true;
 }
 
-long skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f &nextConnectedPoint)
+int skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f &nextConnectedPoint)
 {  // find the correct side of incision from usually 2 choices; 1 if part of a moved flap
 	// on 7_21_2021 added T out possibility of finding first point in this incision under construction
-	long minTri = -1;
+	int minTri = -1;
 	float t, dsq, minD = 1e32f, minParam = 1e32f;
 	Vec3f P, dir, closeDir = closePoint - nextConnectedPoint;
 	closeDir.normalize();
@@ -1556,7 +1556,7 @@ long skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f
 	return TinSub(minTri, minParam);
 }
 
-long skinCutUndermineTets::TinSub(const long edgeTriangle, const float edgeParam)
+int skinCutUndermineTets::TinSub(const int edgeTriangle, const float edgeParam)
 {  // from incision convention we know
 	assert(_mt->triangleMaterial(edgeTriangle) == 3 && _mt->triangleMaterial(_mt->triAdjs(edgeTriangle)[0]>>2) == 2);
 	// get this incision box. Use new incision convention.
@@ -1571,8 +1571,8 @@ long skinCutUndermineTets::TinSub(const long edgeTriangle, const float edgeParam
 	if (_mt->triangleMaterial((_mt->triAdjs(edgeTriangle + 1)[0] >> 2)) == 3)  // surface groove, not flap bottom, so must cut other side
 		layers = 2;
 	// if minParam is 0 or 1 no need to split edge, but bottom Tx on this side must be doubled.
-	auto oneVertexT = [&](int vId) ->long {
-		long oldTx, newTx, topV = _mt->triangleVertices(edgeTriangle)[vId], deepV = _mt->triangleVertices(edgeTriangle + 1)[1- vId];
+	auto oneVertexT = [&](int vId) ->int {
+		int oldTx, newTx, topV = _mt->triangleVertices(edgeTriangle)[vId], deepV = _mt->triangleVertices(edgeTriangle + 1)[1- vId];
 		std::vector<materialTriangles::neighborNode> nei;
 		_mt->getNeighbors(deepV, nei);
 		auto nit = nei.begin();
@@ -1582,13 +1582,13 @@ long skinCutUndermineTets::TinSub(const long edgeTriangle, const float edgeParam
 			++nit;
 		}
 		assert(nit != nei.end());
-		long i, * tr = _mt->triangleVertices(nit->triangle);
+		int i, * tr = _mt->triangleVertices(nit->triangle);
 		for (i = 0; i < 3; ++i) {
 			if (tr[i] == deepV)
 				break;
 		}
 		assert(i < 3);
-		long* ttx = _mt->triangleTextures(nit->triangle);
+		int* ttx = _mt->triangleTextures(nit->triangle);
 		oldTx = ttx[i];
 		newTx = cloneTexture(oldTx);
 		while (ttx[i] == oldTx) {
@@ -1609,7 +1609,7 @@ long skinCutUndermineTets::TinSub(const long edgeTriangle, const float edgeParam
 	if (edgeParam > 0.995f)
 		return oneVertexT(1);
 	// must split this incision edge quad
-	long tris[4][2], verts[4][3], tex[4][3], *tr = _mt->triangleVertices(edgeTriangle), * ttx = _mt->triangleTextures(edgeTriangle);
+	int tris[4][2], verts[4][3], tex[4][3], *tr = _mt->triangleVertices(edgeTriangle), * ttx = _mt->triangleTextures(edgeTriangle);
 	tris[0][0] = edgeTriangle;
 	tris[1][0] = edgeTriangle + 1;
 	verts[0][0] = tr[1];
@@ -1625,7 +1625,7 @@ long skinCutUndermineTets::TinSub(const long edgeTriangle, const float edgeParam
 	if (layers > 1) {
 		verts[3][0] = verts[1][2];
 		verts[3][2] = verts[1][0];
-		unsigned long layer1TE = _mt->triAdjs(edgeTriangle + 1)[0];
+		unsigned int layer1TE = _mt->triAdjs(edgeTriangle + 1)[0];
 		tris[1][1] = layer1TE >> 2;
 		tris[0][1] = tris[1][1] - 1;
 		ttx = _mt->triangleTextures(layer1TE >> 2);
@@ -1640,10 +1640,10 @@ long skinCutUndermineTets::TinSub(const long edgeTriangle, const float edgeParam
 	}
 	Vec3f gridLocus, baryWeight;
 	tris[2][0] = _mt->numberOfTriangles() + 1;
-	long tet = parametricMTedgeTet(edgeTriangle, 0, edgeParam, gridLocus);
+	int tet = parametricMTedgeTet(edgeTriangle, 0, edgeParam, gridLocus);
 	_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), baryWeight);
 	// must have tris01 + 1 = tris11 for incision convention
-	unsigned long topTriEdge = _mt->triAdjs(edgeTriangle)[0];
+	unsigned int topTriEdge = _mt->triAdjs(edgeTriangle)[0];
 	verts[0][1] = _mt->splitTriangleEdge(topTriEdge >> 2, topTriEdge & 3, 1.0f - edgeParam);
 	tex[0][1] = _mt->triangleTextures(edgeTriangle)[1];
 	_vbt->_vertexTets.push_back(tet);
@@ -1702,27 +1702,27 @@ long skinCutUndermineTets::TinSub(const long edgeTriangle, const float edgeParam
 	return verts[0][1];
 }
 
-long skinCutUndermineTets::cloneTexture(long textureIndex) {
+int skinCutUndermineTets::cloneTexture(int textureIndex) {
 	float *fp = _mt->getTexture(textureIndex);
 	float tx[2] = { fp[0], fp[1] };
-	long ret = _mt->addTexture();
+	int ret = _mt->addTexture();
 	_mt->setTexture(ret, tx);
 	return ret;
 }
 
-void skinCutUndermineTets::excise(const long triangle)
+void skinCutUndermineTets::excise(const int triangle)
 {
 	if (_mt->triangleMaterial(triangle) == 3 || _mt->triangleMaterial(triangle) == 6)
 		return;
 	bool notUndermined = false;
 	std::vector<bool> xTris;
 	xTris.assign(_mt->numberOfTriangles(), false);
-	std::list<long> rList;
+	std::list<int> rList;
 	rList.push_back(triangle);
 	int nConnected = 1, halfTris = _mt->numberOfTriangles()>>1;
 	xTris[triangle] = true;
 	while (!rList.empty()) {
-		unsigned long *adjs = _mt->triAdjs(rList.front());
+		unsigned int *adjs = _mt->triAdjs(rList.front());
 		rList.pop_front();
 		for (int j = 0; j < 3; ++j) {
 			if (xTris[adjs[j] >> 2] || adjs[j] == 3)
@@ -1745,10 +1745,10 @@ void skinCutUndermineTets::excise(const long triangle)
 			xTris[i] = false;
 		xTris[triangle] = true;
 		while (!rList.empty()) {
-			unsigned long *adjs = _mt->triAdjs(rList.front());
+			unsigned int *adjs = _mt->triAdjs(rList.front());
 			rList.pop_front();
 			for (int j = 0; j < 3; ++j) {
-				long adjTri = adjs[j] >> 2;
+				int adjTri = adjs[j] >> 2;
 				if (adjs[j] == 3 || xTris[adjTri] || _mt->triangleMaterial(adjTri) != 2)
 					continue;
 				xTris[adjTri] = true;
@@ -1765,7 +1765,7 @@ void skinCutUndermineTets::excise(const long triangle)
 	else {
 		for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 			if (xTris[i]) {
-				long *tr = _mt->triangleVertices(i);
+				int *tr = _mt->triangleVertices(i);
 				for (int j = 0; j < 3; ++j) {
 					_vbt->setVertexTetrahedron(tr[j], -1);  // physics marked deleted
 					_mt->_vertexFace[tr[j]] = 0x80000000;  // surface vertex marked deleted
@@ -1779,7 +1779,7 @@ void skinCutUndermineTets::excise(const long triangle)
 		for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 			if (_mt->triangleMaterial(i) != 2)
 				continue;
-			unsigned long *adjs = _mt->triAdjs(i);
+			unsigned int *adjs = _mt->triAdjs(i);
 			for (int j = 0; j < 3; ++j) {
 				assert(adjs[j] != 3);
 				if (_mt->triangleMaterial(adjs[j] >> 2) == 3) {
@@ -1797,7 +1797,7 @@ bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections 
 	std::multimap<int, int> topEdge, bedEdge, bottomEdge;
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		int t, mat = _mt->triangleMaterial(i);
-		unsigned long* adjs = _mt->triAdjs(i);
+		unsigned int* adjs = _mt->triAdjs(i);
 		if (mat == 2) {
 			for (int j = 0; j < 3; ++j) {
 				t = adjs[j] >> 2;
@@ -1887,12 +1887,12 @@ bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections 
 
 	std::set<int> bedEdgeV, botEdgeV;
 	for (auto &fb : fatBed) {
-		long* tr = _mt->triangleVertices(fb.first);
+		int* tr = _mt->triangleVertices(fb.first);
 		bedEdgeV.insert(tr[0]);
 		bedEdgeV.insert(tr[1]);
 	}
 	for (auto& fb : fatBot) {
-		long* tr = _mt->triangleVertices(fb.first);
+		int* tr = _mt->triangleVertices(fb.first);
 		botEdgeV.insert(tr[0]);
 		botEdgeV.insert(tr[1]);
 	}
@@ -1907,11 +1907,11 @@ bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections 
 			std::cout << "Vertex " << iv << " in both bed edge and bottom edge vertex lists\n";  // should be two points at each flap end
 	}
 
-	std::vector<long> ut;
+	std::vector<int> ut;
 	ut.assign(_mt->numberOfTextures(), -1);
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
-		long* tr = _mt->triangleVertices(i);
-		long* ttx = _mt->triangleTextures(i);
+		int* tr = _mt->triangleVertices(i);
+		int* ttx = _mt->triangleTextures(i);
 		for (int j = 0; j < 3; ++j) {
 			if (ut[ttx[j]] < 0)
 				ut[ttx[j]] = tr[j];
@@ -1936,7 +1936,7 @@ bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections 
 				continue;
 			if (triangle > -1 && (mat == 2 || mat == 3))
 				continue;
-			long* t2 = _mt->triangleVertices(i);
+			int* t2 = _mt->triangleVertices(i);
 			bt.Empty_Box();
 			Vec3f tv[3];
 			for (m = 0; m < 3; ++m) {

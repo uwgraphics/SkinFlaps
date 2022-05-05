@@ -95,7 +95,7 @@ void vnBccTetrahedra::barycentricWeightToGridLocus(const bccTetCentroid &tetCent
 		gridLocus += Vec3f((const short(&)[3])*tet[i].data()) * barycentricWeight[i-1];
 }
 
-void vnBccTetrahedra::vertexGridLocus(const long vertex, Vec3f &gridLocus)  // always material coords
+void vnBccTetrahedra::vertexGridLocus(const int vertex, Vec3f &gridLocus)  // always material coords
 {
 	int *tn = _tetNodes[_vertexTets[vertex]].data();
 	float *bw = _barycentricWeights[vertex]._v;
@@ -104,7 +104,7 @@ void vnBccTetrahedra::vertexGridLocus(const long vertex, Vec3f &gridLocus)  // a
 		gridLocus += Vec3f((const short(&)[3])*_nodeGridLoci[tn[i]].data()) * bw[i - 1];
 }
 
-void vnBccTetrahedra::vertexMaterialCoordinate(const long vertex, std::array<float, 3> &matCoord) {
+void vnBccTetrahedra::vertexMaterialCoordinate(const int vertex, std::array<float, 3> &matCoord) {
 	Vec3f gridLocus;
 	vertexGridLocus(vertex, gridLocus);
 	gridLocus *= (float)_unitSpacing;
@@ -189,7 +189,7 @@ int vnBccTetrahedra::faceAdjacentTet(const bccTetCentroid tc, const int face, bc
 	return adjFace;
 }
 
-int vnBccTetrahedra::faceAdjacentTets(const long tet, const int face, std::list<long> &adjTets)
+int vnBccTetrahedra::faceAdjacentTets(const int tet, const int face, std::list<int> &adjTets)
 {  // returns adjacent face index 0-3
 	adjTets.clear();
 	bccTetCentroid tcAdj;
@@ -230,7 +230,7 @@ void vnBccTetrahedra::edgeNodes(const int tet, const int edge, int &n0, int &n1)
 	}
 }
 
-void vnBccTetrahedra::edgeAdjacentTets(const long tet, const int edge, std::list<long> &adjTets)
+void vnBccTetrahedra::edgeAdjacentTets(const int tet, const int edge, std::list<int> &adjTets)
 { // input one of six edges in permutation order 0-123, 1-23, and 2-3
 	adjTets.clear();
 	int n0, n1, *tn = _tetNodes[tet].data();
@@ -439,13 +439,13 @@ void vnBccTetrahedra::edgeAdjacentTets(const long tet, const int edge, std::list
 	}
 }
 
-bool vnBccTetrahedra::decreasingCentroidPath(const long startTet, const long targetTet, std::list<long> &tetPath)
+bool vnBccTetrahedra::decreasingCentroidPath(const int startTet, const int targetTet, std::list<int> &tetPath)
 {  // true if constantly decreasing distance centroid path exists.
 	Vec3f loc, target;
 	bccTetCentroid *tc = &_tetCentroids[targetTet];
 	target.set((float)tc->xyz[0], (float)tc->xyz[1], (float)tc->xyz[2]);
 	target[tc->halfCoordAxis] += 0.5f;
-	long tetNow = startTet;
+	int tetNow = startTet;
 	tc = &_tetCentroids[startTet];
 	loc.set((float)tc->xyz[0], (float)tc->xyz[1], (float)tc->xyz[2]);
 	loc[tc->halfCoordAxis] += 0.5f;
@@ -453,13 +453,13 @@ bool vnBccTetrahedra::decreasingCentroidPath(const long startTet, const long tar
 	bool moved;
 	tetPath.clear();
 	struct branch{
-		long lastTetTried;
-		std::list<long> alternateTets;
+		int lastTetTried;
+		std::list<int> alternateTets;
 	};
 	int bestAdjFace = -1;
 	std::list<branch> branches;
 	while (tetNow != targetTet){
-		std::list<long> adjTets, bestAdjTets;
+		std::list<int> adjTets, bestAdjTets;
 		moved = false;
 		for (int i = 0; i < 4; ++i){
 			int adjFace = faceAdjacentTets(tetNow, i, adjTets);

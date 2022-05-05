@@ -45,7 +45,7 @@ public:
 			}
 			if (!(somePos & someNeg))
 				return;
-			long *tr;
+			int *tr;
 			auto getIntersect = [&](int edge, Vec2d &intrsct) {
 				double denom = abs(planeDist[tr[edge]] - planeDist[tr[(edge + 1) % 3]]);
 				if (denom < 1e-16f) {
@@ -97,7 +97,7 @@ public:
 				do {
 					getIntersect(j, ts.uv);
 					pp->polygons2.back().push_back(ts);
-					unsigned long adj = mt->triAdjs(ts.triangle)[j];
+					unsigned int adj = mt->triAdjs(ts.triangle)[j];
 					if (adj == 3)
 						return;
 					ts.triangle = adj >> 2;
@@ -832,14 +832,14 @@ void vnBccTetCutterTbb::createSurfaceTetNodes()
 {
 	struct sharedTetNode {
 		bool internal;
-		std::set<unsigned long> nSet;
+		std::set<unsigned int> nSet;
 	}stn;
 	stn.internal = false;
 	stn.nSet.clear();
 	typedef tbb::concurrent_unordered_map<std::array<short, 3>, std::list<sharedTetNode>, arrayShort3Hasher> NODESETS;
 	NODESETS surfaceTetNodes((size_t)(_tets.size() * 0.37f));  // generous guess to avoid rehashing
 	auto addTetNodePair = [&](int triVert, std::array<short, 3> &nLoc, vnTetFace *tfp) {
-		unsigned long v0 = tfp->tetNodes[0][triVert], v1 = tfp->tetNodes[1][triVert];
+		unsigned int v0 = tfp->tetNodes[0][triVert], v1 = tfp->tetNodes[1][triVert];
 		assert(v0 < 0xffffffff && v1 < 0xffffffff);  // Should never happen.
 		bool internalNode;
 		if (tfp->interiorNodes & (1 << triVert))
@@ -932,7 +932,7 @@ void vnBccTetCutterTbb::createSurfaceTetNodes()
 	// serial version
 	tbb::parallel_for_each(surfaceTetNodes.begin(), surfaceTetNodes.end(), [&](NODESETS::value_type &stn) {
 		for (auto &sharedNode : stn.second) {
-			long node;
+			int node;
 			if (sharedNode.internal) {
 				auto in = _interiorNodes.find(stn.first);
 				assert(in != _interiorNodes.end());
@@ -940,7 +940,7 @@ void vnBccTetCutterTbb::createSurfaceTetNodes()
 			}
 			else {
 				auto nit = _nodeLoci.push_back(stn.first);
-				node = (long)(nit - _nodeLoci.begin());
+				node = (int)(nit - _nodeLoci.begin());
 			}
 			for (auto &tetNode : sharedNode.nSet) {
 				_tets[tetNode >> 2].tetNodes[tetNode & 3] = node;
@@ -951,18 +951,18 @@ void vnBccTetCutterTbb::createSurfaceTetNodes()
 	// but they can have the same nodes since the tets surrounding them may have connected components.  While these are not strictly an error, they do the user no good
 	// since the tets are incapable of independent movement.  Further these are tets that are sparsely filled with solid.  Combining them provides somewhat more accurate
 	// physics behavior. The next section removes these identical multiplicities.  Can't multithread this section.
-	std::vector<long> tetMap;
+	std::vector<int> tetMap;
 	tetMap.assign(_tets.size(), -1);
 	_vbt->_tetHash.clear();
 	_vbt->_tetHash.reserve(_tets.size());  // Used to remove surface tet duplicates and prevent dups in making center tets.
 	for (int n = _tets.size(), i = 0; i < n; ++i) {
 		for (int j = 0; j < 4; ++j) {
-			long *tn = &_tets[i].tetNodes[j];
+			int *tn = &_tets[i].tetNodes[j];
 			// single interior polygon face tet can have 3 faces unpenetrated leaving one vertex isolated.
 			if (*tn < 0) {
 				std::array<short, 3> locus = _vbt->nodeGridLocation(_tets[i].centroid, j);
 				auto nit = _nodeLoci.push_back(locus);
-				*tn = (long)(nit - _nodeLoci.begin());
+				*tn = (int)(nit - _nodeLoci.begin());
 			}
 		}
 		auto pr = _vbt->_tetHash.equal_range(_tets[i].centroid.ll);
@@ -1178,7 +1178,7 @@ void vnBccTetCutterTbb::collectSurfaceTetCentersFaces()
 				int planeD = _planeSetsTbb[i][j].D;
 				auto tfit = _planeSetsTbb[i][j].vnTetFaces.begin();
 				auto tfEnd = _planeSetsTbb[i][j].vnTetFaces.end();
-				_surfaceTetFaceNumber += (long)_planeSetsTbb[i][j].vnTetFaces.size();
+				_surfaceTetFaceNumber += (int)_planeSetsTbb[i][j].vnTetFaces.size();
 				while (tfit != tfEnd) {
 					// get tet centers on either side of this face
 					bccTetCentroid tc0, tc1;
@@ -1218,22 +1218,22 @@ void vnBccTetCutterTbb::collectSurfaceTetCentersFaces()
 }
 
 
-void vnBccTetCutterTbb::tetConnectedSurface(bccTetCentroid tc, std::set<long> &triangles, std::vector<long> &vertices)
+void vnBccTetCutterTbb::tetConnectedSurface(bccTetCentroid tc, std::set<int> &triangles, std::vector<int> &vertices)
 {  // Inputs tc and surface triangles seed.  Returns all the surface triangles and vertices inside the tet.
-	std::set<long> verts;
-	std::forward_list<long> edgeTris;
+	std::set<int> verts;
+	std::forward_list<int> edgeTris;
 	edgeTris.assign(triangles.begin(), triangles.end());
 	triangles.clear();
 	// input triangles should already contain triangles intersecting tet faces. Must find all new interior triangles using their interior vertices.
-	std::function<void(long)> recurseInteriorTriangles = [&](long triangle){
+	std::function<void(int)> recurseInteriorTriangles = [&](int triangle){
 		if (!triangles.insert(triangle).second)
 			return;
-		long *tr = _mt->triangleVertices(triangle);
+		int *tr = _mt->triangleVertices(triangle);
 		for (int i = 0; i < 3; ++i){
 			if (_vertexTetLoci[tr[i]] == tc){
 				if (!verts.insert(tr[i]).second)
 					continue;
-				unsigned long adj = _mt->triAdjs(triangle)[i];
+				unsigned int adj = _mt->triAdjs(triangle)[i];
 				while (adj >> 2 != triangle){
 					recurseInteriorTriangles(adj >> 2);
 					assert(_mt->triangleVertices(adj >> 2)[((adj & 3) + 1) % 3] == tr[i]);
@@ -1249,12 +1249,12 @@ void vnBccTetCutterTbb::tetConnectedSurface(bccTetCentroid tc, std::set<long> &t
 
 void vnBccTetCutterTbb::createVirtualNodedSurfaceTets()
 {
-	auto createTetAssignNodes = [&](std::list<vnTetFace*> &faces, bccTetCentroid &tc, int &firstAxis, bool firstAxisUp) ->long {
+	auto createTetAssignNodes = [&](std::list<vnTetFace*> &faces, bccTetCentroid &tc, int &firstAxis, bool firstAxisUp) ->int {
 		tetType tt;
 		tt.centroid = tc;
 		tt.tetNodes.fill(-1);
 		auto tit = _tets.push_back(tt);
-		long newTet = (long)(tit - _tets.begin());
+		int newTet = (int)(tit - _tets.begin());
 		newTet <<= 2;
 		for (auto &f : faces) {
 			assert(f->set >> 1 != ((tc.halfCoordAxis + 1) % 3));
@@ -1287,7 +1287,7 @@ void vnBccTetCutterTbb::createVirtualNodedSurfaceTets()
 				}
 			}
 		}
-		return (long)(newTet >> 2);
+		return (int)(newTet >> 2);
 	};
 	_tets.clear();
 	_tets.reserve((size_t)((float)_surfaceTetFaceNumber * 2.4f));  // generous guess
@@ -1306,7 +1306,7 @@ void vnBccTetCutterTbb::createVirtualNodedSurfaceTets()
 				firstAxisUp = (tc.xyz[tc.halfCoordAxis] + tc.xyz[firstAxis]) & 1;
 				// get groups of faces sharing common edge triangle intersects - most common surface tets
 				struct edgeIntersectGroup {
-					std::set<long> edgeTriangles;
+					std::set<int> edgeTriangles;
 					std::list<vnTetFace*> faces;
 				};
 				std::list<edgeIntersectGroup> eig;
@@ -1375,7 +1375,7 @@ void vnBccTetCutterTbb::createVirtualNodedSurfaceTets()
 					st.second.clear();
 					auto eit = eig.begin();
 					while (eit != eig.end()) {
-						std::vector<long> vertices;
+						std::vector<int> vertices;
 						tetConnectedSurface(tc, eit->edgeTriangles, vertices);
 						auto eit2 = eit;
 						++eit2;
@@ -1400,7 +1400,7 @@ void vnBccTetCutterTbb::createVirtualNodedSurfaceTets()
 								++eit2;
 						}
 						// now have agglomerated connected faces in eit
-						long thisTet = createTetAssignNodes(eit->faces, tc, firstAxis, firstAxisUp);
+						int thisTet = createTetAssignNodes(eit->faces, tc, firstAxis, firstAxisUp);
 						// since there are likely multiple tets for this BCC locus, assign this tet to its internal vertices
 						if (recollectInterior) {
 							vertices.clear();
@@ -1437,7 +1437,7 @@ void vnBccTetCutterTbb::fillNonVnTetCenter()
 			lpj[2] += 2;
 			auto nextZ = _interiorNodes.find(lpj);
 			if (nextZ != _interiorNodes.end()) {
-				long nn[4] = { -1, -1, -1, -1 };
+				int nn[4] = { -1, -1, -1, -1 };
 				for (int j = 0; j < 4; ++j) {
 					auto ll = _nodeLoci[i];
 					ll[0] += j & 1 ? 1 : -1;
@@ -1496,7 +1496,7 @@ void vnBccTetCutterTbb::fillNonVnTetCenter()
 			auto in = _interiorNodes.find(lpj);
 			if (in == _interiorNodes.end())
 				continue;
-			long x2 = in->second;
+			int x2 = in->second;
 			tetType tt;
 			tt.centroid.xyz = _nodeLoci[i];
 			tt.centroid.xyz[0] += 1;
@@ -1507,7 +1507,7 @@ void vnBccTetCutterTbb::fillNonVnTetCenter()
 				in = _interiorNodes.find(lpj);
 				if (in == _interiorNodes.end())
 					continue;
-				long y0 = in->second;
+				int y0 = in->second;
 				lpj[1] += 2;
 				in = _interiorNodes.find(lpj);
 				if (in == _interiorNodes.end())

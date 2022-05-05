@@ -34,7 +34,7 @@ public:
 	~sutureTets() {}
 protected:
 	materialTriangles *_tri;
-	long _edges[2], _tris[2], _tetIdx[2];
+	int _edges[2], _tris[2], _tetIdx[2];
 	float _params[2];
 	GLfloat _v1[3];
 	bool _selected;
@@ -57,7 +57,7 @@ public:
 	int deleteSuture(int sutureNumber);  // return 0 is user suture deletion, else autoSuture deletion returning number of the linked suture that generated it.
 	void updateSutureGraphics();
 	int getNumberOfSutures() {return (int)_sutures.size();}
-	void nearestSkinIncisionEdge(const float triUv[2], long &triangle, int &edge, float &param);
+	void nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &edge, float &param);
 	float getSutureSize() {return _sutureSize;}
 	void setSutureSize(float size) {_sutureSize=size;}
 	int firstVertexMaterial(int sutureNumber);

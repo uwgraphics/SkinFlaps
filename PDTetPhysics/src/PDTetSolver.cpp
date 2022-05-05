@@ -15,7 +15,7 @@ const double vol = 1 / 12.;
 }
 
 template<class T, int d>
-int PDTetSolver<T, d>::addSuture(const long(&tets)[2], const T(&barycentricWeights)[2][d], const T stiffness)
+int PDTetSolver<T, d>::addSuture(const int(&tets)[2], const T(&barycentricWeights)[2][d], const T stiffness)
 {
 #if 0
 	typename DeformerType::Suture suture;
@@ -115,7 +115,7 @@ void PDTetSolver<T, d>::reInitializeSolver()
 }
 
 template<class T, int d>
-void PDTetSolver<T, d>::addCollisionProxies(const long * tets, const T (*weights)[d], size_t length)
+void PDTetSolver<T, d>::addCollisionProxies(const int * tets, const T (*weights)[d], size_t length)
 {
 	//m_gridDeformer.m_collisionConstraints.resize(length);
 	// int offset = m_gridDeformer.m_collisionConstraints.size();
@@ -140,7 +140,7 @@ void PDTetSolver<T, d>::addCollisionProxies(const long * tets, const T (*weights
 }
 
 template<class T, int d>
-void PDTetSolver<T, d>::addSelfCollisionElements(const long* tets, size_t length)
+void PDTetSolver<T, d>::addSelfCollisionElements(const int* tets, size_t length)
 {
 	using VectorType = PhysBAM::VECTOR<T, d>;
 	// temporary implementation without any assumption on the collision tets
@@ -374,7 +374,7 @@ void PDTetSolver<T, d>::updateCollisionConstraints()
 }
 
 template<class T, int d>
-void PDTetSolver<T, d>::updateCollisionSutures(const long length, const long* topI, const long* botI, const T* topW, const T* botW, const T* normal)
+void PDTetSolver<T, d>::updateCollisionSutures(const int length, const int* topI, const int* botI, const T* topW, const T* botW, const T* normal)
 {
 	T threshold = T(1e-6);
 	for (auto& c : m_gridDeformer.m_collisionSutures)

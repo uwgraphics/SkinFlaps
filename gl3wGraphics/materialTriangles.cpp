@@ -42,7 +42,7 @@ int materialTriangles::readObjFile(const char *fileName)
 	std::vector<float> tuv;
 	std::string unparsedLine;
 	std::vector<std::string> parsedLine;
-	long vtx[2],vertexNumber=0;
+	int vtx[2],vertexNumber=0;
 	int triangleNumber=0;
 	matTriangle triNow;
 	triNow.material = 0;
@@ -222,7 +222,7 @@ bool materialTriangles::writeObjFile(const char *fileName, const char* materialF
 		{
 			return a.material < b.material;
 		});
-	long smoothNum=1, lastMaterial = -1;
+	int smoothNum=1, lastMaterial = -1;
 	for(size_t n=tris.size(), i=0; i<n; ++i)	{
 		if (tris[i].material > lastMaterial) {  // new material/shading group
 			lastMaterial = tris[i].material;
@@ -249,7 +249,7 @@ void materialTriangles::getVertexCoordinate(unsigned int vertex, float(&xyz)[3])
 bool materialTriangles::getBarycentricProjection(const int triangle, const float(&xyz)[3], float(&uv)[2])
 {	// for position xyz return barycentric uv projection into triangle
 	float *p,*q;
-	long *t = &_tris[triangle].v[0];
+	int *t = &_tris[triangle].v[0];
 	p = vertexCoordinate(t[0]);
 	q = vertexCoordinate(t[1]);
 	Vec3f u,v,xmp;
@@ -271,7 +271,7 @@ bool materialTriangles::getBarycentricProjection(const int triangle, const float
 
 void materialTriangles::getBarycentricTexture(const int triangle, const float (&uv)[2], float (&texture)[2])
 {
-	long *tr = &_tris[triangle].tex[0];
+	int *tr = &_tris[triangle].tex[0];
 	float p=1.0f-uv[0]-uv[1],*t0=getTexture(tr[0]),*t1=getTexture(tr[1]),*t2=getTexture(tr[2]);
 	for(int i=0; i<2; ++i)
 		texture[i] = t0[i]*p + uv[0]*t1[i] + uv[1]*t2[i];
@@ -280,7 +280,7 @@ void materialTriangles::getBarycentricTexture(const int triangle, const float (&
 void materialTriangles::getBarycentricPosition(const int triangle, const float (&uv)[2], float (&xyz)[3])
 {	// for barycentric uv in triangle returns position in xyz
 	float *p,*q;
-	long *t = &_tris[triangle].v[0];
+	int *t = &_tris[triangle].v[0];
 	p = vertexCoordinate(t[0]);
 	q = vertexCoordinate(t[1]);
 	Vec3f u,v,r;
@@ -294,7 +294,7 @@ void materialTriangles::getBarycentricPosition(const int triangle, const float (
 void materialTriangles::getBarycentricNormal(const int triangle, const float(&uv)[2], float(&nrm)[3])
 {
 	// look for uniform surface w triangle
-	long *tr = triangleVertices(triangle);
+	int *tr = triangleVertices(triangle);
 	Vec3f vNorm[3],bNorm;
 	for (int i = 0; i < 3; ++i) 
 		getMeanVertexNormal(tr[i], vNorm[i]._v, _tris[triangle].material);
@@ -314,7 +314,7 @@ int materialTriangles::rayIntersect(const float *rayStart, const float *rayDirec
 		bigAxis =1;
 	if(fabs(rayDirection[2])>fabs(rayDirection[bigAxis]))
 		bigAxis =2;
-	long *tr;
+	int *tr;
 	unsigned int i,tNum=(unsigned int)_tris.size();
 	float *v[3];
 	float minimax[6],tMin,tMax,rMin,rMax;
@@ -392,9 +392,9 @@ int materialTriangles::findAdjacentTriangles(bool forceCompute, bool fullManifol
 	edgeIt ei;
 	edgeSet M;
 	M.clear();
-	long *tnow;
-	unsigned long *adjNow;
-	unsigned long i,j,tcode,numtris=(unsigned long)_tris.size();
+	int *tnow;
+	unsigned int *adjNow;
+	unsigned int i,j,tcode,numtris=(unsigned int)_tris.size();
 	if (numtris < 1)
 		return true;
 	_adjs.clear();
@@ -456,7 +456,7 @@ void materialTriangles::makeVertexToTriangleMap()
 	int i, j, numtris = (int)_tris.size();
 	_vertexFace.clear();
 	if (_xyz.size() < 1){  // allows processing of only topology
-		long maxV = -1;
+		int maxV = -1;
 		for (i = 0; i < numtris; ++i){
 			for (j = 0; j < 3; ++j){
 				if (_tris[i].v[j]>maxV)
@@ -469,7 +469,7 @@ void materialTriangles::makeVertexToTriangleMap()
 	else
 		_vertexFace.assign(_xyz.size() / 3, 0x80000000);	// initially deleted
 	unsigned int vnow;
-	long *tnow;
+	int *tnow;
 	// provide each vertex with a face it is a member of
 	for(i=0; i<numtris; ++i)
 	{
@@ -490,14 +490,14 @@ void materialTriangles::makeVertexToTriangleMap()
 
 void materialTriangles::getNeighbors(unsigned int vertex, std::vector<neighborNode> &neighbors)
 {
-	unsigned long trNum,adj,triStart;
+	unsigned int trNum,adj,triStart;
 	triStart = _vertexFace[vertex];
 	neighbors.clear();
 	if(triStart&0x80000000)	// unconnected vertex
 		return;
 	trNum = triStart&0x3fffffff;
-	unsigned long *adjs;
-	long *tnow = &(_tris[trNum].v[0]);
+	unsigned int *adjs;
+	int *tnow = &(_tris[trNum].v[0]);
 	assert(_tris[trNum].material>-1);	// deleted triangle
 	int j;
 	for(j=0; j<3; ++j)
@@ -603,7 +603,7 @@ float* materialTriangles::getTextureArray(int &numberOfVertices)
 		bigAxis =1;
 	if(fabs(lineDirection[2])>fabs(lineDirection[bigAxis]))
 		bigAxis =2;
-	long *tr,i;
+	int *tr,i;
 	float *v[3];
 	float t,vtx[3],minimax[6],tMin,tMax,rMin,rMax;
 	bool matTest = true;
@@ -729,7 +729,7 @@ int materialTriangles::rayHits(const float *rayStart, const float *rayDirection,
 		bigAxis =1;
 	if(fabs(rayDirection[2])>fabs(rayDirection[bigAxis]))
 		bigAxis =2;
-	long *tr,i;
+	int *tr,i;
 	float *v[3];
 	float t,minimax[6],tMin,tMax,rMin,rMax;
 	for(i=0; i<(int)_tris.size(); ++i)	{
@@ -776,8 +776,8 @@ int materialTriangles::rayHits(const float *rayStart, const float *rayDirection,
 			hits.insert(std::make_pair(t,pT));
 		}
 	}
-	std::set<long> neiSet;
-	auto addVertexNeighbors = [&](long vert) {
+	std::set<int> neiSet;
+	auto addVertexNeighbors = [&](int vert) {
 		std::vector<materialTriangles::neighborNode> nei;
 		getNeighbors(vert, nei);
 		auto nit = nei.begin();
@@ -794,7 +794,7 @@ int materialTriangles::rayHits(const float *rayStart, const float *rayDirection,
 		++hit2;
 		while (hit2 != hits.end()) {
 			if (hit2->first - hit->first < 1e-4f) {
-				unsigned long atr;
+				unsigned int atr;
 				neiSet.clear();
 				if (hit2->second.uv[0] < 1e-5f){
 					if (hit2->second.uv[1] < 1e-5f)
@@ -835,7 +835,7 @@ int materialTriangles::rayHits(const float *rayStart, const float *rayDirection,
 bool materialTriangles::rayTriangleIntersection(const Vec3f &rayOrigin, const Vec3f &rayDirection, const int triangle, float &rayParam, float(&triParam)[2], Vec3f &intersect)
 {
 	Vec3f b, r, U, V, t[3];
-	long *tr = triangleVertices(triangle);
+	int *tr = triangleVertices(triangle);
 	for (int i = 0; i < 3; ++i)
 		getVertexCoordinate(tr[i], t[i]._v);
 	b = rayOrigin - t[0];
@@ -855,7 +855,7 @@ bool materialTriangles::rayTriangleIntersection(const Vec3f &rayOrigin, const Ve
 
 void materialTriangles::getTriangleNormal(int triangle, float (&normal)[3], bool normalized)
 {
-	long *tr = &_tris[triangle].v[0];
+	int *tr = &_tris[triangle].v[0];
 	Vec3f v0,v1,t0((float(&)[3])_xyz[(tr[0]<<1)+tr[0]]),t1((float(&)[3])_xyz[(tr[1]<<1)+tr[1]]),t2((float(&)[3])_xyz[(tr[2]<<1)+tr[2]]);
 	v0 = t1-t0;
 	v1 = t2-t0;
@@ -869,14 +869,14 @@ void materialTriangles::getAreaNormal(const int triangle, const float(&uv)[2], c
 {
 	Vec3f N, T, P;
 	getBarycentricPosition(triangle, uv, P._v);
-	std::set<long> trisDone;
+	std::set<int> trisDone;
 	recurseTriangleNormals(triangle, trisDone, P._v, radius*radius, N._v);
 	if (normalized)
 		N.normalize();
 	normal[0] = N._v[0]; normal[1] = N._v[1]; normal[2] = N._v[2];
 }
 
-void materialTriangles::recurseTriangleNormals(const long triangle, std::set<long> &trisDone, float (&center)[3], float radiusSq, float(&normalSum)[3])
+void materialTriangles::recurseTriangleNormals(const int triangle, std::set<int> &trisDone, float (&center)[3], float radiusSq, float(&normalSum)[3])
 {
 	if (!trisDone.insert(triangle).second)
 		return;
@@ -884,7 +884,7 @@ void materialTriangles::recurseTriangleNormals(const long triangle, std::set<lon
 	getTriangleNormal(triangle, N._v, false);
 	normalSum[0] += N._v[0]; normalSum[1] += N._v[1]; normalSum[2] += N._v[2];
 	for (int i = 0; i < 3; ++i) {
-		unsigned long adj = _adjs[triangle * 3 + i];
+		unsigned int adj = _adjs[triangle * 3 + i];
 		if (adj == 3)
 			continue;
 		getVertexCoordinate(_tris[adj>>2].v[((adj&3)+2)&3], N._v);
@@ -898,10 +898,10 @@ void materialTriangles::getNearestHardEdge(float(&xyz)[3], int &triangle, int &e
 	// If materialLimit>-1 searches only triangle edges whose material==materialLimit.  If materialLimit==-1 searches all.
 	if(!_adjacenciesComputed)
 		findAdjacentTriangles();
-	long *tr,i,j,n=(int)_tris.size();
+	int *tr,i,j,n=(int)_tris.size();
 	Vec3f pt(xyz), e0, e1;
 	float minDsq=1e30f;
-	unsigned long *adj;
+	unsigned int *adj;
 	for(i=0; i<n; ++i)	{
 		tr = &_tris[i].v[0];
 		if (_tris[i].material<0 || (materialLimit>-1 && materialLimit != _tris[i].material))
@@ -964,7 +964,7 @@ void materialTriangles::interpolateEdgeTextures(int triangle, int edge, int newV
 
 	assert(false);
 
-	long *trVerts = &_tris[triangle].tex[0];
+	int *trVerts = &_tris[triangle].tex[0];
 	float *txOut = getTexture(newVert),*txIn;
 	txIn=getTexture(trVerts[edge]);
 	txOut[0]=(1.0f-param)*txIn[0]; txOut[1]=(1.0f-param)*txIn[1];
@@ -982,7 +982,7 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 		int junk = 0;
 
 	assert(0.0f<=parameter && 1.0f>=parameter);
-	long *trVerts = &_tris[triangle].v[0], *trTex = &_tris[triangle].tex[0];
+	int *trVerts = &_tris[triangle].v[0], *trTex = &_tris[triangle].tex[0];
 	if (_tris[triangle].material<0)
 		return -1;
 	int tn,newVert= addVertices(1);
@@ -996,9 +996,9 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 	txp = getTexture(trTex[(edge + 1) % 3]);
 	tx[0] += parameter * txp[0]; tx[1] += parameter * txp[1];
 	setVertexCoordinate(newVert,gv);
-	long tx0 = addTexture();
+	int tx0 = addTexture();
 	setTexture(tx0, tx);
-	long v[3], tex[3];
+	int v[3], tex[3];
 	v[1] = trVerts[(edge + 1) % 3];
 	tex[1] = trTex[(edge + 1) % 3];
 	trVerts[(edge + 1) % 3] = newVert;
@@ -1008,7 +1008,7 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 	tn = addTriangle(v, _tris[triangle].material, tex);	// invalidates old _tris and _adjs pointers
 	if(_adjs[triangle * 3 + edge] == 0x00000003)	{
 		_adjs[tn*3] = 0x00000003;
-		unsigned long adjTE = _adjs[triangle*3+((edge+1)%3)];
+		unsigned int adjTE = _adjs[triangle*3+((edge+1)%3)];
 		_adjs[tn*3+1] = adjTE;
 		if(adjTE != 3)
 			_adjs[(adjTE>>2)*3 + (adjTE&3)] = (tn<<2)+1;
@@ -1019,10 +1019,10 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 		_vertexFace[newVert] = (tn | 0x40000000);
 		return newVert;
 	}
-	long tx1 = tx0;
-	unsigned long* trAdjs = &(_adjs[triangle * 3]);
-	long *trVertsA = &_tris[trAdjs[edge] >> 2].v[0], *trTexA = &_tris[trAdjs[edge]>>2].tex[0];
-	unsigned long* trAdjsA = &(_adjs[(trAdjs[edge] >> 2) * 3]);
+	int tx1 = tx0;
+	unsigned int* trAdjs = &(_adjs[triangle * 3]);
+	int *trVertsA = &_tris[trAdjs[edge] >> 2].v[0], *trTexA = &_tris[trAdjs[edge]>>2].tex[0];
+	unsigned int* trAdjsA = &(_adjs[(trAdjs[edge] >> 2) * 3]);
 	int ea = trAdjs[edge] & 0x00000003, ta = trAdjs[edge] >> 2;
 	if (trTexA[ea] != tex[1] || trTexA[(ea + 1) % 3] != trTex[edge]) {  // texture seam at edge
 		txp = getTexture(trTexA[ea]);
@@ -1032,7 +1032,7 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 		tx1 = addTexture();
 		setTexture(tx1, tx);
 		if (_tris[triangle].material == _tris[ta].material) {
-			long twoTx[2] = { tx0, tx1 };
+			int twoTx[2] = { tx0, tx1 };
 			addOneMaterialTextureSeamVertex(newVert, twoTx);
 		}
 	}
@@ -1042,11 +1042,11 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 	trTexA[(ea + 1) % 3] = tx1;
 	v[0] = newVert;	v[2] = trVertsA[(ea + 2) % 3];
 	tex[0] = tx1;	tex[2] = trTexA[(ea + 2) % 3];
-	long tna = addTriangle(v, _tris[ta].material, tex);	// invalidates old _tris and _adjs pointers
+	int tna = addTriangle(v, _tris[ta].material, tex);	// invalidates old _tris and _adjs pointers
 	trAdjs = &(_adjs[triangle * 3]);
 	trAdjsA = &(_adjs[(trAdjs[edge] >> 2) * 3]);
 	// new adj assignments
-	unsigned long ae1,aa1;
+	unsigned int ae1,aa1;
 	trAdjs[edge] = (tna<<2);
 	trAdjsA[ea] = (tn << 2);
 	ae1 = trAdjs[(edge+1)%3];
@@ -1095,7 +1095,7 @@ int materialTriangles::addNewVertexInMidTriangle(int triangle, const float (&uvP
 		throw(std::logic_error("Trying to add a vertex into a deleted triangle."));
 		return -1;
 	}
-	long* trVerts = triangleVertices(triangle);
+	int* trVerts = triangleVertices(triangle);
 	if(uvParameters[0]<0.0002f && uvParameters[1]<0.0002f)  // COURT check that these 12 lines create a deep point
 		return trVerts[0];
 	if(uvParameters[0]>0.9998f)
@@ -1109,11 +1109,11 @@ int materialTriangles::addNewVertexInMidTriangle(int triangle, const float (&uvP
 	if(uvParameters[0]+uvParameters[1]>0.9998f)
 		return splitTriangleEdge(triangle,1,1.0f-uvParameters[0]);
 	// now we know we will add a vertex and two triangles. These operations invalidate pointers due to possible reallocation.
-	long* trTex = triangleTextures(triangle);
-	long v[3],v0=trVerts[0],v1=trVerts[1],oldVert=trVerts[2], tx0 = trTex[0], tx1 = trTex[1], oldTx = trTex[2];
-	long ret = addVertices(), rTx = addTexture();
-	unsigned long *trAdjs = &_adjs[triangle*3];
-	unsigned long a1=trAdjs[1],a2=trAdjs[2];
+	int* trTex = triangleTextures(triangle);
+	int v[3],v0=trVerts[0],v1=trVerts[1],oldVert=trVerts[2], tx0 = trTex[0], tx1 = trTex[1], oldTx = trTex[2];
+	int ret = addVertices(), rTx = addTexture();
+	unsigned int *trAdjs = &_adjs[triangle*3];
+	unsigned int a1=trAdjs[1],a2=trAdjs[2];
 	float p,*pv = vertexCoordinate(v0);
 	p = 1.0f - uvParameters[0] - uvParameters[1];
 	float vec[3] = {p*pv[0],p*pv[1],p*pv[2]};
@@ -1131,10 +1131,10 @@ int materialTriangles::addNewVertexInMidTriangle(int triangle, const float (&uvP
 	// assign vertices
 	trVerts[2] = ret;
 	trTex[2] = rTx;
-	long t[3];
+	int t[3];
 	v[0] = ret; v[1] = v1; v[2] = oldVert;
 	t[0] = rTx; t[1] = trTex[1]; t[2] = oldTx;
-	long t2, t1 = addTriangle(v, _tris[triangle].material, t);  // invalidates _tris and _adj pointers and iterators
+	int t2, t1 = addTriangle(v, _tris[triangle].material, t);  // invalidates _tris and _adj pointers and iterators
 	trTex = triangleTextures(triangle);
 	v[0] = ret; v[2] = v0; v[1] = oldVert;
 	t[0] = rTx; t[2] = trTex[0]; t[1] = oldTx;
@@ -1168,9 +1168,9 @@ int materialTriangles::addNewVertexInMidTriangle(int triangle, const float (&uvP
 	return ret;
 }
 
-long materialTriangles::addTriangle(long (&vertices)[3], long material)
+int materialTriangles::addTriangle(int (&vertices)[3], int material)
 {
-	long retval = (long)_tris.size();
+	int retval = (int)_tris.size();
 	matTriangle mt;
 	mt.v[0] = vertices[0]; mt.v[1] = vertices[1]; mt.v[2] = vertices[2];
 	mt.tex[0] = 0;  mt.tex[1] = 0; mt.tex[2] = 0;
@@ -1184,9 +1184,9 @@ long materialTriangles::addTriangle(long (&vertices)[3], long material)
 	return retval;
 }
 
-long materialTriangles::addTriangle(const long(&vertices)[3], const long material,  const long(&textures)[3])
+int materialTriangles::addTriangle(const int(&vertices)[3], const int material,  const int(&textures)[3])
 {
-	long retval = (long)_tris.size();
+	int retval = (int)_tris.size();
 	matTriangle mt;
 	mt.v[0] = vertices[0]; mt.v[1] = vertices[1]; mt.v[2] = vertices[2];
 	mt.tex[0] = textures[0];  mt.tex[1] = textures[1]; mt.tex[2] = textures[2];
@@ -1201,9 +1201,9 @@ long materialTriangles::addTriangle(const long(&vertices)[3], const long materia
 	return retval;
 }
 
-long materialTriangles::addVertices(int numberToAdd)
+int materialTriangles::addVertices(int numberToAdd)
 {
-	long retval = (int)_xyz.size() / 3;
+	int retval = (int)_xyz.size() / 3;
 	for(unsigned int i=0; i<(unsigned)numberToAdd; ++i)
 	{
 		_xyz.push_back(0.0f);
@@ -1217,9 +1217,9 @@ long materialTriangles::addVertices(int numberToAdd)
 	return retval;
 }
 
-long materialTriangles::cloneVertex(long sourceVertex)
+int materialTriangles::cloneVertex(int sourceVertex)
 {  // makes a new vertex which is a copy of sourceVertex
-	long retval = (int)_xyz.size() / 3;
+	int retval = (int)_xyz.size() / 3;
 	float V[3];
 	getVertexCoordinate(sourceVertex, V);
 	_xyz.push_back(V[0]);
@@ -1247,7 +1247,7 @@ void materialTriangles::cleanAndPack()
 	int i,n=(int)_tris.size();
 	std::vector<matTriangle> tmpTr;
 	tmpTr.reserve(n);
-	long *tr;
+	int *tr;
 	for(i=0; i<n; ++i)	{
 		if(_tris[i].material<0)	// deleted triangle
 			continue;
@@ -1394,7 +1394,7 @@ int materialTriangles::isManifoldConsistent()
 	return handles2>>1;
 }
 
-void materialTriangles::getMeanVertexNormal(int vertex, float(&normal)[3], long onlyMaterial)
+void materialTriangles::getMeanVertexNormal(int vertex, float(&normal)[3], int onlyMaterial)
 {  // if onlyMaterial>-1 only use neighbor triangles with material == onlyMaterial
 	if(!_adjacenciesComputed)	findAdjacentTriangles();
 	std::vector<neighborNode> nei;
@@ -1405,7 +1405,7 @@ void materialTriangles::getMeanVertexNormal(int vertex, float(&normal)[3], long 
 	std::vector<neighborNode>::iterator nit=nei.begin();
 	Vec3f last,now,p,mean(0.0f,0.0f,0.0f);
 	getVertexCoordinate(vertex,p._v);
-	long lastV;
+	int lastV;
 	if(nei.front().triangle<0) {
 		lastV = nei.front().vertex;
 		++nit;
@@ -1433,7 +1433,7 @@ bool materialTriangles::deleteEdge(int triangle, int edge)
 
 	if (_tris[triangle].material < 0)
 		return false;
-	unsigned long adj, *vf, *vf1, ae, ae1, ae2;
+	unsigned int adj, *vf, *vf1, ae, ae1, ae2;
 	ae1 = _adjs[triangle * 3 + ((edge + 1) % 3)];
 	ae2 = _adjs[triangle * 3 + ((edge + 2) % 3)];
 	if (ae1 != 3 && ae2 != 3 && triangleVertices(ae1 >> 2)[((ae1 & 3) + 2) % 3] == triangleVertices(ae2 >> 2)[((ae2 & 3) + 2) % 3])
@@ -1446,7 +1446,7 @@ bool materialTriangles::deleteEdge(int triangle, int edge)
 		if (ae1 != 3 && ae2 != 3 && triangleVertices(ae1 >> 2)[((ae1 & 3) + 2) % 3] == triangleVertices(ae2 >> 2)[((ae2 & 3) + 2) % 3])
 			return false;  // would produce an illegal surface
 	}
-	long ve, ve1;  // variables starting with v are vertices, t are triangles, vf are vertexFace, a are adjacencies
+	int ve, ve1;  // variables starting with v are vertices, t are triangles, vf are vertexFace, a are adjacencies
 	ve = _tris[triangle].v[edge];
 	ve1 = _tris[triangle].v[(edge + 1) % 3];
 	vf = &_vertexFace[ve];
@@ -1521,7 +1521,7 @@ uv0[0] *= 0.5f;  uv0[1] *= 0.5f;
 //	setVertexTexture(ve, uv0);
 auto delOneTri = [&](int tH, int eH) {
 	_tris[tH].material = -1;  // mark deleted
-	unsigned long* vf2;
+	unsigned int* vf2;
 	vf2 = &_vertexFace[_tris[tH].v[(eH + 2) % 3]];
 	ae1 = _adjs[(tH << 1) + tH + ((eH + 1) % 3)];
 	ae2 = _adjs[(tH << 1) + tH + ((eH + 2) % 3)];
@@ -1557,8 +1557,8 @@ else {
 }
 assert(!(*vf & 0x80000000));
 int trNum = *vf & 0x3fffffff;
-unsigned long stop;
-long* tnow = &(_tris[trNum].v[0]);
+unsigned int stop;
+int* tnow = &(_tris[trNum].v[0]);
 assert(_tris[trNum].material > -1);
 int j;
 for (j = 0; j < 3; ++j)
@@ -1592,9 +1592,9 @@ bool materialTriangles::hasSelfIntersection(const bool isClosed, std::vector<std
 	for (int n = numberOfTriangles(), i = 0; i < n; ++i) {
 		if (triangleMaterial(i) < 0)
 			continue;
-		long* tr = triangleVertices(i);
+		int* tr = triangleVertices(i);
 		Vec3f e[2], t[3];
-		long e0, e1;
+		int e0, e1;
 		for (int j = 0; j < 3; ++j) {
 			if (isClosed && tr[j] > tr[(j + 1) % 3])  // only need to do this edge once
 				continue;
@@ -1609,7 +1609,7 @@ bool materialTriangles::hasSelfIntersection(const bool isClosed, std::vector<std
 			for (int m, k = 0; k < n; ++k) {
 				if (k == i || triangleMaterial(k) < 0)
 					continue;
-				long* t2 = triangleVertices(k);
+				int* t2 = triangleVertices(k);
 				tb.Empty_Box();
 				for (m = 0; m < 3; ++m){
 					if (t2[m] == e0 || t2[m] == e1)
@@ -1645,9 +1645,9 @@ bool materialTriangles::hasSelfIntersection(const bool isClosed, std::vector<std
 
 bool materialTriangles::topoCheck()
 {
-    std::vector<unsigned long> adjs;	// low 2 bits are the edge number of the adjacent triangle.
+    std::vector<unsigned int> adjs;	// low 2 bits are the edge number of the adjacent triangle.
 	adjs.assign(_adjs.begin(),_adjs.end());
-	std::vector<unsigned long> vertexFace;
+	std::vector<unsigned int> vertexFace;
 	vertexFace.assign(_vertexFace.begin(),_vertexFace.end());
 	_adjacenciesComputed=false; // force computation
 	findAdjacentTriangles();
@@ -1664,7 +1664,7 @@ bool materialTriangles::topoCheck()
 	std::vector<materialTriangles::neighborNode>::iterator nit;
 	n = (int)vertexFace.size();
 	for(i=0; i<n; ++i) {
-		unsigned long vo,vf = vertexFace[i];
+		unsigned int vo,vf = vertexFace[i];
 		vo = _vertexFace[i];
 		if(vo>0xfffffffe || vf>0xfffffffe) {
 			if(vo!=vf) // should be stranded vertex
@@ -1706,7 +1706,7 @@ bool materialTriangles::inside(const float(&xyz)[3])
 {  // if a closed manifold surface, returns if xyz is inside
 	std::vector<unsigned char> trDone;
 	int nI=0,n = (int)_tris.size();
-	long *t;
+	int *t;
 	trDone.assign(n, 0x00);
 	float *p, *q, *r,U[3],V[3],X[2],u,v,c;
 	for (int i = 0; i < n; ++i) {
@@ -1768,7 +1768,7 @@ bool materialTriangles::inside(const float(&xyz)[3])
 void materialTriangles::partitionTriangleMaterials()
 {  // returns the indices into triangle array of the next element beyond each key first material
 	std::vector<matTriangle>::iterator prev,sit = _tris.begin(), eit = _tris.end();
-	long matNow = 0;
+	int matNow = 0;
 	prev = sit;
 	while (true) {
 		sit = std::stable_partition(sit, eit, [&matNow](matTriangle &mt){ return mt.material < matNow; });
@@ -1781,7 +1781,7 @@ void materialTriangles::partitionTriangleMaterials()
 	_adjacenciesComputed = false;
 }
 
-/* long materialTriangles::getMaterialEnd(const long material)
+/* int materialTriangles::getMaterialEnd(const int material)
 { // after partitionMaterials(), input material and will return the index of one past the last triangle of this material. Return 0 means no material found. Return -1 means material requested exceeds maximum material.
 	if (material>_matEnds.rbegin()->first)
 		return -1L;
@@ -1791,14 +1791,14 @@ void materialTriangles::partitionTriangleMaterials()
 	return mit->second;
 } */
 
-void materialTriangles::closestPoint(const float(&xyz)[3], long &triangle, float(&uv)[2], long onlyMaterial)  // closest barycentric position to point xyz
+void materialTriangles::closestPoint(const float(&xyz)[3], int &triangle, float(&uv)[2], int onlyMaterial)  // closest barycentric position to point xyz
 {
 	Vec3f P, Q, R;
 	float t, minT, uvNow[2], dsq, minDsq = 1e32f;
-	unsigned long bestE;
+	unsigned int bestE;
 	P.set(xyz);
 	// examine only unique edges
-	unsigned long edge,adj;
+	unsigned int edge,adj;
 	for (int n = (int)_tris.size(), j, i = 0; i < n; ++i) {
 		if (_tris[i].material < 0 || (onlyMaterial > -1 && _tris[i].material != onlyMaterial))
 			continue;
@@ -1867,11 +1867,11 @@ void materialTriangles::closestPoint(const float(&xyz)[3], long &triangle, float
 	}
 }
 
-bool materialTriangles::textureFind(const float(&txIn)[2], const long materialIn, int &triangle, float(&uv)[2])
+bool materialTriangles::textureFind(const float(&txIn)[2], const int materialIn, int &triangle, float(&uv)[2])
 {  // finds the triangle in mt and its uv parametric location closest to texture txIn and material materialIn.
 	// if direct hit, returns true. If no direct hit will find closest and return false;
 	float dist2 = 1e32f, uvBest[2], uvNow[2], txNow[2];  // tBox[4], *tx,
-	long *tv, bestTri;
+	int *tv, bestTri;
 	bool doDist2;
 	for (int j, n = numberOfTriangles(), i = 0; i < n; ++i) {
 		if (materialIn>-1 && _tris[i].material != materialIn)
@@ -1997,7 +1997,7 @@ void materialTriangles::clear()
 
 bool materialTriangles::checkTopology()
 {  // debugging routine to check veracity of current topological arrays
-	std::vector<unsigned long> adjs, vf;	// low 2 bits are the edge number of the adjacent triangle.
+	std::vector<unsigned int> adjs, vf;	// low 2 bits are the edge number of the adjacent triangle.
 	adjs.assign(_adjs.begin(), _adjs.end());
 	vf.assign(_vertexFace.begin(), _vertexFace.end());
 	if (_vertexFace.size() != _xyz.size() / 3)
@@ -2041,26 +2041,26 @@ bool materialTriangles::checkTopology()
 	return true;
 }
 
-void materialTriangles::correctLocalNeighborArrays(std::vector<long> &changedTriangles)
+void materialTriangles::correctLocalNeighborArrays(std::vector<int> &changedTriangles)
 {  // does local patching of adjacency and vertexFace arrays for input changedTriangles and the triangles adjacent to them.
 	// assumes adjacencies have been computed before triangle vertices were changed.
-	std::map<std::pair<long, long>, unsigned long> M;
-	std::vector<unsigned long> TE;
+	std::map<std::pair<int, int>, unsigned int> M;
+	std::vector<unsigned int> TE;
 	TE.reserve(changedTriangles.size() * 3);
 	std::sort(changedTriangles.begin(), changedTriangles.end());
-	std::set<long> verts;
+	std::set<int> verts;
 	for (auto ct : changedTriangles){
 		if (_tris[ct].material < 0)
 			continue;
 		for (int i = 0; i < 3; ++i){
-			long v = _tris[ct].v[i];
+			int v = _tris[ct].v[i];
 			_vertexFace[v] = ct;
 			verts.insert(v);
-			unsigned long adj = _adjs[ct * 3 + i];
+			unsigned int adj = _adjs[ct * 3 + i];
 			if (adj == 3)
 				continue;
 			M.insert(std::make_pair(std::make_pair(_tris[ct].v[(i + 1) % 3], _tris[ct].v[i]), (ct << 2) + i));
-			if (!std::binary_search(changedTriangles.begin(), changedTriangles.end(), (long)(adj>>2)))
+			if (!std::binary_search(changedTriangles.begin(), changedTriangles.end(), (int)(adj>>2)))
 				TE.push_back(adj);
 			else
 				_adjs[ct * 3 + i] = 3;
@@ -2089,7 +2089,7 @@ void materialTriangles::correctLocalNeighborArrays(std::vector<long> &changedTri
 	}
 	assert(M.empty());
 	for (auto v : verts){
-		unsigned long teStart, te, te2;
+		unsigned int teStart, te, te2;
 		for (int i = 0; i < 3; ++i){
 			if (_tris[_vertexFace[v]].v[i] == v){
 				teStart = (_vertexFace[v] << 2) + i;
@@ -2113,11 +2113,11 @@ void materialTriangles::collectCreateTextureSeams() {
 	// giving texture priority to material 2 then 7. Material 1 is unimportant as these triangles colored blue and are unselectable.
 	findAdjacentTriangles(true, false);
 	struct txVert {
-		long material;
-		long txId;
+		int material;
+		int txId;
 	}tv;
-	std::unordered_multimap<long, txVert> multiMatVerts;  // index is position index and material of positions with multiple materials, second is texture index
-	auto uniqueMtxAdd = [&](long& v, txVert& tx) {
+	std::unordered_multimap<int, txVert> multiMatVerts;  // index is position index and material of positions with multiple materials, second is texture index
+	auto uniqueMtxAdd = [&](int& v, txVert& tx) {
 		auto pr = multiMatVerts.equal_range(v);
 		if (pr.first == multiMatVerts.end())
 			multiMatVerts.insert(std::make_pair(v, tx));
@@ -2132,7 +2132,7 @@ void materialTriangles::collectCreateTextureSeams() {
 				multiMatVerts.insert(std::make_pair(v, tx));
 		}
 	};
-	auto uniqueAddTx = [&](long& v, long& tx) {
+	auto uniqueAddTx = [&](int& v, int& tx) {
 		auto pr = _oneMaterialSeams.equal_range(v);
 		if (pr.first == _oneMaterialSeams.end())
 			_oneMaterialSeams.insert(std::make_pair(v, tx));
@@ -2149,12 +2149,12 @@ void materialTriangles::collectCreateTextureSeams() {
 	};
 	for (int n = numberOfTriangles(), i = 0; i < n; ++i) {
 		int mati = triangleMaterial(i);
-		unsigned long* adjs = triAdjs(i);
-		long* tr = triangleVertices(i);
-		long* tx = triangleTextures(i);
+		unsigned int* adjs = triAdjs(i);
+		int* tr = triangleVertices(i);
+		int* tx = triangleTextures(i);
 		for (int j = 0; j < 3; ++j) {
 			int matj = triangleMaterial(adjs[j] >> 2);
-			long* adjTx = triangleTextures(adjs[j] >> 2);
+			int* adjTx = triangleTextures(adjs[j] >> 2);
 			if (mati > matj) {  // only need to do this edge once
 				tv.material = mati;
 				tv.txId = tx[j];
@@ -2164,7 +2164,7 @@ void materialTriangles::collectCreateTextureSeams() {
 				uniqueMtxAdd(tr[j], tv);
 			}
 			else if (mati == matj) {  // only need to do one vertex since other side will do the other
-				long vtxA = adjTx[((adjs[j] & 3) + 1) % 3];
+				int vtxA = adjTx[((adjs[j] & 3) + 1) % 3];
 				if (tx[j] != vtxA) {
 					uniqueAddTx(tr[j], tx[j]);
 					uniqueAddTx(tr[j], vtxA);
@@ -2199,8 +2199,8 @@ void materialTriangles::collectCreateTextureSeams() {
 					getNeighbors(source->first, nei);
 				for (auto& n : nei) {
 					if (n.triangle > -1 && triangleMaterial(n.triangle) == start->second.material) {
-						long* trv = triangleVertices(n.triangle);
-						long* ttx = triangleTextures(n.triangle);
+						int* trv = triangleVertices(n.triangle);
+						int* ttx = triangleTextures(n.triangle);
 						for (int j = 0; j < 3; ++j) {
 							if (trv[j] == source->first) {
 								ttx[j] = start->second.txId;
@@ -2215,11 +2215,11 @@ void materialTriangles::collectCreateTextureSeams() {
 	}
 }
 
-void materialTriangles::addOneMaterialTextureSeamVertex(long vertex, long(&textures)[2]) {
+void materialTriangles::addOneMaterialTextureSeamVertex(int vertex, int(&textures)[2]) {
 
 	if (vertex == 8151)
 		std::cout << "In addTexSeam at 8151";
-	std::vector<long> newTx;
+	std::vector<int> newTx;
 	newTx.reserve(2);
 	auto pr = _oneMaterialSeams.equal_range(vertex);
 	if (pr.first == _oneMaterialSeams.end()) {

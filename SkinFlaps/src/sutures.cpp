@@ -84,7 +84,7 @@ void sutures::updateSutureGraphics()
 		GLfloat *v,*v2;
 		float len;
 		Vec3f v0,v1,p,dv;
-		long *tri;
+		int *tri;
 		tri = sut->_tri->triangleVertices(sut->_tris[0]);
 		v = sut->_tri->vertexCoordinate(tri[sut->_edges[0]]);
 		v2 = sut->_tri->vertexCoordinate(tri[(sut->_edges[0]+1)%3]);
@@ -137,7 +137,7 @@ void sutures::setSecondVertexPosition(int sutureNumber, float *position)
 	GLfloat *v,*v2;
 	float p[3],dv[3],len;
 	Vec3f v0;
-	long *tri = sut->_tri->triangleVertices(sut->_tris[0]);
+	int *tri = sut->_tri->triangleVertices(sut->_tris[0]);
 	v = sut->_tri->vertexCoordinate(tri[sut->_edges[0]]);
 	v2 = sut->_tri->vertexCoordinate(tri[(sut->_edges[0]+1)%3]);
 	for(int i=0; i<3; ++i)
@@ -275,7 +275,7 @@ int sutures::addSuture(materialTriangles *tri, int triangle0, int edge0, float p
 	GLfloat *mm = sh->getModelViewMatrix();
 	loadIdentity4x4(mm);
 	hpr.first->second._selected = true;
-	long *t = tri->triangleVertices(triangle0);
+	int *t = tri->triangleVertices(triangle0);
 	GLfloat *v0,*v1,v[3];
 	v0 = tri->vertexCoordinate(t[edge0]);
 	v1 = tri->vertexCoordinate(t[(edge0+1)%3]);
@@ -358,11 +358,11 @@ void sutures::laySutureLine(int suture2)
 	materialTriangles *mt = s0._tri;
 	Vec3f e0, e1;
 	std::vector<float> edgeLengths0, edgeLengths1;
-	std::vector<unsigned long> triEdges0, triEdges1;
-	unsigned long te, mat;
+	std::vector<unsigned int> triEdges0, triEdges1;
+	unsigned int te, mat;
 	float len0, len1, lenMax = 15.0f;
 	// due to vagaries in physics, do in material coords
-	auto getIncisionSpan = [&](bool forward, int side, std::vector<unsigned long> &tev, std::vector<float> &lens, float &totalLen) {
+	auto getIncisionSpan = [&](bool forward, int side, std::vector<unsigned int> &tev, std::vector<float> &lens, float &totalLen) {
 		totalLen = 0;
 		tev.clear();
 		lens.clear();
@@ -482,28 +482,28 @@ void sutures::laySutureLine(int suture2)
 	_ptp->initializePhysics();
 }
 
-void sutures::nearestSkinIncisionEdge(const float triUv[2], long &triangle, int &edge, float &param)
+void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &edge, float &param)
 {  // problem with this routine is that, in the absence of collisions, overlap can occur so simple nearest spatial incision point won't work with suture always finding same side of skin edge.
 	// This overlap impossible in material coords, but since opposing incision edges are identical must disambiguate with incision edge normal.
 	// Once closest material coords edge found, do edge neighbor search in spatial coords for correction.
 	materialTriangles *mt = _dc->getMaterialTriangles();
 	Vec3f gridLocus, startLocus;
-	long *tr = mt->triangleVertices(triangle);
+	int *tr = mt->triangleVertices(triangle);
 	_vbt->vertexGridLocus(tr[0], gridLocus);
 	startLocus = gridLocus * (1.0f - triUv[0] - triUv[1]);
 	for(int i = 0; i < 2; ++i) {
 		_vbt->vertexGridLocus(tr[i+1], gridLocus);
 		startLocus += gridLocus * triUv[i];
 	}
-	unsigned long bestTe=0;
+	unsigned int bestTe=0;
 	float bestParam=0.0f, minDist = FLT_MAX;
 	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (mt->triangleMaterial(i) != 3)
 			continue;
-		unsigned long adj = mt->triAdjs(i)[0];
+		unsigned int adj = mt->triAdjs(i)[0];
 		if (mt->triangleMaterial(adj >> 2) != 2)
 			continue;
-		long *tr = mt->triangleVertices(i);
+		int *tr = mt->triangleVertices(i);
 		Vec3f v0, v1;
 		_vbt->vertexGridLocus(tr[0], v0);
 		_vbt->vertexGridLocus(tr[1], v1);

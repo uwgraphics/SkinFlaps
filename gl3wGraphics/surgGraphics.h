@@ -68,7 +68,7 @@ private:
 	std::vector<GLfloat> _xyz1;
 	std::vector<GLfloat> _uv;
 	std::vector<int> _uvPos;
-	const std::vector<long> *_undermineTriangles;  // if not NULL shade these with material 10
+	const std::vector<int> *_undermineTriangles;  // if not NULL shade these with material 10
 	std::vector<GLuint> _incisionLines;  // indexes into incision lines. 0xffffffff is primitive restart index.
 	incisionLines _incis;
 	void getSkinIncisionLines();
