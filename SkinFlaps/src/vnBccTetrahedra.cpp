@@ -97,7 +97,7 @@ void vnBccTetrahedra::barycentricWeightToGridLocus(const bccTetCentroid &tetCent
 
 void vnBccTetrahedra::vertexGridLocus(const long vertex, Vec3f &gridLocus)  // always material coords
 {
-	long *tn = _tetNodes[_vertexTets[vertex]].data();
+	int *tn = _tetNodes[_vertexTets[vertex]].data();
 	float *bw = _barycentricWeights[vertex]._v;
 	gridLocus = Vec3f((const short(&)[3])*_nodeGridLoci[tn[0]].data()) * (1.0f - *bw - bw[1] - bw[2]);
 	for (int i = 1; i < 4; ++i)
@@ -194,8 +194,8 @@ int vnBccTetrahedra::faceAdjacentTets(const long tet, const int face, std::list<
 	adjTets.clear();
 	bccTetCentroid tcAdj;
 	int adjFace = faceAdjacentTet(_tetCentroids[tet], face, tcAdj);
-	const long *tn = tetNodes(tet);
-	std::set<long> faceNodes;
+	const int *tn = tetNodes(tet);
+	std::set<int> faceNodes;
 	for (int i = 0; i < 3; ++i)
 		faceNodes.insert(tn[(face + i) & 3]);
 	auto tr = _tetHash.equal_range(tcAdj.ll);
@@ -213,9 +213,9 @@ int vnBccTetrahedra::faceAdjacentTets(const long tet, const int face, std::list<
 	return adjFace;
 }
 
-void vnBccTetrahedra::edgeNodes(const long tet, const int edge, long &n0, long &n1)
+void vnBccTetrahedra::edgeNodes(const int tet, const int edge, int &n0, int &n1)
 { // input one of six edges in permutation order 0-123, 1-23, and 2-3
-	long *tn = _tetNodes[tet].data();
+	int *tn = _tetNodes[tet].data();
 	if (edge < 3) {
 		n0 = tn[0];
 		n1 = tn[edge + 1];
@@ -233,7 +233,7 @@ void vnBccTetrahedra::edgeNodes(const long tet, const int edge, long &n0, long &
 void vnBccTetrahedra::edgeAdjacentTets(const long tet, const int edge, std::list<long> &adjTets)
 { // input one of six edges in permutation order 0-123, 1-23, and 2-3
 	adjTets.clear();
-	long n0, n1, *tn = _tetNodes[tet].data();
+	int n0, n1, *tn = _tetNodes[tet].data();
 	edgeNodes(tet, edge, n0, n1);
 /*	if (edge < 3){
 		n0 = tn[0];

@@ -54,15 +54,15 @@ public:
 	inline const int* tetNodes(int tetIndex){ return _tetNodes[tetIndex].data(); }
 	const std::vector<std::array<int, 4> >& getTetNodeArray() { return _tetNodes; }
 	inline const bccTetCentroid* tetCentroid(int tet){ return &_tetCentroids[tet]; }
-	inline void centroidTets(const bccTetCentroid &tc, std::list<long> &tets){ auto pr = _tetHash.equal_range(tc.ll); tets.clear(); while (pr.first != pr.second){ tets.push_back(pr.first->second); ++pr.first; } }
-	inline const long getVertexTetrahedron(const int vertex) const {return _vertexTets[vertex];}
-	inline void setVertexTetrahedron(const int vertex, const long newTetIndex){ _vertexTets[vertex] = newTetIndex; }
+	inline void centroidTets(const bccTetCentroid &tc, std::list<int> &tets){ auto pr = _tetHash.equal_range(tc.ll); tets.clear(); while (pr.first != pr.second){ tets.push_back(pr.first->second); ++pr.first; } }
+	inline const int getVertexTetrahedron(const int vertex) const {return _vertexTets[vertex];}
+	inline void setVertexTetrahedron(const int vertex, const int newTetIndex){ _vertexTets[vertex] = newTetIndex; }
 	inline const Vec3f* getVertexWeight(const int vertex) const { return &_barycentricWeights[vertex]; }
 	inline const Vec3f &getMinimumCorner() { return _minCorner; }
 	inline const Vec3f &getMaximumCorner() { return _maxCorner; }
-	inline const Vec3f &nodeSpatialCoordinate(const long nodeIndex) { return _nodeSpatialCoords[nodeIndex]; }
-	inline const Vec3f nodeMaterialCoordinate(const long nodeIndex) { return _minCorner + Vec3f(reinterpret_cast<short (&)[3]>(*_nodeGridLoci[nodeIndex].data())) * (float) _unitSpacing; }
-	inline float *nodeSpatialCoordinatePtr(const long nodeIndex) { return _nodeSpatialCoords[nodeIndex]._v; }
+	inline const Vec3f &nodeSpatialCoordinate(const int nodeIndex) { return _nodeSpatialCoords[nodeIndex]; }
+	inline const Vec3f nodeMaterialCoordinate(const int nodeIndex) { return _minCorner + Vec3f(reinterpret_cast<short (&)[3]>(*_nodeGridLoci[nodeIndex].data())) * (float) _unitSpacing; }
+	inline float *nodeSpatialCoordinatePtr(const int nodeIndex) { return _nodeSpatialCoords[nodeIndex]._v; }
 	inline double getTetUnitSize() { return _unitSpacing; }
 	inline double getTetUnitSizeInv() { return _unitSpacingInv; }
 	// next set of routines do transformations from one coordinate system to another
@@ -70,11 +70,11 @@ public:
 	void gridLocusToTetCentroid(const Vec3f &gridLocus, bccTetCentroid &tetCentroid);
 	void gridLocusToBarycentricWeight(const Vec3f &gridLocus, const bccTetCentroid &tetCentroid, Vec3f &barycentricWeight);
 	void barycentricWeightToGridLocus(const bccTetCentroid &tetCentroid, const Vec3f &barycentricWeight, Vec3f &gridLocus);
-	void vertexGridLocus(const long vertex, Vec3f &gridLocus);  // always material coords
-	void vertexMaterialCoordinate(const long vertex, std::array<float, 3> &matCoord);
+	void vertexGridLocus(const int vertex, Vec3f &gridLocus);  // always material coords
+	void vertexMaterialCoordinate(const int vertex, std::array<float, 3> &matCoord);
 	int firstInteriorTet() { return _firstInteriorTet; }  // all tets before this are surface tets possibly virtual noded and with out unique centroid. Here on are unique interior tets.
 
-	inline void getBarycentricTetPosition(const long tet, const Vec3f &barycentricWeight, Vec3f &position)
+	inline void getBarycentricTetPosition(const int tet, const Vec3f &barycentricWeight, Vec3f &position)
 	{
 		const int *n = _tetNodes[tet].data();
 		position.set(_nodeSpatialCoords[n[0]] * (1.0f - barycentricWeight.X - barycentricWeight.Y - barycentricWeight.Z));
@@ -82,7 +82,7 @@ public:
 			position += _nodeSpatialCoords[n[i]] * barycentricWeight[i - 1];
 	}
 
-	inline void vertexBarycentricPosition(const long vertex, Vec3f &position)
+	inline void vertexBarycentricPosition(const int vertex, Vec3f &position)
 	{
 		const int *n = _tetNodes[_vertexTets[vertex]].data();
 		float *bw = _barycentricWeights[vertex]._v;
@@ -96,22 +96,22 @@ public:
 	const Vec3f* getNodeSpatialCoordPointer() { if (_nodeSpatialCoords == nullptr) throw(std::logic_error("Trying to access nodeSpatialCoordinate vector before it has been allocated andassigned")); return _nodeSpatialCoords; }
 	// next set of routines traverse topological paths through the bcc data
 	int faceAdjacentTet(const bccTetCentroid tc, const int face, bccTetCentroid& tcAdj);  // fundamental code for all topological path routines. Returns adjacent face # and adjacent tet centroid.
-	int faceAdjacentTets(const long tet, const int face, std::list<long> &adjTets);  // return adjacent face index 0-3
+	int faceAdjacentTets(const int tet, const int face, std::list<int> &adjTets);  // return adjacent face index 0-3
 	
-	inline void faceNodes(const long tet, const int face, long(&nodes)[3])
+	inline void faceNodes(const int tet, const int face, int(&nodes)[3])
 	{
 		const int *tn = tetNodes(tet);
 		for (int i = 0; i < 3; ++i)
 			nodes[i] = (tn[(face + i) & 3]);
 	}
 
-	void edgeAdjacentTets(const long tet, const int edge, std::list<long> &adjTets);  // input one of six edges in permutation order 0-123, 1-23, and 2-3
-	void edgeNodes(const long tet, const int edge, long &n0, long &n1);  // same edge numbering as above
-	bool decreasingCentroidPath(long startTet, const long targetTet, std::list<long> &tetPath);  // true if constantly decreasing distance centroid path exists.
+	void edgeAdjacentTets(const int tet, const int edge, std::list<int> &adjTets);  // input one of six edges in permutation order 0-123, 1-23, and 2-3
+	void edgeNodes(const int tet, const int edge, int &n0, int &n1);  // same edge numbering as above
+	bool decreasingCentroidPath(int startTet, const int targetTet, std::list<int> &tetPath);  // true if constantly decreasing distance centroid path exists.
 
-	inline void setNodeFixationState(const long node, bool fixed){ if (fixed) _fixedNodes.insert(node);  else  _fixedNodes.erase(node); }
-	inline bool nodeFixed(const long node){ return _fixedNodes.find(node) != _fixedNodes.end(); }
-	inline const  short* nodeGridLocation(const long tetNode){ return _nodeGridLoci[tetNode].data(); }
+	inline void setNodeFixationState(const int node, bool fixed){ if (fixed) _fixedNodes.insert(node);  else  _fixedNodes.erase(node); }
+	inline bool nodeFixed(const int node){ return _fixedNodes.find(node) != _fixedNodes.end(); }
+	inline const  short* nodeGridLocation(const int tetNode){ return _nodeGridLoci[tetNode].data(); }
 	inline const  std::array<short, 3> nodeGridLocation(const bccTetCentroid &tetCentroid, const int nodeIndex)
 	{	// given a bccTetCentroid and its nodeIndex (0-3) return material coord location of node
 		bccTetCentroid tc;
@@ -127,7 +127,7 @@ public:
 		}
 		return tc.xyz;
 	}
-	const std::unordered_multimap<long long, long>* getTetHash() { return _tetHash.empty() ? nullptr : &_tetHash; }  // bccTetCenter and index into _tetNodes
+	const std::unordered_multimap<long long, int>* getTetHash() { return _tetHash.empty() ? nullptr : &_tetHash; }  // bccTetCenter and index into _tetNodes
 
 	vnBccTetrahedra(const vnBccTetrahedra&) = delete;
 	vnBccTetrahedra& operator=(const vnBccTetrahedra&) = delete;
@@ -135,7 +135,7 @@ public:
 	~vnBccTetrahedra();
 
 private:
-	std::set<long> _fixedNodes;
+	std::set<int> _fixedNodes;
 	std::vector<std::array<short, 3> > _nodeGridLoci;
 	// The convention adopted in this class for tetrahedral node ordering is positive as in CGAL 4.14.  This means when viewing the tet from the outside that faces 012 and 230 are listed clockwise
 	// and 123 and 301 are counterclockwise.  Each BCC tet can be defined by two line segments in two of the Cartesian axes.  The axis not used is the non-integer halfCoordinateAxis of the tets centroid.
@@ -144,7 +144,7 @@ private:
 	// The bcc tet centroid specifies its four 3-integer node locations implicitly. See nodeGridLocation().
 	std::vector<std::array<int, 4> > _tetNodes;
 	std::vector<bccTetCentroid> _tetCentroids;
-	std::unordered_multimap<long long, long> _tetHash;  // bccTetCenter and index into _tetNodes
+	std::unordered_multimap<long long, int> _tetHash;  // bccTetCenter and index into _tetNodes
 	materialTriangles *_mt;  // embedded surface
 	std::vector<int> _vertexTets;
 	std::vector<Vec3f> _barycentricWeights;
