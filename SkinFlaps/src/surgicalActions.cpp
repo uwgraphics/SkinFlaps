@@ -2161,11 +2161,11 @@ void surgicalActions::nextHistoryAction()
 				_sutures.setLinked(sn, true);
 				physicsDone = false;
  				_ffg->physicsDrag = true;
-				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
 					_sutures.laySutureLine(sn);
 					physicsDone = true;
-					}
-				);
+//					}
+//				);
 			}
 			else
 				_sutures.setLinked(sn, false);

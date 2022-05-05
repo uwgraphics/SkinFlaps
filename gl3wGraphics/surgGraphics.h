@@ -26,16 +26,16 @@ class Vec3f;
 class incisionLines
 {
 public:
-	bool isInitialized(){ return _sn && !_sn->bufferObjects.empty(); }
+	bool isInitialized(){ return _isn && !_isn->bufferObjects.empty(); }
 	void sendVertexCoordBuffer(GLuint vertCoordBuf){ _incisionBufferObjects[1] = vertCoordBuf; }  // must be called before addIncisions()
 	void addUpdateIncisions(const std::vector<GLuint> &lines);  // 0xffffffff is primitive restart index
 	void setGl3wGraphics(gl3wGraphics *gl3w) { _gl3w = gl3w; }
 	void setColor(GLfloat(&color)[4]) { for (int i = 0; i < 4; ++i) _color[i] = color[i]; }
-	incisionLines() : _sn(nullptr) {}
+	incisionLines() : _isn(nullptr) {}
 	~incisionLines(){}
 
 private:
-	std::shared_ptr<sceneNode> _sn;
+	std::shared_ptr<sceneNode> _isn;  // sceneNode for incision lines
 	GLfloat _color[4];
 	gl3wGraphics *_gl3w;
 	static GLuint _incisionBufferObjects[2];

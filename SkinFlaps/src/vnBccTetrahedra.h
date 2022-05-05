@@ -19,7 +19,6 @@
 #include <atomic>
 #include <stdexcept>
 #include "Vec3f.h"
-//#include "Vec3d.h"  // COURT - nuke
 
 #pragma warning (disable : 4267)
 
@@ -52,8 +51,8 @@ public:
 	inline int nodeNumber() { return (int)_nodeGridLoci.size(); }
 	inline int tetNumber() { return (int)_tetNodes.size(); }
 	inline int vertexNumber() { return (int)_vertexTets.size(); }
-	inline const long* tetNodes(int tetIndex){ return _tetNodes[tetIndex].data(); }
-	const std::vector<std::array<long, 4> >& getTetNodeArray() { return _tetNodes; }
+	inline const int* tetNodes(int tetIndex){ return _tetNodes[tetIndex].data(); }
+	const std::vector<std::array<int, 4> >& getTetNodeArray() { return _tetNodes; }
 	inline const bccTetCentroid* tetCentroid(int tet){ return &_tetCentroids[tet]; }
 	inline void centroidTets(const bccTetCentroid &tc, std::list<long> &tets){ auto pr = _tetHash.equal_range(tc.ll); tets.clear(); while (pr.first != pr.second){ tets.push_back(pr.first->second); ++pr.first; } }
 	inline const long getVertexTetrahedron(const int vertex) const {return _vertexTets[vertex];}
@@ -77,7 +76,7 @@ public:
 
 	inline void getBarycentricTetPosition(const long tet, const Vec3f &barycentricWeight, Vec3f &position)
 	{
-		const long *n = _tetNodes[tet].data();
+		const int *n = _tetNodes[tet].data();
 		position.set(_nodeSpatialCoords[n[0]] * (1.0f - barycentricWeight.X - barycentricWeight.Y - barycentricWeight.Z));
 		for (int i = 1; i < 4; ++i)
 			position += _nodeSpatialCoords[n[i]] * barycentricWeight[i - 1];
@@ -85,7 +84,7 @@ public:
 
 	inline void vertexBarycentricPosition(const long vertex, Vec3f &position)
 	{
-		const long *n = _tetNodes[_vertexTets[vertex]].data();
+		const int *n = _tetNodes[_vertexTets[vertex]].data();
 		float *bw = _barycentricWeights[vertex]._v;
 		position.set(_nodeSpatialCoords[n[0]] * (1.0f - *bw - bw[1] - bw[2]));
 		for (int i = 1; i < 4; ++i)
@@ -101,7 +100,7 @@ public:
 	
 	inline void faceNodes(const long tet, const int face, long(&nodes)[3])
 	{
-		const long *tn = tetNodes(tet);
+		const int *tn = tetNodes(tet);
 		for (int i = 0; i < 3; ++i)
 			nodes[i] = (tn[(face + i) & 3]);
 	}
@@ -143,11 +142,11 @@ private:
 	// The remaining two axis line segments are given from minimum to maximum in vertices 0 to 1 in the axis immediately following the halfCoordAxis (x to y, y to z, and z to x).
 	// with vertices 2 and 3 ordered such that the CGAL positive ordering convention is consistent.  With this convention enforced, it isn't necessary to save 3-integer node grid locations.
 	// The bcc tet centroid specifies its four 3-integer node locations implicitly. See nodeGridLocation().
-	std::vector<std::array<long, 4> > _tetNodes;
+	std::vector<std::array<int, 4> > _tetNodes;
 	std::vector<bccTetCentroid> _tetCentroids;
 	std::unordered_multimap<long long, long> _tetHash;  // bccTetCenter and index into _tetNodes
 	materialTriangles *_mt;  // embedded surface
-	std::vector<long> _vertexTets;
+	std::vector<int> _vertexTets;
 	std::vector<Vec3f> _barycentricWeights;
 	Vec3f *_nodeSpatialCoords;
 	Vec3f _minCorner, _maxCorner;

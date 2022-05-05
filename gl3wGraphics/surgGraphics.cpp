@@ -21,8 +21,8 @@
 #include "gl3wGraphics.h"
 #include "surgGraphics.h"
 
-GLuint incisionLines::_incisionBufferObjects[2] = {0, 0};
-GLuint incisionLines::_incisionVertexArrayBufferObject = 0;
+GLuint incisionLines::_incisionBufferObjects[2] = { 0xffffffff, 0xffffffff };
+GLuint incisionLines::_incisionVertexArrayBufferObject = 0xffffffff;
 
 
 const GLchar *surgGraphics::skinVertexShader = "#version 130 \n"
@@ -280,8 +280,10 @@ bool surgGraphics::setTextureFilesCreateProgram(std::vector<int> &textureIds, co
 		if (!_gl3w->getTextures()->textureExists(textureIds[i]))
 			return false;
 	}
-	if (_sn.use_count() < 1)
+	if (_sn.use_count() < 1) {
 		_sn = std::make_shared<sceneNode>();
+		_sn->vertexArrayBufferObject = 0xffffffff;
+	}
 	_sn->setType(sceneNode::nodeType::MATERIAL_TRIANGLES);
 	_sn->visible = true;
 	_sn->setSurgGraphics(this);
@@ -306,7 +308,7 @@ bool surgGraphics::setTextureFilesCreateProgram(std::vector<int> &textureIds, co
 	glBufferData(GL_ARRAY_BUFFER, 8, NULL, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _sn->bufferObjects[4]);	// TRIANGLE INDEX_DATA
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 12, NULL, GL_STATIC_DRAW);
-	if (!_sn->vertexArrayBufferObject)
+	if (_sn->vertexArrayBufferObject == 0xffffffff)
 		glGenVertexArrays(1,&_sn->vertexArrayBufferObject);
 	// now make vertex array
 	glBindVertexArray(_sn->vertexArrayBufferObject);
@@ -366,7 +368,6 @@ void surgGraphics::setNewTopology()
 				_uvPos[trArr[i].tex[j]] = trArr[i].v[j];
 		}
 	}
-	getSkinIncisionLines();
 	// Vertex data
 	glBindBuffer(GL_ARRAY_BUFFER, _sn->bufferObjects[0]);	// VERTEX_DATA
 	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*_xyz1.size(), &(_xyz1[0]), GL_DYNAMIC_DRAW);
@@ -383,6 +384,7 @@ void surgGraphics::setNewTopology()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _sn->bufferObjects[4]);	// INDEX_DATA
 	// Eliminate deleted triangles from viewing, but to keep the numbering send to graphics card
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*_tris.size(), &(_tris[0]), GL_STATIC_DRAW);
+	getSkinIncisionLines();  // do this last as needs the vertex position buffer to paint incision lines.
 }
 
 void surgGraphics::getSkinIncisionLines() {
@@ -393,7 +395,19 @@ void surgGraphics::getSkinIncisionLines() {
 		std::vector<materialTriangles::neighborNode> nei;
 		long vEnd = _mt.triangleVertices(tri)[(adj & 3)], v = _mt.triangleVertices(tri)[((adj & 3) + 1) % 3];
 		_incisionLines.push_back(_mt.triangleTextures(tri)[(adj & 3)]);
+		GLuint firstVert = _incisionLines.back();
+
+		Vec3f lastPos, newPos;
+		float len2;
+		_mt.getVertexCoordinate(vEnd, lastPos._v);
+
 		while (v != vEnd) {
+
+			_mt.getVertexCoordinate(v, newPos._v);
+			if ((len2 = (newPos - lastPos).length2()) > 0.02f)
+				std::cout << "incision span was " << len2 << " at vertex " << v << "\n";
+			lastPos = newPos;
+
 			long* tr = _mt.triangleVertices(tri);
 			for (int i = 0; i < 3; ++i) {
 				if (tr[i] == v) {
@@ -419,10 +433,13 @@ void surgGraphics::getSkinIncisionLines() {
 			tri36used.insert(nit->triangle);
 			v = nit->vertex;
 		}
+		_incisionLines.push_back(firstVert);
 		_incisionLines.push_back(0xffffffff);
 	};
 	for (int n = _mt.numberOfTriangles(), i = 0; i < n; ++i) {
 		int mat = _mt.triangleMaterial(i);
+		if (mat < 0)
+			continue;
 		if (mat == 3) {  // surface skin incision . 2-3 pair
 			unsigned long* adjs = _mt.triAdjs(i);
 			if (_mt.triangleMaterial(adjs[0] >> 2) != 2)  // incision convention
@@ -659,46 +676,46 @@ surgGraphics::~surgGraphics(void)
 }
 
 void incisionLines::addUpdateIncisions(const std::vector<GLuint> &lines){
-	if (!_sn) {
-		_sn = std::make_shared<sceneNode>();
-		_sn->setGl3wGraphics(_gl3w);
-		_sn->setName("incisionLines");
-		_sn->setType(sceneNode::nodeType::LINES);
-		GLfloat* mm = _sn->getModelViewMatrix();
+	if (!_isn) {
+		_isn = std::make_shared<sceneNode>();
+		_isn->setGl3wGraphics(_gl3w);
+		_isn->setName("incisionLines");
+		_isn->setType(sceneNode::nodeType::LINES);
+		GLfloat* mm = _isn->getModelViewMatrix();
 		loadIdentity4x4(mm);
 		GLuint program = _gl3w->getLightsShaders()->getOrCreateLineProgram();
-		_sn->setGlslProgramNumber(program);
-		_sn->setColorLocation(glGetUniformLocation(program, "objectColor"));
+		_isn->setGlslProgramNumber(program);
+		_isn->setColorLocation(glGetUniformLocation(program, "objectColor"));
 		GLfloat color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		_sn->setColor(color);
-		if (!_incisionVertexArrayBufferObject)
+		_isn->setColor(color);
+		if (_incisionVertexArrayBufferObject == 0xffffffff)
 			glGenVertexArrays(1, &_incisionVertexArrayBufferObject);
-		_sn->vertexArrayBufferObject = _incisionVertexArrayBufferObject;
-		if (_incisionBufferObjects[0] < 1) {
+		_isn->vertexArrayBufferObject = _incisionVertexArrayBufferObject;
+		if (_incisionBufferObjects[0] == 0xffffffff) {
 			glGenBuffers(1, &_incisionBufferObjects[0]);
-			_sn->bufferObjects.assign(2, 0);
-			_sn->bufferObjects[0] = _incisionBufferObjects[0];
-			_sn->bufferObjects[1] = _incisionBufferObjects[1];  // _xyz1 data sent from surgGraphics
+			_isn->bufferObjects.assign(2, 0);
+			_isn->bufferObjects[0] = _incisionBufferObjects[0];
+			_isn->bufferObjects[1] = _incisionBufferObjects[1];  // _xyz1 data sent from surgGraphics
 		}
 		// Create the master vertex array object
 		glBindVertexArray(_incisionVertexArrayBufferObject);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _sn->bufferObjects[0]);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _isn->bufferObjects[0]);
 		// Vertex data
-		glBindBuffer(GL_ARRAY_BUFFER, _sn->bufferObjects[1]);	// VERTEX DATA
+		glBindBuffer(GL_ARRAY_BUFFER, _isn->bufferObjects[1]);	// VERTEX DATA
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 		// Unbind to anybody
 		glBindVertexArray(0);
-		_gl3w->addSceneNode(_sn);
+		_gl3w->addSceneNode(_isn);
 	}
-	_sn->setColor(_color);
+	_isn->setColor(_color);
 	// 0xffffffff is primitive restart index
-	_sn->elementArraySize = (GLsizei)lines.size();
+	_isn->elementArraySize = (GLsizei)lines.size();
 	// vertex xyz1 buffer data comes from the surgGraphics data already loaded
 	// Indexes
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _sn->bufferObjects[0]);	// INDEX_DATA
-	_sn->elementArraySize = (GLsizei)(sizeof(GLuint) * lines.size());
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _sn->elementArraySize, &(lines[0]), GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _isn->bufferObjects[0]);	// INDEX_DATA
+	_isn->elementArraySize = (GLsizei)(sizeof(GLuint) * lines.size());
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _isn->elementArraySize, &(lines[0]), GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
