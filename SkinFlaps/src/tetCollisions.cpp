@@ -83,7 +83,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 	for (size_t n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (_mt->triangleMaterial(i) < 0)
 			continue;
-		if (_mt->triangleMaterial(i) == 3) {
+/*		if (_mt->triangleMaterial(i) == 3) {
 			int adjMat = _mt->triangleMaterial(_mt->triAdjs(i)[0] >> 2);
 			if (adjMat == 5) {
 				if (_mt->triangleMaterial(_mt->triAdjs(i - 1)[0] >> 2) != 2)
@@ -99,7 +99,8 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			}
 			else;  // top incion edge tris processed with their bottom edge tri
 		}
-		else if (_mt->triangleMaterial(i) == 4)
+		else */
+		if (_mt->triangleMaterial(i) == 4)
 			inputFlapBottomTriangle(i);
 		else if (_mt->triangleMaterial(i) == 5)
 			inputBedTriangle(i);
@@ -155,20 +156,6 @@ void tetCollisions::findSoftCollisionPairs() {
 		for (int j = 0; j < 3; ++j)
 			flapBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(*_mt->vertexCoordinate(tr[j])));
 	}
-
-	int badTri;
-	for (size_t n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i) {
-		int* tr = _mt->triangleVertices(i);
-		for(j=0; j<3; ++j)
-			if (tr[j] == 8987) {
-				int mat = _mt->triangleMaterial(i);
-				badTri = i;
-				break;
-			}
-		if (j < 3)
-			break;
-	}
-
 	for (size_t n = _bedRays.size(), i = 0; i < n; ++i) {
 		bottomRay& b = _bedRays[i];
 		const int* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(b.vertex));
@@ -355,10 +342,8 @@ float tetCollisions::inverse_rsqrt(float number)
 	return y;
 }
 
-void tetCollisions::addFixedCollisionSet(materialTriangles* mt, const std::string& levelSetFile, const std::vector<Vec2f>& txPoly) {  // call once at load
-
-//	return;
-
+void tetCollisions::addFixedCollisionSet(materialTriangles* mt, const std::string& levelSetFile, std::vector<Vec2f>& txPoly) {  // call once at load
+	// make polygon slightly bigger to capture border vertices
 	insidePolygon ip;
 	std::set<int> collisionVertices;
 	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {
@@ -375,6 +360,13 @@ void tetCollisions::addFixedCollisionSet(materialTriangles* mt, const std::strin
 	fixedCollisionSet fc;
 	fc.levelSetFilename = levelSetFile;
 	fc.vertices.assign(collisionVertices.begin(), collisionVertices.end());
+	_fixedCollisionSets.push_back(fc);
+}
+
+void tetCollisions::addFixedCollisionSet(const std::string& levelSetFile, std::vector<int>& vertexIndices) {  // call once at load
+	fixedCollisionSet fc;
+	fc.levelSetFilename = levelSetFile;
+	fc.vertices.assign(vertexIndices.begin(), vertexIndices.end());
 	_fixedCollisionSets.push_back(fc);
 }
 

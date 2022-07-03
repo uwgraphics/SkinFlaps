@@ -47,15 +47,13 @@
         "autoSutureSpacing" : 0.14,
         "maxDimSubdivisions" : 222
     },
-    "tetrahedralSubset" : {
-        "name" : "cartilage",
-        "minStrain" : 0.95,
-        "maxStrain" : 1.05,
-        "lowTetWeight" : 4000.0,
-        "highTetWeight" : 5000.0,
-        "objFiles" : [
-            "nasalCartilage.obj"
-        ]
+    "tetrahedralSubsets" : {
+        "nasalCartilage.obj" : {
+          "minStrain" : 0.95,
+          "maxStrain" : 1.05,
+          "lowTetWeight" : 4000.0,
+          "highTetWeight" : 5000.0
+        }
     },
     "fixedCollisionSets" : {
         "eye_right_CBC.obj" : [

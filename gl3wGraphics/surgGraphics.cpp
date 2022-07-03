@@ -370,7 +370,7 @@ void surgGraphics::setNewTopology()
 	}
 	// Vertex data
 	glBindBuffer(GL_ARRAY_BUFFER, _sn->bufferObjects[0]);	// VERTEX_DATA
-	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*_xyz1.size(), &(_xyz1[0]), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*_xyz1.size(), NULL, GL_DYNAMIC_DRAW);  // &(_xyz1[0])
 	// Normal data
 	std::vector<GLfloat> tnVec;
 	tnVec.assign((_uv.size() >> 1) * 3, 0.0f);;
@@ -389,53 +389,7 @@ void surgGraphics::setNewTopology()
 
 void surgGraphics::getSkinIncisionLines() {
 	_incisionLines.clear();  // indexes into incision lines. 0xffffffff is primitive restart index.
-	std::set<int> tri36used;
-	auto getIncisLine = [&](int mat0, unsigned int &adj) {
-		int mat, tri = adj >> 2;
-		std::vector<materialTriangles::neighborNode> nei;
-		int vEnd = _mt.triangleVertices(tri)[(adj & 3)], v = _mt.triangleVertices(tri)[((adj & 3) + 1) % 3];
-		_incisionLines.push_back(_mt.triangleTextures(tri)[(adj & 3)]);
-		GLuint firstVert = _incisionLines.back();
-
-		Vec3f lastPos, newPos;
-		float len2;
-		_mt.getVertexCoordinate(vEnd, lastPos._v);
-
-		while (v != vEnd) {
-
-			_mt.getVertexCoordinate(v, newPos._v);
-			if ((len2 = (newPos - lastPos).length2()) > 0.02f)
-				std::cout << "incision span was " << len2 << " at vertex " << v << "\n";
-			lastPos = newPos;
-
-			int* tr = _mt.triangleVertices(tri);
-			for (int i = 0; i < 3; ++i) {
-				if (tr[i] == v) {
-					_incisionLines.push_back(_mt.triangleTextures(tri)[i]);
-					break;
-				}
-			}
-			_mt.getNeighbors(v, nei);
-			auto nit = nei.begin();
-			assert(nit->triangle > -1);
-			while (nit != nei.end()) {
-				if (nit->triangle == tri)
-					break;
-				++nit;
-			}
-			do {
-				if (nit == nei.begin())
-					nit = nei.end();
-				--nit;
-				tri = nit->triangle;
-				mat = _mt.triangleMaterial(tri);
-			} while ((mat0 == 3 && mat == 2) || (mat0 == 6 && mat != 6));
-			tri36used.insert(nit->triangle);
-			v = nit->vertex;
-		}
-		_incisionLines.push_back(firstVert);
-		_incisionLines.push_back(0xffffffff);
-	};
+	std::map<int, int> triEdges, vTex;
 	for (int n = _mt.numberOfTriangles(), i = 0; i < n; ++i) {
 		int mat = _mt.triangleMaterial(i);
 		if (mat < 0)
@@ -444,21 +398,47 @@ void surgGraphics::getSkinIncisionLines() {
 			unsigned int* adjs = _mt.triAdjs(i);
 			if (_mt.triangleMaterial(adjs[0] >> 2) != 2)  // incision convention
 				continue;
-			// incision start point
-			if(tri36used.insert(i).second)
-				getIncisLine(3, adjs[0]);
+			int* tr = _mt.triangleVertices(adjs[0] >> 2), *tx = _mt.triangleTextures(adjs[0] >> 2);
+			int first = tr[adjs[0] & 3], second = tr[((adjs[0] & 3) + 1) % 3];
+			triEdges.insert(std::make_pair(first, second));
+			vTex.insert(std::make_pair(first, tx[adjs[0] & 3]));
 		}
-		if (mat == 6) {  // deep bed incision. 5-6 pair
+		if (mat == 6) {  // deep incision. 5-6, 6-7, or 6-8 pair
 			unsigned int* adjs = _mt.triAdjs(i);
 			for (int j = 0; j < 3; ++j) {
 				int aMat = _mt.triangleMaterial(adjs[j] >> 2);
-				if ( aMat == 6 || aMat == 3)  // any different material except 3 which is a non-undermined deep cut
+				if (aMat == 6 || aMat == 3)  // any different material except 3 which is a non-undermined deep cut
 					continue;
-				// incision start point
-				if(tri36used.insert(i).second)
-					getIncisLine(6, adjs[j]);
+				int* tr = _mt.triangleVertices(adjs[j] >> 2), * tx = _mt.triangleTextures(adjs[j] >> 2);
+				int first = tr[adjs[j] & 3], second = tr[((adjs[j] & 3) + 1) % 3];
+				triEdges.insert(std::make_pair(first, second));
+				vTex.insert(std::make_pair(first, tx[adjs[j] & 3]));
 			}
 		}
+	}
+	std::map<int, int>::iterator eit;
+	while ((eit = triEdges.begin()) != triEdges.end()) {
+		int start = eit->first, second = eit->second;
+		triEdges.erase(eit);
+		auto next = triEdges.find(second);
+		auto tex = vTex.find(start);
+		if (tex == vTex.end())
+			throw(std::logic_error("Program error in getSkinIncisionLines().\n"));
+		_incisionLines.push_back(tex->second);
+		while (next != triEdges.end() && next->second != start) {
+			auto tex = vTex.find(next->first);
+			if (tex == vTex.end())
+				throw(std::logic_error("Program error in getSkinIncisionLines().\n"));
+			_incisionLines.push_back(tex->second);
+			second = next->second;
+			triEdges.erase(next);
+			next = triEdges.find(second);
+		}
+		if (next != triEdges.end()) {
+			triEdges.erase(next);
+			_incisionLines.push_back(vTex[start]);
+		}
+		_incisionLines.push_back(0xffffffff);
 	}
 	if (!_incisionLines.empty()) {
 		if (!_incis.isInitialized()) {
@@ -656,6 +636,7 @@ void surgGraphics::computeLocalBounds()
 
 surgGraphics::surgGraphics() : _undermineTriangles(NULL), _sn(nullptr)
 {
+	_incis.setSurgGraphics(this);
 }
 
 surgGraphics::~surgGraphics(void)
@@ -693,11 +674,11 @@ void incisionLines::addUpdateIncisions(const std::vector<GLuint> &lines){
 		_isn->vertexArrayBufferObject = _incisionVertexArrayBufferObject;
 		if (_incisionBufferObjects[0] == 0xffffffff) {
 			glGenBuffers(1, &_incisionBufferObjects[0]);
-			_isn->bufferObjects.assign(2, 0);
-			_isn->bufferObjects[0] = _incisionBufferObjects[0];
-			_isn->bufferObjects[1] = _incisionBufferObjects[1];  // _xyz1 data sent from surgGraphics
 		}
-		// Create the master vertex array object
+		_isn->bufferObjects.assign(2, 0);
+		_isn->bufferObjects[0] = _incisionBufferObjects[0];
+		_isn->bufferObjects[1] = _incisionBufferObjects[1];  // _xyz1 data sent from surgGraphics
+	// Create the master vertex array object
 		glBindVertexArray(_incisionVertexArrayBufferObject);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _isn->bufferObjects[0]);
 		// Vertex data
@@ -710,7 +691,6 @@ void incisionLines::addUpdateIncisions(const std::vector<GLuint> &lines){
 	}
 	_isn->setColor(_color);
 	// 0xffffffff is primitive restart index
-	_isn->elementArraySize = (GLsizei)lines.size();
 	// vertex xyz1 buffer data comes from the surgGraphics data already loaded
 	// Indexes
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _isn->bufferObjects[0]);	// INDEX_DATA

@@ -71,14 +71,16 @@ int main(int, char**)
 					ffg.getSurgicalActions()->nextHistoryAction();
 					--ffg.nextCounter;
 				}
+				else{
 				// below is from: https://www.intel.com/content/www/us/en/develop/documentation/onetbb-documentation/top/onetbb-developer-guide/design-patterns/gui-thread.html
-				if (bts->forcesApplied() && sa->physicsDone && !bts->isPhysicsPaused()) {  // physicsDone recheck necessary since nextHistoryAction() may have spawned a task that this one would collide with
-					sa->physicsDone = false;
-					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-						bts->updatePhysics();
-						sa->physicsDone = true;
-						}
-					);
+					if (bts->forcesApplied() && !bts->isPhysicsPaused()) {  // physicsDone recheck necessary since nextHistoryAction() may have spawned a task that this one would collide with
+						sa->physicsDone = false;
+						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+							bts->updatePhysics();
+							sa->physicsDone = true;
+							}
+						);
+					}
 				}
 			}
 			ffg.getgl3wGraphics()->drawAll();

@@ -703,7 +703,7 @@ public:
 						vnBccTetCutterTbb::planeLineCrossing plc = hit->second;
 						auto hit2 = hit;
 						++hit2;
-						assert(hit2 != planeHorizLines[j].end() && hit2->first - hit->first < 1e-6);
+						assert(hit2 != planeHorizLines[j].end() && hit2->first - hit->first < 3e-6);
 						hit->second = hit2->second;
 						hit2->second = plc;
 					}

@@ -30,6 +30,7 @@ public:
 	void sendVertexCoordBuffer(GLuint vertCoordBuf){ _incisionBufferObjects[1] = vertCoordBuf; }  // must be called before addIncisions()
 	void addUpdateIncisions(const std::vector<GLuint> &lines);  // 0xffffffff is primitive restart index
 	void setGl3wGraphics(gl3wGraphics *gl3w) { _gl3w = gl3w; }
+	void setSurgGraphics(surgGraphics* sg) { _sg = sg; }
 	void setColor(GLfloat(&color)[4]) { for (int i = 0; i < 4; ++i) _color[i] = color[i]; }
 	incisionLines() : _isn(nullptr) {}
 	~incisionLines(){}
@@ -38,6 +39,7 @@ private:
 	std::shared_ptr<sceneNode> _isn;  // sceneNode for incision lines
 	GLfloat _color[4];
 	gl3wGraphics *_gl3w;
+	surgGraphics *_sg;
 	static GLuint _incisionBufferObjects[2];
 	static GLuint _incisionVertexArrayBufferObject;
 };
@@ -73,6 +75,7 @@ private:
 	incisionLines _incis;
 	void getSkinIncisionLines();
 
+	friend class incisionLines;
 };
 
 #endif  // __SURG_GRAPHICS__

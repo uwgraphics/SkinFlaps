@@ -914,16 +914,21 @@ bool deepCut::getDeepSpatialCoordinates()
 				_deepXyz[dbit->first].X = DBL_MAX;
 				continue;
 			}
-		}
-		Vec3f bw;
-		int botTet = deepPointTetWeight(dbit, bw);
-		if (botTet < 0) {  // COURt if there are a lot of these or any occur over an important area of the model should recompute deep bed.
-			std::cout << "Deep bed point at vertex " << dbit->first << " with deep vertex " << dbit->second.deepMtVertex << " not in a tet.\n";
+			Vec3f v;
+			_vbt->getBarycentricTetPosition(_vbt->getVertexTetrahedron(dbit->second.deepMtVertex), *_vbt->getVertexWeight(dbit->second.deepMtVertex), v);
+			_deepXyz[dbit->first] = Vec3d(v._v);
 		}
 		else {
-			Vec3f v;
-			_vbt->getBarycentricTetPosition(botTet, bw, v);
-			_deepXyz[dbit->first] = Vec3d(v._v);
+			Vec3f bw;
+			int botTet = deepPointTetWeight(dbit, bw);
+			if (botTet < 0) {  // COURt if there are a lot of these or any occur over an important area of the model should recompute deep bed.
+				std::cout << "Deep bed point at vertex " << dbit->first << " with deep vertex " << dbit->second.deepMtVertex << " not in a tet.\n";
+			}
+			else {
+				Vec3f v;
+				_vbt->getBarycentricTetPosition(botTet, bw, v);
+				_deepXyz[dbit->first] = Vec3d(v._v);
+			}
 		}
 	}
 	boundingBox<double> bb;

@@ -43,7 +43,7 @@ std::shared_ptr<sceneNode> gl3wGraphics::loadStaticObjFile(const char *filePath,
 	materialTriangles mt;
 	int err = mt.readObjFile(filePath);
 	if (err > 0) {
-		printf("Couldn't read static .obj file. Error code: %d\n", err);
+		std::cout << "Couldn't read static .obj file. Error code: " << err << "\n";
 		return NULL;
 	}
 	auto sn = _staticTris.createStaticSceneNode(&mt, textureIds);
@@ -226,7 +226,7 @@ void gl3wGraphics::getTrianglePickLine(float(&lineStartPosition)[3], float(&line
 	}
 }
 
-bool gl3wGraphics::pick(unsigned short x, unsigned short y, std::string &name, float (&position)[3], int &triangle, bool excludeShapes)
+bool gl3wGraphics::pick(unsigned short x, unsigned short y, std::string &name, float (&position)[3], int &triangle, bool excludeShapes, bool excludeStatic)
 {
 	bool picked=false;
 	triangle = -1;
@@ -242,6 +242,8 @@ bool gl3wGraphics::pick(unsigned short x, unsigned short y, std::string &name, f
 	const GLfloat *fr=_glM.getFrameAndRotationMatrix();
 	for(auto nit=_nodes.begin(); nit!=_nodes.end(); ++nit)	{
 		if(excludeShapes && (*nit)->getType() != sceneNode::nodeType::MATERIAL_TRIANGLES)
+			continue;
+		if (excludeStatic && (*nit)->getType() == sceneNode::nodeType::STATIC_TRIANGLES)
 			continue;
 		om = (*nit)->getModelViewMatrix();
 		for(int i=0; i<4; ++i)	{

@@ -194,17 +194,15 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 	if ((oit = scnObj.find("fixedCollisionSets")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
 		std::string lsPath;
-		std::vector<Vec2f> txPoly;
+		std::vector<int> vIdx;
 		for (suboit = hullObj.begin(); suboit != hullObj.end(); ++suboit) {
 			lsPath = dataDirectory + suboit->first;
 			json::Array polyArr;
 			polyArr = suboit->second.ToArray();
-			txPoly.assign(polyArr.size() >> 1, Vec2f());
-			for (int i = 0; i < polyArr.size(); i += 2) {
-				txPoly[i >> 1][0] = polyArr[i].ToFloat();
-				txPoly[i >> 1][1] = polyArr[i + 1].ToFloat();
-			}
-			_tetCol.addFixedCollisionSet(_mt, lsPath, txPoly);
+			vIdx.reserve(polyArr.size());
+			for (int i = 0; i < polyArr.size(); ++i)
+				vIdx.push_back( polyArr[i].ToInt());
+			_tetCol.addFixedCollisionSet(lsPath, vIdx);
 		}
 	}
 	int maxDimSubdivs = 180;  // 0.5 million tets for cleft model
@@ -248,16 +246,44 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		lsFname += collisionObject;  //  "collision_proxy_5_4_20.obj";
 	}
 	struct tetSubset {
-		std::string name;
+		std::string objFile;
 		float lowTetWeight;
 		float highTetWeight;
 		float strainMin;
 		float strainMax;
-		std::list<std::string> objFiles;
+//		std::list<std::string> objFiles;
 	};
 	std::list<tetSubset> tetSubsets;
-	if ((oit = scnObj.find("tetrahedralSubset")) != scnObj.end()) {
+	if ((oit = scnObj.find("tetrahedralSubsets")) != scnObj.end()) {
 		json::Object tetSubObj = oit->second.ToObject();
+		tetSubset ts;
+		for (suboit = tetSubObj.begin(); suboit != tetSubObj.end(); ++suboit) {
+			path = dataDirectory + suboit->first;
+			ts.objFile = path;
+			json::Object tetSubData = suboit->second.ToObject();
+			for (auto dataoit = tetSubData.begin(); dataoit != tetSubData.end(); ++dataoit) {
+				if (dataoit->first == "minStrain")
+					ts.strainMin = dataoit->second.ToFloat();
+				else if (dataoit->first == "maxStrain")
+					ts.strainMax = dataoit->second.ToFloat();
+				else if (dataoit->first == "lowTetWeight")
+					ts.lowTetWeight = dataoit->second.ToFloat();
+				else if (dataoit->first == "highTetWeight")
+					ts.highTetWeight = dataoit->second.ToFloat();
+				//				else if (suboit->first == "objFiles") {
+				//					json::Array objArr = suboit->second.ToArray();
+				//					for (auto fit = objArr.begin(); fit != objArr.end(); ++fit) {
+				//						std::string of(dataDirectory);
+				//						of.append(fit->ToString());
+				//						ts.objFiles.push_back(of);
+				//					}
+				//				}
+				else;
+			}
+			tetSubsets.push_back(ts);
+		}
+
+/*		json::Object tetSubObj = oit->second.ToObject();
 		tetSubset ts;
 		for (suboit = tetSubObj.begin(); suboit != tetSubObj.end(); ++suboit) {
 			if (suboit->first == "name")
@@ -280,7 +306,8 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			}
 			else;
 		}
-		tetSubsets.push_back(ts);
+		tetSubsets.push_back(ts); */
+
 	}
 	else
 		;
@@ -295,9 +322,10 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 	}
 	if (!tetSubsets.empty()) {
 		for (auto& ts : tetSubsets)
-			_tetSubsets.createSubset(&_vnTets, ts.name, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax, ts.objFiles);
+			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
 		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
 	}
+
 	_gl3w->frameScene(true);  // computes bounding spheres
 	return true;
 }
@@ -307,7 +335,8 @@ void bccTetScene::updateOldPhysicsLattice()
 	try {
 		remapTetPhysics rtp;
 		rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions
-		_tc.remakeVnTets(_mt);
+		if(!_tc.remakeVnTets(_mt))
+			throw(std::logic_error("New recut of tet lattice failed.\n"));
 		rtp.remapNewPhysicsNodePositions(&_vnTets);
 
 #ifdef NO_PHYSICS

@@ -1056,7 +1056,7 @@ int skinCutUndermineTets::deepPointTetWeight(const std::unordered_map<int, deepP
 	if (lt.size() < 2)
 		return lt.front();
 	for (auto tet : lt){
-		if (_vbt->decreasingCentroidPath(_vbt->getVertexTetrahedron(dit->first), tet, tp))  // startTet will always be unique, so fewer false paths
+		if (_vbt->decreasingCentroidPath(_vbt->getVertexTetrahedron(dit->first), tet, tp))
 			return tet;
 	}
 	return -1L;
@@ -1521,7 +1521,7 @@ int skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f 
 			continue;
 		// this is a top incision edge
 		_mt->getTriangleNormal(i, dir._v, true);
-		if (closeDir*dir < 0.3f) // opposite side
+		if (closeDir*dir < 0.0f) // opposite side
 			continue;
 		_mt->getVertexCoordinate(_mt->triangleVertices(i)[0], P._v);
 		_mt->getVertexCoordinate(_mt->triangleVertices(i)[1], dir._v);
@@ -1551,6 +1551,10 @@ int skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f 
 		if (dsq < minD)
 			return _firstTopVertex;
 	}
+	if (minParam == 0.0f)
+		return _mt->triangleVertices(minTri)[0];
+	if (minParam == 1.0f)
+		return _mt->triangleVertices(minTri)[1];
 	if (minTri < 0)
 		return -1;
 	return TinSub(minTri, minParam);

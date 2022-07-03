@@ -1,0 +1,9 @@
+Bugs/Improvements needing fix or an improvement made:
+
+1) Incision Tin/out to pre-existing incision begin/end
+2) Change History mechanism and program motif to deterministic
+3) Rewrite bcc tet embed program using a centroid motif.
+4) Deep cut open begin/end change to plane extension rather than bilinear extrapolation.
+5) Bug hunt mechanism for failed deep cuts.
+6) More consistent response and recovery from throws.
+7) Check code to remove infinite loop possibilities giving a throw into 6) above

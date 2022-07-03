@@ -29,7 +29,7 @@ public:
 
 	bool addCustomSceneNode(std::shared_ptr<sceneNode> &sn, std::vector<int> &txIds, const GLchar *vertexShader, const GLchar *fragmentShader, std::vector<std::string> &attributes);
 	void mouseButtonEvent(unsigned short screenX, unsigned short screenY, int button, bool dragging);
-	bool pick(unsigned short x, unsigned short y, std::string &name, float (&position)[3], int &triangle, bool excludeShapes=false);
+	bool pick(unsigned short x, unsigned short y, std::string &name, float (&position)[3], int &triangle, bool excludeShapes=false, bool excludeStatic = true);
 	void getTrianglePickLine(float(&lineStartPosition)[3], float(&lineDirection)[3]);
 	void initializeGraphics();
 	std::shared_ptr<sceneNode> loadStaticObjFile(const char *filePath, std::vector<int> &textureIds, bool texturedNotColored = true);

@@ -111,11 +111,11 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_hooks.setIncisions(&_incisions);
 		}
 
-		// COURT debug use
+		// COURT visual debug use
 /*		for (int j, i = 0; i < tr->numberOfTriangles(); ++i) {
 			int* trp = tr->triangleVertices(i);
 			for (j = 0; j < 3; ++j)
-				if (trp[j] == 5705)
+				if (trp[j] == 14272)
 					break;
 			if (j < 3) {
 				triangle = i;
@@ -127,12 +127,15 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 				break;
 			}
 		} */
-//		triangle = 20200;
-//		uv[0] = 0.5585;
-//		uv[1] = 0.24679;
+//		triangle = 528;
+//		uv[0] = 0.33;
+//		uv[1] = 0.33;
 
 		if ((hookNum = _hooks.addHook(tr, triangle, uv, _strongHooks))>-1)
 		{
+
+//			return true;  // for above debug use
+
 			if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook
 				_ffg->physicsDrag = true;
 				_bts.setForcesAppliedFlag();
@@ -1228,12 +1231,17 @@ void surgicalActions::onKeyDown(int key)
 			physicsDone = false;
 			_ffg->physicsDrag = true;
 			_ffg->user_message_flag = false;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+
+
+
+//			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
 				physicsDone = true;
-				}
-			);
+//				}
+//			);
+
+
 			_fence.clear();
 			_bts.setPhysicsPause(false);
 		}
@@ -1254,8 +1262,6 @@ bool surgicalActions::loadScene(const char *sceneDirectory, const char *sceneFil
 {
 	bool ret = _bts.loadScene(sceneDirectory, sceneFilename);  // computes bounding spheres
 	_sceneDir.assign(sceneDirectory);
-	GLfloat glC[3], glR;
-	_sg.getSceneNode()->getLocalBounds(glC, glR);
 	_originalTriangleNumber = _sg.getMaterialTriangles()->numberOfTriangles();
 	if(ret && historyStore)	{
 		std::string dstr(sceneDirectory),fstr(sceneFilename);

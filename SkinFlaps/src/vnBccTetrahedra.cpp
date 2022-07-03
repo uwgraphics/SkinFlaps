@@ -469,6 +469,13 @@ bool vnBccTetrahedra::decreasingCentroidPath(const int startTet, const int targe
 			loc.set((float)tc->xyz[0], (float)tc->xyz[1], (float)tc->xyz[2]);
 			loc[tc->halfCoordAxis] += 0.5f;
 			if ((d2 = (loc - target).length2()) < d2min){
+				if (d2 == 0.0f) {
+					for (auto at : adjTets) {
+						if (at == targetTet)
+							return true;
+					}
+					return false;
+				}
 				d2min = d2;
 				tetNow = adjTets.front();
 				bestAdjTets = std::move(adjTets);
