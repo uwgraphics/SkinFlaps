@@ -178,19 +178,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			//			}
 		}
 	}
-//	if ((oit = scnObj.find("areaOfInterest")) != scnObj.end()) {
-//		json::Object fixObj = oit->second.ToObject();
-//		for (suboit = fixObj.begin(); suboit != fixObj.end(); ++suboit) {
-//			if (suboit->first == "boundingBox") {
-//				json::Array bbArr;
-//				bbArr = suboit->second.ToArray();
-// not using at present. Intention was to specify an area of high physics density and create a non-uniform lattice.
-//				_areasOfInterest.push_back(boundingBox3());
-//				for (int i = 0; i < 6; ++i)
-//					_areasOfInterest.back().corners[i] = bbArr[i];
-//			}
-//		}
-//	}
 	if ((oit = scnObj.find("fixedCollisionSets")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
 		std::string lsPath;
@@ -270,44 +257,10 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 					ts.lowTetWeight = dataoit->second.ToFloat();
 				else if (dataoit->first == "highTetWeight")
 					ts.highTetWeight = dataoit->second.ToFloat();
-				//				else if (suboit->first == "objFiles") {
-				//					json::Array objArr = suboit->second.ToArray();
-				//					for (auto fit = objArr.begin(); fit != objArr.end(); ++fit) {
-				//						std::string of(dataDirectory);
-				//						of.append(fit->ToString());
-				//						ts.objFiles.push_back(of);
-				//					}
-				//				}
 				else;
 			}
 			tetSubsets.push_back(ts);
 		}
-
-/*		json::Object tetSubObj = oit->second.ToObject();
-		tetSubset ts;
-		for (suboit = tetSubObj.begin(); suboit != tetSubObj.end(); ++suboit) {
-			if (suboit->first == "name")
-				ts.name = suboit->second.ToString();
-			else if (suboit->first == "minStrain")
-				ts.strainMin = suboit->second.ToFloat();
-			else if (suboit->first == "maxStrain")
-				ts.strainMax = suboit->second.ToFloat();
-			else if (suboit->first == "lowTetWeight")
-				ts.lowTetWeight = suboit->second.ToFloat();
-			else if (suboit->first == "highTetWeight")
-				ts.highTetWeight = suboit->second.ToFloat();
-			else if (suboit->first == "objFiles") {
-				json::Array objArr = suboit->second.ToArray();
-				for (auto fit = objArr.begin(); fit != objArr.end(); ++fit) {
-					std::string of(dataDirectory);
-					of.append(fit->ToString());
-					ts.objFiles.push_back(of);
-				}
-			}
-			else;
-		}
-		tetSubsets.push_back(ts); */
-
 	}
 	else
 		;
@@ -368,7 +321,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 	try {
 		_tetsModified = false;
 #ifdef _DEBUG
-		_tc.makeFirstVnTets(_mt, &_vnTets, 30);  // 15
+		_tc.makeFirstVnTets(_mt, &_vnTets, 30);  // 30
 #else
 		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions); // 70 for cleft scene with Eigen solver gives 36K tets in 0.36 seconds, 100 for cleft scene with oldMKL solver gives 102K tets, 20 for sphere test.
 			// in release mode 180 subdivs gives 503,910 tets in 2.27 seconds without multithreading the tet cutter, 0.57 seconds multithreaded. 

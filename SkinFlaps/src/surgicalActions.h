@@ -32,7 +32,7 @@ public:
 	void setFacialFlapsGui(FacialFlapsGui *ffg) { _ffg = ffg; }
 	inline hooks* getHooks() { return &_hooks; }
 	inline sutures* getSutures() { return &_sutures; }
-	bool loadScene(const char *sceneDirectory, const char *sceneFilename, bool historyStore = false);
+	bool loadScene(const char *modelDirectory, const char *sceneFilename);
 	inline bccTetScene* getBccTetScene() { return &_bts; }
 	inline surgGraphics* getSurgGraphics() { return &_sg; }
 	inline deepCut* getDeepCutPtr() { return &_incisions; }
@@ -44,11 +44,11 @@ public:
 	bool getHistoryAttachPoint(const int material, const float(&historyTexture)[2], const Vec3f &displacement, int &triangle, float(&uv)[2], bool findEdge);
 	// Input a history attach point from history file. Outputs closest triangle, and parametric uv coord in current environment.
 	bool saveSurgicalHistory(const char *fullFilePath);
-	const char* getSceneDirectory() { return _sceneDir.c_str(); }
+	const char* getModelDirectory() { return _sceneDir.c_str(); }
 	const char* getHistoryDirectory() { return _historyDir.c_str(); }
-	void setSceneDirectory(const char* sceneDir) { _sceneDir.assign(sceneDir); }
+	void setModelDirectory(const char* sceneDir) { _sceneDir.assign(sceneDir); }
 	void setHistoryDirectory(const char* histDir) { _historyDir.assign(histDir); }
-	bool saveCurrentObj(const char* objPath, const char* materialFileName);
+	bool saveCurrentObj(const char* fullFilePath, const char* fileNamePrefix);
 	void promoteFakeSutures();
 	void pausePhysics();
 	bool _strongHooks;  // COURT - hack for collision cheating purposes
@@ -89,6 +89,7 @@ private:
 	std::string _sceneDir, _historyDir;
 	bool texturePickCode(const int triangle, const float(&uv)[2], float(&txUv)[2], float &triangleDuv, int &material);
 	bool closestTexturePick(const float(&txUv)[2], const float triangleDuv, int &material, int &triangle, float(&uv)[2]);
+	void historyAttachFailure(std::string& errorDescription);  // report failure and truncate history at just before this action.
 
 	// next are temporary move variables set by ascii keys
 	float _x,_y,_z,_u,_f,_r;

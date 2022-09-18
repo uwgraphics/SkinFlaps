@@ -35,16 +35,16 @@ private:
 	static pdTetPhysics *_ptp;
 	bool _initialized;
 	Mat3x3f _rest[6];  // material inverses used to compute deformation gradients
-	struct bottomRay {
+	struct vertexRay {
 		int vertex;
 		Vec3f P;
 		Vec3f N;
 		Vec3f materialNormal;
 		int restIdx;  // only 6 of these in bcc tets
 	};
-	std::vector<bottomRay> _bedRays;
-//	std::unordered_map<int, bottomRay> _bedVerts;
-	std::vector<int> _flapBottomTris;
+	std::vector<vertexRay> _bedRays;
+	std::vector<vertexRay> _flapBottomVerts;
+	std::vector<std::array<vertexRay*, 3> > _flapBottomTris;
 	std::vector<int> _topTets;
 	std::vector<Vec3f> _topBarys;
 	struct fixedCollisionSet {
@@ -54,6 +54,7 @@ private:
 	std::list< fixedCollisionSet> _fixedCollisionSets;
 
 	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus, bccTetCentroid& tC);
+	float rayDepth(const Vec3f& Vtx, const Vec3f& nrm);
 
 	double _minTime, _maxTime;
 

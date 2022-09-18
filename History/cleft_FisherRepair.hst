@@ -1,265 +1,51 @@
 [
   {
-    "loadSceneFile":"unilatCleftLip_complete.smd"
+    "loadSceneFile":"unilatCleftLip_Incomplete.smd"
   },
   {
-    "makeIncision":[
+    "makeDeepCut":[
       {
-        "Tin":false,
-        "Tout":false,
-        "incisedObject":0,
-        "pointNumber":18
+        "deepCutObject":0,
+        "openIn":true,
+        "openOut":true,
+        "pointNumber":2
       },
       {
-        "incisionPoint":{
+        "deepCutPoint":{
           "displacement":[
             0.000000,
             0.000000,
             0.000000
           ],
           "historyTexture":[
-            0.432068,
-            0.618785
+            0.439846,
+            0.694940
           ],
-          "material":2
+          "material":2,
+          "postNormal":[
+            -0.346234,
+            0.077059,
+            0.934978
+          ]
         }
       },
       {
-        "incisionPoint":{
+        "deepCutPoint":{
           "displacement":[
             0.000000,
             0.000000,
             0.000000
           ],
           "historyTexture":[
-            0.383736,
-            0.636886
+            0.410066,
+            0.701392
           ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.360658,
-            0.642932
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.349301,
-            0.656573
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.370078,
-            0.681396
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.427728,
-            0.720921
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.422152,
-            0.746705
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.419933,
-            0.767158
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.405815,
-            0.772159
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.331721,
-            0.773918
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.297084,
-            0.756877
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.280774,
-            0.733306
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.285662,
-            0.708537
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.299590,
-            0.683155
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.265438,
-            0.660587
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.256282,
-            0.636568
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.231913,
-            0.611064
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.287075,
-            0.599019
-          ],
-          "material":2
+          "material":2,
+          "postNormal":[
+            -0.362809,
+            0.135808,
+            0.921914
+          ]
         }
       }
     ]
@@ -270,18 +56,18 @@
         "Tin":true,
         "Tout":true,
         "incisedObject":0,
-        "pointNumber":3
+        "pointNumber":13
       },
       {
         "incisionPoint":{
           "displacement":[
-            0.038353,
-            0.056377,
-            0.112881
+            0.908134,
+            -0.927574,
+            0.859238
           ],
           "historyTexture":[
-            0.347886,
-            0.655613
+            0.419666,
+            0.681861
           ],
           "material":2
         }
@@ -294,8 +80,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.314292,
-            0.668816
+            0.500532,
+            0.705188
           ],
           "material":2
         }
@@ -308,8 +94,148 @@
             0.000000
           ],
           "historyTexture":[
-            0.288634,
-            0.667137
+            0.510038,
+            0.716193
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.514949,
+            0.724358
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.526519,
+            0.731036
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.547569,
+            0.739998
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.434949,
+            0.769531
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.405590,
+            0.770945
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.328490,
+            0.769670
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.302513,
+            0.747083
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.271861,
+            0.717053
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.338907,
+            0.664112
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.768982,
+            -0.016956,
+            0.298973
+          ],
+          "historyTexture":[
+            0.354050,
+            0.665150
           ],
           "material":2
         }
@@ -324,92 +250,90 @@
         0.000000
       ],
       "historyTexture":[
-        0.372842,
-        0.740318
+        0.467444,
+        0.743225
       ],
       "material":2
     }
   },
   {
-    "makeDeepCut":[
+    "makeIncision":[
       {
-        "deepCutObject":0,
-        "openIn":false,
-        "openOut":true,
+        "Tin":true,
+        "Tout":false,
+        "incisedObject":0,
         "pointNumber":2
       },
       {
-        "deepCutPoint":{
+        "incisionPoint":{
+          "displacement":[
+            0.626114,
+            -0.409576,
+            0.613739
+          ],
+          "historyTexture":[
+            0.444304,
+            0.770289
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
           "displacement":[
             0.000000,
             0.000000,
             0.000000
           ],
           "historyTexture":[
-            0.434959,
-            0.779203
+            0.440573,
+            0.773503
           ],
-          "material":2,
-          "postNormal":[
-            -0.167909,
-            0.923265,
-            0.345526
-          ]
+          "material":2
+        }
+      }
+    ]
+  },
+  {
+    "makeIncision":[
+      {
+        "Tin":true,
+        "Tout":false,
+        "incisedObject":0,
+        "pointNumber":2
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.683861,
+            0.089512,
+            -0.334160
+          ],
+          "historyTexture":[
+            0.374622,
+            0.771280
+          ],
+          "material":2
         }
       },
       {
-        "deepCutPoint":{
+        "incisionPoint":{
           "displacement":[
-            0.349621,
-            0.233494,
-            -0.300545
+            0.000000,
+            0.000000,
+            0.000000
           ],
           "historyTexture":[
-            0.413603,
-            0.771992
+            0.348147,
+            0.785830
           ],
-          "material":2,
-          "postNormal":[
-            -0.313521,
-            0.924856,
-            0.215281
-          ]
+          "material":2
         }
       }
     ]
   },
   {
     "undermine":[
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.333616,
-            0.774525
-          ],
-          "incisionConnect":true,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.321424,
-            0.779083
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
       {
         "underminePoint":{
           "displacement":[
@@ -421,36 +345,6 @@
             0.340080,
             0.784424
           ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.363430,
-            0.776981
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.475853,
-            -0.002167,
-            -0.183167
-          ],
-          "historyTexture":[
-            0.366258,
-            0.774697
-          ],
           "incisionConnect":true,
           "material":2
         }
@@ -463,68 +357,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.403905,
-            0.776149
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.413604,
-            0.771998
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.437836,
-            0.782237
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.454247,
-            0.780749
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.422255,
-            0.769959
+            0.329278,
+            0.772055
           ],
           "incisionConnect":true,
           "material":2
@@ -536,20 +370,20 @@
     "makeIncision":[
       {
         "Tin":true,
-        "Tout":false,
+        "Tout":true,
         "incisedObject":0,
-        "pointNumber":2
+        "pointNumber":19
       },
       {
         "incisionPoint":{
           "displacement":[
-            0.340790,
-            0.412329,
-            0.400642
+            0.029081,
+            0.038534,
+            -0.106498
           ],
           "historyTexture":[
-            0.333603,
-            0.774517
+            0.417804,
+            0.684040
           ],
           "material":2
         }
@@ -562,8 +396,409 @@
             0.000000
           ],
           "historyTexture":[
-            0.342554,
-            0.787238
+            0.383526,
+            0.248975
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.405862,
+            0.261034
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.434353,
+            0.260455
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.455522,
+            0.241106
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.519648,
+            0.212075
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.547640,
+            0.200353
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.587960,
+            0.179547
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.582716,
+            0.176842
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.588917,
+            0.175642
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.587031,
+            0.170141
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.578183,
+            0.163104
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.557223,
+            0.169972
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.567028,
+            0.156223
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.528232,
+            0.161334
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.478097,
+            0.182401
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.441502,
+            0.188993
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.393309,
+            0.180305
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            -0.380829,
+            0.686150,
+            -0.010895
+          ],
+          "historyTexture":[
+            0.368720,
+            0.659741
+          ],
+          "material":2
+        }
+      }
+    ]
+  },
+  {
+    "excise":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.525705,
+        0.192822
+      ],
+      "material":2
+    }
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.415872,
+        0.233774
+      ],
+      "hookNum":0,
+      "material":2
+    }
+  },
+  {
+    "moveHook":[
+      0,
+      0.212001,
+      0.385278,
+      1.688136
+    ]
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.435494,
+        0.696185
+      ],
+      "hookNum":1,
+      "material":5
+    }
+  },
+  {
+    "moveHook":[
+      1,
+      0.153516,
+      0.301693,
+      1.543172
+    ]
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.387375,
+        0.662760
+      ],
+      "hookNum":2,
+      "material":2
+    }
+  },
+  {
+    "moveHook":[
+      2,
+      -0.251972,
+      0.369238,
+      1.323697
+    ]
+  },
+  {
+    "makeIncision":[
+      {
+        "Tin":true,
+        "Tout":false,
+        "incisedObject":0,
+        "pointNumber":5
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            -0.214005,
+            -0.156136,
+            0.276184
+          ],
+          "historyTexture":[
+            0.325015,
+            0.673302
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.277399,
+            0.665365
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.247531,
+            0.650244
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.229511,
+            0.627175
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.283444,
+            0.608858
           ],
           "material":2
         }
@@ -580,8 +815,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.439355,
-            0.720736
+            0.312569,
+            0.610610
           ],
           "incisionConnect":true,
           "material":2
@@ -595,8 +830,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.467800,
-            0.703235
+            0.356655,
+            0.635702
           ],
           "incisionConnect":false,
           "material":2
@@ -610,8 +845,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.466780,
-            0.681036
+            0.421834,
+            0.664051
           ],
           "incisionConnect":false,
           "material":2
@@ -625,8 +860,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.452610,
-            0.652071
+            0.555101,
+            0.709695
           ],
           "incisionConnect":false,
           "material":2
@@ -640,8 +875,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.469480,
-            0.637115
+            0.594281,
+            0.742976
           ],
           "incisionConnect":false,
           "material":2
@@ -655,8 +890,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.438030,
-            0.615258
+            0.551731,
+            0.750537
           ],
           "incisionConnect":false,
           "material":2
@@ -670,8 +905,53 @@
             0.000000
           ],
           "historyTexture":[
-            0.377684,
-            0.607375
+            0.533180,
+            0.750519
+          ],
+          "incisionConnect":true,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.563616,
+            0.745980
+          ],
+          "incisionConnect":true,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.483034,
+            0.765522
+          ],
+          "incisionConnect":true,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.444688,
+            0.777871
           ],
           "incisionConnect":false,
           "material":2
@@ -685,8 +965,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.325344,
-            0.601893
+            0.425510,
+            0.774558
           ],
           "incisionConnect":false,
           "material":2
@@ -700,13 +980,74 @@
             0.000000
           ],
           "historyTexture":[
-            0.291423,
-            0.602025
+            0.395058,
+            0.773632
+          ],
+          "incisionConnect":false,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.368407,
+            0.778337
           ],
           "incisionConnect":true,
           "material":2
         }
       }
+    ]
+  },
+  {
+    "addHook":{
+      "displacement":[
+        -0.344284,
+        -0.468910,
+        0.100250
+      ],
+      "historyTexture":[
+        0.522003,
+        0.723183
+      ],
+      "hookNum":3,
+      "material":2
+    }
+  },
+  {
+    "moveHook":[
+      3,
+      -0.465064,
+      0.363621,
+      1.290089
+    ]
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.454752,
+        0.699464
+      ],
+      "hookNum":4,
+      "material":5
+    }
+  },
+  {
+    "moveHook":[
+      4,
+      -0.138748,
+      0.107121,
+      1.318961
     ]
   },
   {
@@ -725,14 +1066,14 @@
             0.000000
           ],
           "historyTexture":[
-            0.459356,
-            0.695261
+            0.538285,
+            0.735370
           ],
           "material":5,
           "postNormal":[
-            0.513629,
-            0.763447,
-            0.391579
+            -0.808109,
+            0.242876,
+            0.536630
           ]
         }
       },
@@ -744,388 +1085,138 @@
             0.000000
           ],
           "historyTexture":[
-            0.423368,
-            0.694793
+            0.508413,
+            0.719659
           ],
           "material":5,
           "postNormal":[
-            0.541004,
-            0.777739,
-            0.320058
+            -0.927031,
+            0.217107,
+            0.305743
           ]
         }
       }
     ]
   },
   {
-    "makeIncision":[
-      {
-        "Tin":false,
-        "Tout":false,
-        "incisedObject":0,
-        "pointNumber":19
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.337737,
-            0.272333
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.402311,
-            0.259685
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.437660,
-            0.255463
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.484888,
-            0.239489
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.521289,
-            0.222824
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.584903,
-            0.185175
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.572211,
-            0.176724
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.588623,
-            0.173725
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.575299,
-            0.160594
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.567098,
-            0.154427
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.551324,
-            0.155191
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.517769,
-            0.161526
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.468493,
-            0.176441
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.414997,
-            0.178818
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.389453,
-            0.177102
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.365656,
-            0.152871
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.327190,
-            0.147318
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.290722,
-            0.143442
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.229148,
-            0.172690
-          ],
-          "material":2
-        }
-      }
+    "moveHook":[
+      4,
+      -0.385437,
+      0.189924,
+      1.258227
     ]
   },
   {
-    "makeIncision":[
-      {
-        "Tin":true,
-        "Tout":true,
-        "incisedObject":0,
-        "pointNumber":5
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.143944,
-            -0.988663,
-            0.290867
-          ],
-          "historyTexture":[
-            0.388943,
-            0.183910
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.409269,
-            0.184909
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.419735,
-            0.213465
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.390348,
-            0.243969
-          ],
-          "material":2
-        }
-      },
-      {
-        "incisionPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.335597,
-            0.269373
-          ],
-          "material":2
-        }
-      }
+    "addHook":{
+      "displacement":[
+        -0.063179,
+        0.995617,
+        0.189384
+      ],
+      "historyTexture":[
+        0.363106,
+        0.771036
+      ],
+      "hookNum":5,
+      "material":2
+    }
+  },
+  {
+    "moveHook":[
+      5,
+      -0.234906,
+      -0.314278,
+      1.482249
     ]
   },
   {
-    "excise":{
+    "addHook":{
       "displacement":[
         0.000000,
         0.000000,
         0.000000
       ],
       "historyTexture":[
-        0.525870,
-        0.186944
+        0.376673,
+        0.770940
       ],
+      "hookNum":6,
       "material":2
     }
+  },
+  {
+    "moveHook":[
+      6,
+      -0.342082,
+      -0.256728,
+      1.594766
+    ]
+  },
+  {
+    "makeIncision":[
+      {
+        "Tin":false,
+        "Tout":true,
+        "incisedObject":0,
+        "pointNumber":4
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.250129,
+            0.192763
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.254746,
+            0.137611
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.325949,
+            0.152570
+          ],
+          "material":2
+        }
+      },
+      {
+        "incisionPoint":{
+          "displacement":[
+            -0.294838,
+            -0.737030,
+            0.490719
+          ],
+          "historyTexture":[
+            0.388699,
+            0.180806
+          ],
+          "material":2
+        }
+      }
+    ]
   },
   {
     "undermine":[
@@ -1137,8 +1228,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.239671,
-            0.199393
+            0.277799,
+            0.196944
           ],
           "incisionConnect":true,
           "material":2
@@ -1152,8 +1243,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.251689,
-            0.215741
+            0.307546,
+            0.221381
           ],
           "incisionConnect":false,
           "material":2
@@ -1167,8 +1258,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.249169,
-            0.249757
+            0.306494,
+            0.304178
           ],
           "incisionConnect":false,
           "material":2
@@ -1182,113 +1273,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.221806,
-            0.326498
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.258979,
-            0.330961
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.285688,
-            0.310559
-          ],
-          "incisionConnect":true,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.364753,
-            0.285439
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.404409,
-            0.276064
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.467284,
-            0.291661
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.546297,
-            0.303287
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.561568,
-            0.286896
+            0.378670,
+            0.287961
           ],
           "incisionConnect":false,
           "material":2
@@ -1317,8 +1303,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.478547,
-            0.251083
+            0.526156,
+            0.243078
           ],
           "incisionConnect":false,
           "material":2
@@ -1332,23 +1318,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.495976,
-            0.236352
-          ],
-          "incisionConnect":true,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.499247,
-            0.251974
+            0.533019,
+            0.218157
           ],
           "incisionConnect":false,
           "material":2
@@ -1362,13 +1333,111 @@
             0.000000
           ],
           "historyTexture":[
-            0.283735,
-            0.146760
+            0.565866,
+            0.199409
+          ],
+          "incisionConnect":false,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.594931,
+            0.172842
+          ],
+          "incisionConnect":false,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.589735,
+            0.165332
+          ],
+          "incisionConnect":false,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.577467,
+            0.155125
+          ],
+          "incisionConnect":false,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.566929,
+            0.150428
+          ],
+          "incisionConnect":false,
+          "material":2
+        }
+      },
+      {
+        "underminePoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.556668,
+            0.155004
           ],
           "incisionConnect":true,
           "material":2
         }
       }
+    ]
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.380388,
+        0.172032
+      ],
+      "hookNum":7,
+      "material":2
+    }
+  },
+  {
+    "moveHook":[
+      7,
+      -0.240806,
+      0.575634,
+      1.037446
     ]
   },
   {
@@ -1387,14 +1456,14 @@
             0.000000
           ],
           "historyTexture":[
-            0.262376,
-            0.321040
+            0.315203,
+            0.248176
           ],
           "material":5,
           "postNormal":[
-            -0.262323,
-            -0.571176,
-            0.777782
+            -0.627881,
+            -0.086717,
+            0.773463
           ]
         }
       },
@@ -1406,14 +1475,14 @@
             0.000000
           ],
           "historyTexture":[
-            0.421039,
-            0.157262
+            0.418517,
+            0.154978
           ],
           "material":2,
           "postNormal":[
-            -0.755241,
-            0.170908,
-            0.632773
+            -0.627977,
+            -0.644629,
+            0.436003
           ]
         }
       },
@@ -1425,230 +1494,17 @@
             0.000000
           ],
           "historyTexture":[
-            0.408257,
-            0.048923
+            0.419346,
+            0.063712
           ],
           "material":2,
           "postNormal":[
-            -0.721949,
-            -0.176134,
-            0.669154
+            -0.056034,
+            -0.868183,
+            0.493071
           ]
         }
       }
-    ]
-  },
-  {
-    "makeDeepCut":[
-      {
-        "deepCutObject":0,
-        "openIn":false,
-        "openOut":true,
-        "pointNumber":2
-      },
-      {
-        "deepCutPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.542351,
-            0.293030
-          ],
-          "material":5,
-          "postNormal":[
-            -0.550381,
-            0.041617,
-            0.833876
-          ]
-        }
-      },
-      {
-        "deepCutPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.447032,
-            0.275801
-          ],
-          "material":5,
-          "postNormal":[
-            -0.788834,
-            -0.048298,
-            0.612706
-          ]
-        }
-      }
-    ]
-  },
-  {
-    "makeDeepCut":[
-      {
-        "deepCutObject":0,
-        "openIn":false,
-        "openOut":true,
-        "pointNumber":2
-      },
-      {
-        "deepCutPoint":{
-          "displacement":[
-            0.238419,
-            -0.297867,
-            0.020416
-          ],
-          "historyTexture":[
-            0.579896,
-            0.186609
-          ],
-          "material":5,
-          "postNormal":[
-            0.591702,
-            0.664960,
-            0.455760
-          ]
-        }
-      },
-      {
-        "deepCutPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.569977,
-            0.176922
-          ],
-          "material":5,
-          "postNormal":[
-            0.922315,
-            0.311947,
-            0.228090
-          ]
-        }
-      }
-    ]
-  },
-  {
-    "makeDeepCut":[
-      {
-        "deepCutObject":0,
-        "openIn":false,
-        "openOut":true,
-        "pointNumber":2
-      },
-      {
-        "deepCutPoint":{
-          "displacement":[
-            0.430862,
-            -0.065868,
-            -0.333786
-          ],
-          "historyTexture":[
-            0.584960,
-            0.172811
-          ],
-          "material":5,
-          "postNormal":[
-            0.679944,
-            0.658110,
-            0.323369
-          ]
-        }
-      },
-      {
-        "deepCutPoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.571401,
-            0.175121
-          ],
-          "material":5,
-          "postNormal":[
-            0.913590,
-            0.324380,
-            0.245214
-          ]
-        }
-      }
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.271117,
-        0.636157
-      ],
-      "hookNum":0,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      0,
-      0.047695,
-      0.284866,
-      0.813059
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.375630,
-        0.165957
-      ],
-      "hookNum":1,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      1,
-      0.080037,
-      0.356340,
-      0.810844
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.489618,
-        0.240306
-      ],
-      "hookNum":2,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      2,
-      0.481157,
-      0.399982,
-      1.471031
     ]
   },
   {
@@ -1661,8 +1517,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.186231,
-            0.126610
+            0.173072,
+            0.133363
           ],
           "incisionConnect":true,
           "material":8
@@ -1676,8 +1532,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.213497,
-            0.126644
+            0.184626,
+            0.132461
           ],
           "incisionConnect":false,
           "material":8
@@ -1691,8 +1547,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.227929,
-            0.151506
+            0.190846,
+            0.138760
           ],
           "incisionConnect":false,
           "material":8
@@ -1706,8 +1562,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.208904,
-            0.159734
+            0.175906,
+            0.147742
           ],
           "incisionConnect":false,
           "material":8
@@ -1721,8 +1577,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.184270,
-            0.161195
+            0.160151,
+            0.146707
           ],
           "incisionConnect":false,
           "material":8
@@ -1736,8 +1592,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.168922,
-            0.151599
+            0.162255,
+            0.142332
           ],
           "incisionConnect":true,
           "material":8
@@ -1746,24 +1602,89 @@
     ]
   },
   {
+    "moveHook":[
+      1,
+      -0.147197,
+      0.135746,
+      1.533540
+    ]
+  },
+  {
+    "makeDeepCut":[
+      {
+        "deepCutObject":0,
+        "openIn":false,
+        "openOut":true,
+        "pointNumber":2
+      },
+      {
+        "deepCutPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.417960,
+            0.261642
+          ],
+          "material":5,
+          "postNormal":[
+            -0.037060,
+            0.201289,
+            0.978831
+          ]
+        }
+      },
+      {
+        "deepCutPoint":{
+          "displacement":[
+            0.000000,
+            0.000000,
+            0.000000
+          ],
+          "historyTexture":[
+            0.387739,
+            0.247741
+          ],
+          "material":5,
+          "postNormal":[
+            -0.133425,
+            0.243865,
+            0.960587
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "deleteHook":7
+  },
+  {
+    "deleteHook":2
+  },
+  {
+    "deleteHook":0
+  },
+  {
     "addSuture":{
       "displacement0":[
-        -0.012405,
-        -0.460426,
-        -0.789558
+        0.027527,
+        -0.143784,
+        -0.306473
       ],
       "displacement1":[
-        -0.165230,
-        -0.672184,
-        0.179283
+        -0.096870,
+        -0.324722,
+        -0.345955
       ],
       "historyTexture0":[
-        0.243985,
-        0.615531
+        0.263411,
+        0.624007
       ],
       "historyTexture1":[
-        0.316966,
-        0.149628
+        0.307633,
+        0.151381
       ],
       "linked":false,
       "material0":2,
@@ -1774,22 +1695,22 @@
   {
     "addSuture":{
       "displacement0":[
-        -0.244820,
-        -0.012321,
-        0.127956
+        -0.297867,
+        -0.260040,
+        0.565247
       ],
       "displacement1":[
-        0.096939,
-        -0.516800,
-        0.376175
+        -0.398117,
+        -0.261642,
+        0.721985
       ],
       "historyTexture0":[
-        0.304546,
-        0.667904
+        0.491567,
+        0.700536
       ],
       "historyTexture1":[
-        0.400645,
-        0.227750
+        0.417804,
+        0.684040
       ],
       "linked":true,
       "material0":2,
@@ -1798,17 +1719,11 @@
     }
   },
   {
-    "deleteHook":1
-  },
-  {
-    "deleteHook":0
-  },
-  {
     "addSuture":{
       "displacement0":[
-        0.410812,
-        -0.544350,
-        0.570587
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "displacement1":[
         0.000000,
@@ -1816,12 +1731,12 @@
         0.000000
       ],
       "historyTexture0":[
-        0.243985,
-        0.615531
+        0.260881,
+        0.649696
       ],
       "historyTexture1":[
-        0.332736,
-        0.151632
+        0.334172,
+        0.162998
       ],
       "linked":false,
       "material0":4,
@@ -1842,12 +1757,12 @@
         0.000000
       ],
       "historyTexture0":[
-        0.267731,
-        0.630451
+        0.332853,
+        0.667895
       ],
       "historyTexture1":[
-        0.349881,
-        0.157297
+        0.371541,
+        0.171822
       ],
       "linked":false,
       "material0":4,
@@ -1868,12 +1783,12 @@
         0.000000
       ],
       "historyTexture0":[
-        0.277038,
-        0.641636
+        0.362892,
+        0.657145
       ],
       "historyTexture1":[
-        0.364037,
-        0.162440
+        0.384100,
+        0.193182
       ],
       "linked":false,
       "material0":4,
@@ -1889,17 +1804,17 @@
         0.000000
       ],
       "displacement1":[
-        0.000000,
-        0.000000,
-        0.000000
+        0.414040,
+        0.177818,
+        0.493961
       ],
       "historyTexture0":[
-        0.299009,
-        0.662612
+        0.407831,
+        0.202995
       ],
       "historyTexture1":[
-        0.405343,
-        0.198952
+        0.370579,
+        0.655312
       ],
       "linked":false,
       "material0":4,
@@ -1908,225 +1823,153 @@
     }
   },
   {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.351073,
-        0.774407
-      ],
-      "hookNum":3,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      3,
-      -0.044545,
-      -0.448679,
-      1.355007
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.401391,
-        0.772989
-      ],
-      "hookNum":4,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      4,
-      -0.007009,
-      -0.178473,
-      1.530232
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.571749,
-        0.156651
-      ],
-      "hookNum":5,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      5,
-      0.127246,
-      -0.503057,
-      1.346688
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.427218,
-        0.179387
-      ],
-      "hookNum":6,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      6,
-      0.005307,
-      0.058077,
-      1.267797
-    ]
-  },
-  {
     "addSuture":{
       "displacement0":[
-        -1.030151,
-        -0.280914,
-        -1.095783
+        1.561218,
+        -0.663383,
+        0.014671
       ],
       "displacement1":[
-        0.198387,
-        0.239820,
-        1.316551
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "historyTexture0":[
-        0.412924,
-        0.050592
+        0.419666,
+        0.681861
       ],
       "historyTexture1":[
-        0.418907,
-        0.061830
+        0.378504,
+        0.667923
       ],
       "linked":false,
-      "material0":2,
-      "material1":2,
+      "material0":4,
+      "material1":4,
       "sutureNum":6
     }
   },
   {
     "addSuture":{
       "displacement0":[
-        1.248825,
-        -0.299763,
-        -1.381325
+        0.156212,
+        -0.663010,
+        -0.390835
       ],
       "displacement1":[
-        -0.555122,
-        0.145905,
-        0.630054
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "historyTexture0":[
-        0.434213,
-        0.090459
+        0.378759,
+        0.660879
       ],
       "historyTexture1":[
-        0.431944,
-        0.134204
+        0.411191,
+        0.679612
       ],
-      "linked":true,
-      "material0":2,
-      "material1":2,
+      "linked":false,
+      "material0":4,
+      "material1":4,
       "sutureNum":7
     }
   },
   {
     "addSuture":{
       "displacement0":[
-        -0.027351,
-        -0.019566,
-        0.225868
+        -0.451180,
+        0.148380,
+        -0.146698
       ],
       "displacement1":[
-        -0.139572,
-        0.566315,
-        -0.245205
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "historyTexture0":[
-        0.276440,
-        0.724777
+        0.386671,
+        0.665700
       ],
       "historyTexture1":[
-        0.440062,
-        0.177616
+        0.460951,
+        0.692766
       ],
       "linked":false,
-      "material0":2,
-      "material1":2,
+      "material0":4,
+      "material1":4,
       "sutureNum":8
     }
   },
   {
     "addSuture":{
       "displacement0":[
-        0.528839,
-        -0.674093,
-        0.002964
+        -0.245277,
+        -0.188576,
+        0.527084
       ],
       "displacement1":[
-        -0.109344,
-        0.009689,
-        0.433327
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "historyTexture0":[
-        0.541772,
-        0.143656
+        0.417804,
+        0.684040
       ],
       "historyTexture1":[
-        0.316161,
-        0.770362
+        0.499109,
+        0.703314
       ],
-      "linked":true,
-      "material0":2,
-      "material1":2,
+      "linked":false,
+      "material0":4,
+      "material1":4,
       "sutureNum":9
     }
   },
   {
-    "deleteHook":6
+    "addHook":{
+      "displacement":[
+        -0.542168,
+        0.534859,
+        -0.521156
+      ],
+      "historyTexture":[
+        0.561916,
+        0.168171
+      ],
+      "hookNum":8,
+      "material":2
+    }
+  },
+  {
+    "moveHook":[
+      8,
+      -0.143955,
+      -0.398450,
+      1.498860
+    ]
   },
   {
     "addSuture":{
       "displacement0":[
-        -0.454079,
-        1.061712,
-        -0.383591
+        -1.523109,
+        -0.162151,
+        -0.135765
       ],
       "displacement1":[
-        0.240314,
-        0.207426,
-        -0.699059
+        0.107445,
+        0.054710,
+        0.269573
       ],
       "historyTexture0":[
-        0.551330,
-        0.153904
+        0.407234,
+        0.177209
       ],
       "historyTexture1":[
-        0.291415,
-        0.781449
+        0.269701,
+        0.712310
       ],
-      "linked":true,
+      "linked":false,
       "material0":2,
       "material1":2,
       "sutureNum":10
@@ -2135,22 +1978,22 @@
   {
     "addSuture":{
       "displacement0":[
-        0.589767,
-        0.275454,
-        -0.458908
+        -0.706345,
+        0.401337,
+        -0.132774
       ],
       "displacement1":[
-        -0.275742,
-        0.256548,
-        0.121719
+        0.294334,
+        0.927254,
+        -0.048096
       ],
       "historyTexture0":[
-        0.326296,
-        0.772835
+        0.567175,
+        0.155806
       ],
       "historyTexture1":[
-        0.564115,
-        0.147222
+        0.363106,
+        0.771036
       ],
       "linked":true,
       "material0":2,
@@ -2161,134 +2004,167 @@
   {
     "addHook":{
       "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
+        -0.515076,
+        -0.172421,
+        0.068649
       ],
       "historyTexture":[
-        0.385737,
-        0.670346
-      ],
-      "hookNum":7,
-      "material":2
-    }
-  },
-  {
-    "moveHook":[
-      7,
-      0.156541,
-      0.405869,
-      1.303496
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.417307,
-        0.698431
-      ],
-      "hookNum":8,
-      "material":5
-    }
-  },
-  {
-    "moveHook":[
-      8,
-      0.207418,
-      0.166839,
-      1.181935
-    ]
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.209167,
-        0.257732,
-        0.279663
-      ],
-      "historyTexture":[
-        0.318220,
-        0.250153
+        0.346972,
+        0.783796
       ],
       "hookNum":9,
-      "material":5
+      "material":4,
+      "strongHook":true
     }
   },
   {
     "moveHook":[
       9,
-      0.164615,
-      0.246066,
-      1.094669
+      -0.289903,
+      -0.280874,
+      1.287300
     ]
   },
   {
+    "addHook":{
+      "displacement":[
+        0.716064,
+        0.601730,
+        0.013184
+      ],
+      "historyTexture":[
+        0.354374,
+        0.777786
+      ],
+      "hookNum":10,
+      "material":4,
+      "strongHook":true
+    }
+  },
+  {
     "moveHook":[
-      2,
-      0.264088,
-      0.412071,
-      1.473448
+      10,
+      -0.196768,
+      -0.264618,
+      1.290732
     ]
   },
   {
     "addSuture":{
       "displacement0":[
-        0.000000,
-        0.000000,
-        0.000000
+        -0.702774,
+        0.894358,
+        -0.822601
       ],
       "displacement1":[
-        -0.013199,
-        0.307339,
-        -0.126156
+        0.387085,
+        0.040638,
+        -0.135918
       ],
       "historyTexture0":[
-        0.455984,
-        0.696571
+        0.561916,
+        0.168171
       ],
       "historyTexture1":[
-        0.318220,
-        0.250153
+        0.350380,
+        0.786118
       ],
-      "linked":false,
-      "material0":5,
-      "material1":5,
+      "linked":true,
+      "material0":2,
+      "material1":2,
       "sutureNum":12
     }
   },
   {
-    "addSuture":{
-      "displacement0":[
+    "addHook":{
+      "displacement":[
         0.000000,
         0.000000,
         0.000000
       ],
+      "historyTexture":[
+        0.568106,
+        0.156219
+      ],
+      "hookNum":11,
+      "material":4,
+      "strongHook":true
+    }
+  },
+  {
+    "moveHook":[
+      11,
+      -0.140768,
+      -0.275524,
+      1.282938
+    ]
+  },
+  {
+    "deleteHook":8
+  },
+  {
+    "deleteHook":5
+  },
+  {
+    "addSuture":{
+      "displacement0":[
+        0.413124,
+        0.329773,
+        -0.101517
+      ],
       "displacement1":[
-        0.043427,
-        -0.158077,
-        0.135841
+        -0.383438,
+        0.792694,
+        -0.524323
       ],
       "historyTexture0":[
-        0.441887,
-        0.697521
+        0.365247,
+        0.776999
       ],
       "historyTexture1":[
-        0.328157,
-        0.246443
+        0.561916,
+        0.168171
       ],
       "linked":false,
-      "material0":5,
-      "material1":5,
+      "material0":4,
+      "material1":4,
       "sutureNum":13
     }
   },
   {
-    "deleteHook":9
+    "moveHook":[
+      4,
+      -0.207915,
+      0.141431,
+      1.284301
+    ]
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.368630,
+        0.660805
+      ],
+      "hookNum":12,
+      "material":5,
+      "strongHook":true
+    }
+  },
+  {
+    "deleteHook":1
+  },
+  {
+    "moveHook":[
+      12,
+      -0.592223,
+      0.254479,
+      1.036469
+    ]
   },
   {
     "addSuture":{
@@ -2298,17 +2174,17 @@
         0.000000
       ],
       "displacement1":[
-        0.000000,
-        0.000000,
-        0.000000
+        -0.199516,
+        -0.291763,
+        0.018120
       ],
       "historyTexture0":[
-        0.427373,
-        0.696957
+        0.475213,
+        0.700244
       ],
       "historyTexture1":[
-        0.344945,
-        0.234650
+        0.432784,
+        0.260401
       ],
       "linked":false,
       "material0":5,
@@ -2319,22 +2195,22 @@
   {
     "addSuture":{
       "displacement0":[
-        -0.052399,
-        -0.238552,
-        -0.052338
-      ],
-      "displacement1":[
         0.000000,
         0.000000,
         0.000000
       ],
+      "displacement1":[
+        0.605522,
+        0.145428,
+        -0.036011
+      ],
       "historyTexture0":[
-        0.421966,
-        0.696446
+        0.415872,
+        0.233774
       ],
       "historyTexture1":[
-        0.377877,
-        0.219536
+        0.537398,
+        0.731409
       ],
       "linked":false,
       "material0":5,
@@ -2343,40 +2219,6 @@
     }
   },
   {
-    "deleteHook":8
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.372885,
-        0.719969
-      ],
-      "hookNum":10,
-      "material":5
-    }
-  },
-  {
-    "moveHook":[
-      10,
-      0.484408,
-      0.173380,
-      1.212869
-    ]
-  },
-  {
-    "moveHook":[
-      2,
-      0.243523,
-      0.297424,
-      1.414585
-    ]
-  },
-  {
     "addSuture":{
       "displacement0":[
         0.000000,
@@ -2384,17 +2226,17 @@
         0.000000
       ],
       "displacement1":[
-        0.000000,
-        0.000000,
-        0.000000
+        -0.285072,
+        0.169540,
+        0.027725
       ],
       "historyTexture0":[
-        0.407975,
-        0.714058
+        0.441990,
+        0.251629
       ],
       "historyTexture1":[
-        0.410317,
-        0.220139
+        0.471472,
+        0.701059
       ],
       "linked":false,
       "material0":5,
@@ -2403,78 +2245,27 @@
     }
   },
   {
-    "addSuture":{
-      "displacement0":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "displacement1":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture0":[
-        0.384581,
-        0.717447
-      ],
-      "historyTexture1":[
-        0.451957,
-        0.217470
-      ],
-      "linked":false,
-      "material0":5,
-      "material1":5,
-      "sutureNum":17
-    }
-  },
-  {
-    "addSuture":{
-      "displacement0":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "displacement1":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture0":[
-        0.380844,
-        0.723027
-      ],
-      "historyTexture1":[
-        0.482502,
-        0.213502
-      ],
-      "linked":false,
-      "material0":5,
-      "material1":5,
-      "sutureNum":18
-    }
-  },
-  {
     "addHook":{
       "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
+        -0.705841,
+        0.376625,
+        0.062996
       ],
       "historyTexture":[
-        0.356135,
-        0.735428
+        0.428831,
+        0.699380
       ],
-      "hookNum":11,
-      "material":5
+      "hookNum":13,
+      "material":5,
+      "strongHook":true
     }
   },
   {
     "moveHook":[
-      11,
-      0.474261,
-      0.040615,
-      1.203814
+      13,
+      -0.497490,
+      0.259855,
+      1.071736
     ]
   },
   {
@@ -2490,12 +2281,70 @@
         0.000000
       ],
       "historyTexture0":[
-        0.382959,
-        0.731987
+        0.469470,
+        0.705953
       ],
       "historyTexture1":[
-        0.497303,
-        0.206747
+        0.478215,
+        0.241485
+      ],
+      "linked":false,
+      "material0":5,
+      "material1":5,
+      "sutureNum":17
+    }
+  },
+  {
+    "deleteHook":4
+  },
+  {
+    "addSuture":{
+      "displacement0":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "displacement1":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture0":[
+        0.471533,
+        0.732716
+      ],
+      "historyTexture1":[
+        0.477702,
+        0.238304
+      ],
+      "linked":false,
+      "material0":5,
+      "material1":5,
+      "sutureNum":18
+    }
+  },
+  {
+    "deleteHook":3
+  },
+  {
+    "addSuture":{
+      "displacement0":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "displacement1":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture0":[
+        0.450577,
+        0.741066
+      ],
+      "historyTexture1":[
+        0.497147,
+        0.219295
       ],
       "linked":false,
       "material0":5,
@@ -2516,44 +2365,18 @@
         0.000000
       ],
       "historyTexture0":[
-        0.370568,
-        0.737395
+        0.425367,
+        0.744972
       ],
       "historyTexture1":[
-        0.516939,
-        0.202653
+        0.509148,
+        0.207250
       ],
       "linked":false,
       "material0":5,
       "material1":5,
       "sutureNum":20
     }
-  },
-  {
-    "deleteHook":10
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.356497,
-        0.748716
-      ],
-      "hookNum":12,
-      "material":5
-    }
-  },
-  {
-    "moveHook":[
-      12,
-      0.483627,
-      -0.071789,
-      1.221697
-    ]
   },
   {
     "addSuture":{
@@ -2568,12 +2391,12 @@
         0.000000
       ],
       "historyTexture0":[
-        0.381534,
-        0.746124
+        0.409899,
+        0.754385
       ],
       "historyTexture1":[
-        0.535089,
-        0.193307
+        0.524245,
+        0.192467
       ],
       "linked":false,
       "material0":5,
@@ -2594,44 +2417,18 @@
         0.000000
       ],
       "historyTexture0":[
-        0.377488,
-        0.752248
+        0.413022,
+        0.762213
       ],
       "historyTexture1":[
-        0.544261,
-        0.191437
+        0.549760,
+        0.185809
       ],
       "linked":false,
       "material0":5,
       "material1":5,
       "sutureNum":22
     }
-  },
-  {
-    "deleteHook":11
-  },
-  {
-    "addHook":{
-      "displacement":[
-        -0.088356,
-        0.208233,
-        0.156158
-      ],
-      "historyTexture":[
-        0.365922,
-        0.764387
-      ],
-      "hookNum":13,
-      "material":5
-    }
-  },
-  {
-    "moveHook":[
-      13,
-      0.415343,
-      -0.174743,
-      1.286831
-    ]
   },
   {
     "addSuture":{
@@ -2646,12 +2443,12 @@
         0.000000
       ],
       "historyTexture0":[
-        0.389658,
-        0.758512
+        0.412096,
+        0.766808
       ],
       "historyTexture1":[
-        0.557394,
-        0.185161
+        0.564247,
+        0.176234
       ],
       "linked":false,
       "material0":5,
@@ -2667,17 +2464,17 @@
         0.000000
       ],
       "displacement1":[
-        -0.028496,
-        -0.549704,
-        0.304482
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "historyTexture0":[
-        0.388240,
-        0.763959
+        0.407810,
+        0.770881
       ],
       "historyTexture1":[
-        0.580783,
-        0.185939
+        0.575881,
+        0.171118
       ],
       "linked":false,
       "material0":5,
@@ -2686,50 +2483,24 @@
     }
   },
   {
-    "deleteHook":12
-  },
-  {
-    "addHook":{
-      "displacement":[
-        -0.503555,
-        -0.103687,
-        -0.023705
-      ],
-      "historyTexture":[
-        0.567753,
-        0.175037
-      ],
-      "hookNum":14,
-      "material":5
-    }
-  },
-  {
-    "moveHook":[
-      14,
-      -0.148578,
-      -0.125585,
-      1.309085
-    ]
-  },
-  {
     "addSuture":{
       "displacement0":[
-        0.359116,
-        0.276197,
-        -0.514755
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "displacement1":[
-        -0.265099,
-        -0.000435,
-        -0.003105
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "historyTexture0":[
-        0.572063,
-        0.176610
+        0.366647,
+        0.770467
       ],
       "historyTexture1":[
-        0.409110,
-        0.766855
+        0.570515,
+        0.165364
       ],
       "linked":false,
       "material0":5,
@@ -2740,22 +2511,22 @@
   {
     "addSuture":{
       "displacement0":[
-        1.027512,
-        -0.097664,
-        0.317696
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "displacement1":[
-        0.175621,
-        -0.113626,
-        0.015930
+        0.000000,
+        0.000000,
+        0.000000
       ],
       "historyTexture0":[
-        0.436837,
-        0.778058
+        0.387905,
+        0.771377
       ],
       "historyTexture1":[
-        0.567753,
-        0.175037
+        0.577425,
+        0.165607
       ],
       "linked":false,
       "material0":5,
@@ -2764,173 +2535,107 @@
     }
   },
   {
-    "addHook":{
-      "displacement":[
-        0.248749,
-        0.256905,
-        -0.167984
-      ],
-      "historyTexture":[
-        0.388096,
-        0.767519
-      ],
-      "hookNum":15,
-      "material":5
-    }
-  },
-  {
-    "moveHook":[
-      15,
-      0.149014,
-      -0.221576,
-      1.303032
-    ]
-  },
-  {
-    "deleteHook":13
-  },
-  {
-    "addHook":{
-      "displacement":[
-        0.000000,
-        0.000000,
-        0.000000
-      ],
-      "historyTexture":[
-        0.561860,
-        0.170627
-      ],
-      "hookNum":16,
-      "material":5
-    }
-  },
-  {
-    "moveHook":[
-      16,
-      0.043319,
-      -0.314091,
-      1.315656
-    ]
+    "deleteHook":6
   },
   {
     "addSuture":{
       "displacement0":[
-        0.000000,
-        0.000000,
-        0.000000
+        0.160538,
+        0.098476,
+        0.144798
       ],
       "displacement1":[
-        0.000000,
-        0.000000,
-        0.000000
+        -0.684700,
+        -0.772310,
+        -0.291000
       ],
       "historyTexture0":[
-        0.576253,
-        0.175523
+        0.561981,
+        0.168286
       ],
       "historyTexture1":[
-        0.410278,
-        0.770765
+        0.359515,
+        0.780860
       ],
       "linked":false,
-      "material0":5,
-      "material1":5,
+      "material0":2,
+      "material1":2,
       "sutureNum":27
     }
   },
   {
-    "deleteHook":14
-  },
-  {
     "addSuture":{
       "displacement0":[
-        0.000000,
-        0.000000,
-        0.000000
+        0.501808,
+        -0.184418,
+        -0.250496
       ],
       "displacement1":[
-        -0.771240,
-        1.068834,
-        0.030769
+        -0.673355,
+        0.305742,
+        0.245491
       ],
       "historyTexture0":[
-        0.394134,
-        0.766476
+        0.375282,
+        0.771111
       ],
       "historyTexture1":[
-        0.587124,
-        0.172914
+        0.580491,
+        0.162577
       ],
-      "linked":false,
-      "material0":5,
-      "material1":5,
+      "linked":true,
+      "material0":2,
+      "material1":2,
       "sutureNum":28
     }
   },
   {
-    "deleteHook":4
-  },
-  {
     "addSuture":{
       "displacement0":[
-        -0.272316,
-        -0.177706,
-        -0.102348
+        0.532730,
+        0.080032,
+        0.017441
       ],
       "displacement1":[
-        0.000000,
-        0.000000,
-        0.000000
+        -0.170639,
+        0.038231,
+        0.045906
       ],
       "historyTexture0":[
-        0.562208,
-        0.170888
+        0.407449,
+        0.772100
       ],
       "historyTexture1":[
-        0.345776,
-        0.772579
+        0.587694,
+        0.169988
       ],
-      "linked":false,
-      "material0":5,
-      "material1":5,
+      "linked":true,
+      "material0":2,
+      "material1":2,
       "sutureNum":29
     }
   },
   {
-    "deleteHook":16
-  },
-  {
-    "deleteHook":15
-  },
-  {
-    "moveHook":[
-      7,
-      0.392611,
-      0.274262,
-      1.186206
-    ]
-  },
-  {
     "addSuture":{
       "displacement0":[
-        -0.036713,
-        -0.177094,
-        0.100494
+        -0.242691,
+        0.095852,
+        -0.147552
       ],
       "displacement1":[
-        0.153519,
-        0.364548,
-        0.160297
+        0.012535,
+        0.697033,
+        -0.178879
       ],
       "historyTexture0":[
-        0.358266,
-        0.649947
+        0.433238,
+        0.769732
       ],
       "historyTexture1":[
-        0.351503,
-        0.255201
+        0.588602,
+        0.171744
       ],
-      "linked":false,
+      "linked":true,
       "material0":2,
       "material1":2,
       "sutureNum":30
@@ -2939,56 +2644,50 @@
   {
     "addSuture":{
       "displacement0":[
-        -0.174652,
-        -0.064793,
-        0.192558
+        -0.845291,
+        0.131348,
+        0.189209
       ],
       "displacement1":[
-        -0.651123,
-        -0.340286,
-        -0.233246
+        -0.392090,
+        0.226971,
+        -0.331795
       ],
       "historyTexture0":[
-        0.360406,
-        0.668717
+        0.586905,
+        0.177449
       ],
       "historyTexture1":[
-        0.466278,
-        0.253054
+        0.435235,
+        0.772923
       ],
-      "linked":true,
+      "linked":false,
       "material0":2,
       "material1":2,
       "sutureNum":31
     }
   },
   {
-    "deleteHook":7
-  },
-  {
-    "deleteHook":2
-  },
-  {
     "addSuture":{
       "displacement0":[
-        0.616772,
-        -0.228546,
-        0.399147
+        0.564697,
+        -0.411335,
+        0.612694
       ],
       "displacement1":[
-        -0.355873,
-        0.172518,
-        0.155785
+        0.176750,
+        0.046642,
+        -0.049759
       ],
       "historyTexture0":[
-        0.422254,
-        0.769953
+        0.444316,
+        0.770287
       ],
       "historyTexture1":[
-        0.587066,
-        0.185427
+        0.587118,
+        0.179059
       ],
-      "linked":true,
+      "linked":false,
       "material0":2,
       "material1":2,
       "sutureNum":32
@@ -2997,22 +2696,22 @@
   {
     "addSuture":{
       "displacement0":[
-        -0.307953,
-        0.113741,
-        0.153755
+        -0.769310,
+        0.314701,
+        -0.604263
       ],
       "displacement1":[
-        0.376865,
-        0.170616,
-        -0.083389
+        0.112442,
+        -0.755875,
+        -0.092453
       ],
       "historyTexture0":[
-        0.574765,
-        0.176809
+        0.462632,
+        0.241358
       ],
       "historyTexture1":[
-        0.434441,
-        0.780268
+        0.557785,
+        0.739085
       ],
       "linked":true,
       "material0":2,
@@ -3023,22 +2722,22 @@
   {
     "addSuture":{
       "displacement0":[
-        0.155712,
-        0.049042,
-        -0.066322
+        0.276230,
+        -0.112900,
+        -0.082893
       ],
       "displacement1":[
-        -0.042015,
-        -0.025921,
-        0.047562
+        -1.205185,
+        -0.610195,
+        0.350945
       ],
       "historyTexture0":[
-        0.414905,
-        0.771064
+        0.509014,
+        0.711017
       ],
       "historyTexture1":[
-        0.588791,
-        0.173882
+        0.380950,
+        0.247014
       ],
       "linked":true,
       "material0":2,
@@ -3047,114 +2746,6 @@
     }
   },
   {
-    "addSuture":{
-      "displacement0":[
-        0.134109,
-        0.369816,
-        -0.076286
-      ],
-      "displacement1":[
-        0.459000,
-        0.066933,
-        -0.056076
-      ],
-      "historyTexture0":[
-        0.585842,
-        0.169321
-      ],
-      "historyTexture1":[
-        0.405413,
-        0.773044
-      ],
-      "linked":true,
-      "material0":2,
-      "material1":2,
-      "sutureNum":35
-    }
-  },
-  {
-    "addSuture":{
-      "displacement0":[
-        0.578186,
-        0.130165,
-        -0.388725
-      ],
-      "displacement1":[
-        -0.646484,
-        -0.076090,
-        -0.312599
-      ],
-      "historyTexture0":[
-        0.342502,
-        0.776727
-      ],
-      "historyTexture1":[
-        0.573752,
-        0.158696
-      ],
-      "linked":true,
-      "material0":2,
-      "material1":2,
-      "sutureNum":36
-    }
-  },
-  {
-    "addSuture":{
-      "displacement0":[
-        -0.679550,
-        1.152933,
-        -0.068085
-      ],
-      "displacement1":[
-        -0.686050,
-        -0.318184,
-        -0.045341
-      ],
-      "historyTexture0":[
-        0.562056,
-        0.152599
-      ],
-      "historyTexture1":[
-        0.342526,
-        0.783989
-      ],
-      "linked":true,
-      "material0":2,
-      "material1":2,
-      "sutureNum":37
-    }
-  },
-  {
-    "addSuture":{
-      "displacement0":[
-        0.072296,
-        -0.101877,
-        -0.719963
-      ],
-      "displacement1":[
-        0.001953,
-        -0.225008,
-        -0.875732
-      ],
-      "historyTexture0":[
-        0.319857,
-        0.772933
-      ],
-      "historyTexture1":[
-        0.562056,
-        0.152599
-      ],
-      "linked":true,
-      "material0":2,
-      "material1":2,
-      "sutureNum":38
-    }
-  },
-  {
-    "deleteHook":5
-  },
-  {
-    "deleteHook":3
+    "promoteSutureApproximations":0
   }
-
 ]

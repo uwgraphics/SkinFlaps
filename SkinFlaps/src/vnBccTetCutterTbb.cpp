@@ -560,7 +560,7 @@ public:
 					}
 					if (exterior) {
 						exteriorTetFaces.push_back(std::move(tf));
-						assert(counterClockwise(*fpit));
+//						assert(counterClockwise(*fpit));  // COURT - put back in after model/program debug
 						exteriorPolygons.splice(exteriorPolygons.end(), facePolygons, fpit);
 					}
 					else {  // test this interior polygon for clockwiseness
@@ -670,7 +670,7 @@ public:
 							vnBccTetCutterTbb::planeLineCrossing plc = hit->second;
 							auto hit2 = hit;
 							++hit2;
-							assert(hit2 != planeDiagonals[0][j].end() && hit2->first - hit->first < 1e-6);
+							assert(hit2 != planeDiagonals[0][j].end());  //  && hit2->first - hit->first < 1e-6
 							hit->second = hit2->second;
 							hit2->second = plc;
 						}

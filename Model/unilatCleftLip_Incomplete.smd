@@ -1,6 +1,6 @@
 {
     "dynamicObjects" : {
-        "unilatCompleteCleft.obj" : {
+        "unilatIncompleteCleft_2.obj" : {
             "textureMaps": [
                 1,
                 2,
@@ -10,20 +10,20 @@
         }
     },
     "textureFiles" : {
-        "CleftTexture.jpg" : 1,
-        "CleftNormal.jpg" : 2,
+        "incompleteCleftTexture.jpg" : 1,
+        "incompleteCleftNormal.jpg" : 2,
         "cleftDeepBed.jpg" : 3,
         "cleftDeepBed_Nrm.jpg" : 4
     },
     "staticObjects" : {
-        "LmaxillaFace.obj" : {
+        "LmaxillaFace_Incomplete.obj" : {
             "textureMap" : 3,
             "normalMap" : 4
         }
     },
     "tetrahedralProperties" : {
         "minStrain" : 0.6,
-        "maxStrain" : 1.8,
+        "maxStrain" : 1.6,
         "lowTetWeight" : 500.0,
         "highTetWeight" : 1000.0,
         "collisionWeight" : 40000.0,

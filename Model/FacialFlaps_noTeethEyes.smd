@@ -9,20 +9,6 @@
             ]
         }
     },
-    "staticObjects" : {
-        "eye_right_CBC.obj" : {
-            "textureMap" : 5,
-            "normalMap" : 6
-        },
-        "eye_left_CBC.obj" : {
-            "textureMap" : 5,
-            "normalMap" : 6
-        },
-        "teeth.obj" : {
-            "textureMap" : 7,
-            "normalMap" : 8
-        }
-    },
     "textureFiles" : {
         "diffuse2.jpg" : 1,
         "normal.jpg" : 2,

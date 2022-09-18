@@ -842,9 +842,8 @@ bool materialTriangles::rayTriangleIntersection(const Vec3f &rayOrigin, const Ve
 	U = t[1] - t[0];
 	V = t[2] - t[0];
 	Mat3x3f m(-rayDirection, U, V);
-	if (!m.Solve_Linear_System(b, r))
-		return false;
-	if (r._v[1]<-1e-4f || r._v[2]<-1e-4f || r._v[1] + r._v[2]>1.0001f) // allows for roundoff error
+	r = m.Robust_Solve_Linear_System(b);
+	if (r._v[1]<-1e-4f || r._v[2]<-1e-4f || r._v[1] >1.0001f || r._v[2] >1.0001f || r._v[1] + r._v[2]>1.0001f) // allows for roundoff error
 		return false;
 	rayParam = r._v[0];
 	triParam[0] = r._v[1];
@@ -1168,8 +1167,9 @@ int materialTriangles::addNewVertexInMidTriangle(int triangle, const float (&uvP
 	return ret;
 }
 
-int materialTriangles::addTriangle(int (&vertices)[3], int material)
-{
+/* int materialTriangles::addTriangle(int(&vertices)[3], int material)
+{  // now using texture seams making this simple call invalid.
+	throw(std::logic_error("This addTriangle() call is obsolete.\n"));
 	int retval = (int)_tris.size();
 	matTriangle mt;
 	mt.v[0] = vertices[0]; mt.v[1] = vertices[1]; mt.v[2] = vertices[2];
@@ -1182,7 +1182,7 @@ int materialTriangles::addTriangle(int (&vertices)[3], int material)
 		_adjs.push_back(0x03); }
 	_adjacenciesComputed = false;
 	return retval;
-}
+} */
 
 int materialTriangles::addTriangle(const int(&vertices)[3], const int material,  const int(&textures)[3])
 {
@@ -1813,7 +1813,8 @@ void materialTriangles::closestPoint(const float(&xyz)[3], int &triangle, float(
 			R.set((const float(&)[3])_xyz[_tris[i].v[(j + 1) % 3] * 3]);
 			R -= Q;
 			dsq = R*R;
-			assert(dsq > 1e-16f);
+			if (dsq < 1e-16f)
+				continue;
 			t = ((P - Q)*R) / dsq;
 			if (t > 1.0f)
 				t = 1.0f;

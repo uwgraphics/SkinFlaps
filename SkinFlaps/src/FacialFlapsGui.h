@@ -18,15 +18,127 @@
 #include "stb_image.h"
 
 #include "imgui.h"
-#include "nfd.h"
-#include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "ImGuiFileDialog.h"
 #include <string>
 #include <fstream>
+#include <tbb/task_arena.h>
 #include <gl3wGraphics.h>
 #include "surgicalActions.h"
 
+static ImGuiKey ImGui_ImplGlfw_KeyToImGuiKey(int key)
+{
+	switch (key)
+	{
+	case GLFW_KEY_TAB: return ImGuiKey_Tab;
+	case GLFW_KEY_LEFT: return ImGuiKey_LeftArrow;
+	case GLFW_KEY_RIGHT: return ImGuiKey_RightArrow;
+	case GLFW_KEY_UP: return ImGuiKey_UpArrow;
+	case GLFW_KEY_DOWN: return ImGuiKey_DownArrow;
+	case GLFW_KEY_PAGE_UP: return ImGuiKey_PageUp;
+	case GLFW_KEY_PAGE_DOWN: return ImGuiKey_PageDown;
+	case GLFW_KEY_HOME: return ImGuiKey_Home;
+	case GLFW_KEY_END: return ImGuiKey_End;
+	case GLFW_KEY_INSERT: return ImGuiKey_Insert;
+	case GLFW_KEY_DELETE: return ImGuiKey_Delete;
+	case GLFW_KEY_BACKSPACE: return ImGuiKey_Backspace;
+	case GLFW_KEY_SPACE: return ImGuiKey_Space;
+	case GLFW_KEY_ENTER: return ImGuiKey_Enter;
+	case GLFW_KEY_ESCAPE: return ImGuiKey_Escape;
+	case GLFW_KEY_APOSTROPHE: return ImGuiKey_Apostrophe;
+	case GLFW_KEY_COMMA: return ImGuiKey_Comma;
+	case GLFW_KEY_MINUS: return ImGuiKey_Minus;
+	case GLFW_KEY_PERIOD: return ImGuiKey_Period;
+	case GLFW_KEY_SLASH: return ImGuiKey_Slash;
+	case GLFW_KEY_SEMICOLON: return ImGuiKey_Semicolon;
+	case GLFW_KEY_EQUAL: return ImGuiKey_Equal;
+	case GLFW_KEY_LEFT_BRACKET: return ImGuiKey_LeftBracket;
+	case GLFW_KEY_BACKSLASH: return ImGuiKey_Backslash;
+	case GLFW_KEY_RIGHT_BRACKET: return ImGuiKey_RightBracket;
+	case GLFW_KEY_GRAVE_ACCENT: return ImGuiKey_GraveAccent;
+	case GLFW_KEY_CAPS_LOCK: return ImGuiKey_CapsLock;
+	case GLFW_KEY_SCROLL_LOCK: return ImGuiKey_ScrollLock;
+	case GLFW_KEY_NUM_LOCK: return ImGuiKey_NumLock;
+	case GLFW_KEY_PRINT_SCREEN: return ImGuiKey_PrintScreen;
+	case GLFW_KEY_PAUSE: return ImGuiKey_Pause;
+	case GLFW_KEY_KP_0: return ImGuiKey_Keypad0;
+	case GLFW_KEY_KP_1: return ImGuiKey_Keypad1;
+	case GLFW_KEY_KP_2: return ImGuiKey_Keypad2;
+	case GLFW_KEY_KP_3: return ImGuiKey_Keypad3;
+	case GLFW_KEY_KP_4: return ImGuiKey_Keypad4;
+	case GLFW_KEY_KP_5: return ImGuiKey_Keypad5;
+	case GLFW_KEY_KP_6: return ImGuiKey_Keypad6;
+	case GLFW_KEY_KP_7: return ImGuiKey_Keypad7;
+	case GLFW_KEY_KP_8: return ImGuiKey_Keypad8;
+	case GLFW_KEY_KP_9: return ImGuiKey_Keypad9;
+	case GLFW_KEY_KP_DECIMAL: return ImGuiKey_KeypadDecimal;
+	case GLFW_KEY_KP_DIVIDE: return ImGuiKey_KeypadDivide;
+	case GLFW_KEY_KP_MULTIPLY: return ImGuiKey_KeypadMultiply;
+	case GLFW_KEY_KP_SUBTRACT: return ImGuiKey_KeypadSubtract;
+	case GLFW_KEY_KP_ADD: return ImGuiKey_KeypadAdd;
+	case GLFW_KEY_KP_ENTER: return ImGuiKey_KeypadEnter;
+	case GLFW_KEY_KP_EQUAL: return ImGuiKey_KeypadEqual;
+	case GLFW_KEY_LEFT_SHIFT: return ImGuiKey_LeftShift;
+	case GLFW_KEY_LEFT_CONTROL: return ImGuiKey_LeftCtrl;
+	case GLFW_KEY_LEFT_ALT: return ImGuiKey_LeftAlt;
+	case GLFW_KEY_LEFT_SUPER: return ImGuiKey_LeftSuper;
+	case GLFW_KEY_RIGHT_SHIFT: return ImGuiKey_RightShift;
+	case GLFW_KEY_RIGHT_CONTROL: return ImGuiKey_RightCtrl;
+	case GLFW_KEY_RIGHT_ALT: return ImGuiKey_RightAlt;
+	case GLFW_KEY_RIGHT_SUPER: return ImGuiKey_RightSuper;
+	case GLFW_KEY_MENU: return ImGuiKey_Menu;
+	case GLFW_KEY_0: return ImGuiKey_0;
+	case GLFW_KEY_1: return ImGuiKey_1;
+	case GLFW_KEY_2: return ImGuiKey_2;
+	case GLFW_KEY_3: return ImGuiKey_3;
+	case GLFW_KEY_4: return ImGuiKey_4;
+	case GLFW_KEY_5: return ImGuiKey_5;
+	case GLFW_KEY_6: return ImGuiKey_6;
+	case GLFW_KEY_7: return ImGuiKey_7;
+	case GLFW_KEY_8: return ImGuiKey_8;
+	case GLFW_KEY_9: return ImGuiKey_9;
+	case GLFW_KEY_A: return ImGuiKey_A;
+	case GLFW_KEY_B: return ImGuiKey_B;
+	case GLFW_KEY_C: return ImGuiKey_C;
+	case GLFW_KEY_D: return ImGuiKey_D;
+	case GLFW_KEY_E: return ImGuiKey_E;
+	case GLFW_KEY_F: return ImGuiKey_F;
+	case GLFW_KEY_G: return ImGuiKey_G;
+	case GLFW_KEY_H: return ImGuiKey_H;
+	case GLFW_KEY_I: return ImGuiKey_I;
+	case GLFW_KEY_J: return ImGuiKey_J;
+	case GLFW_KEY_K: return ImGuiKey_K;
+	case GLFW_KEY_L: return ImGuiKey_L;
+	case GLFW_KEY_M: return ImGuiKey_M;
+	case GLFW_KEY_N: return ImGuiKey_N;
+	case GLFW_KEY_O: return ImGuiKey_O;
+	case GLFW_KEY_P: return ImGuiKey_P;
+	case GLFW_KEY_Q: return ImGuiKey_Q;
+	case GLFW_KEY_R: return ImGuiKey_R;
+	case GLFW_KEY_S: return ImGuiKey_S;
+	case GLFW_KEY_T: return ImGuiKey_T;
+	case GLFW_KEY_U: return ImGuiKey_U;
+	case GLFW_KEY_V: return ImGuiKey_V;
+	case GLFW_KEY_W: return ImGuiKey_W;
+	case GLFW_KEY_X: return ImGuiKey_X;
+	case GLFW_KEY_Y: return ImGuiKey_Y;
+	case GLFW_KEY_Z: return ImGuiKey_Z;
+	case GLFW_KEY_F1: return ImGuiKey_F1;
+	case GLFW_KEY_F2: return ImGuiKey_F2;
+	case GLFW_KEY_F3: return ImGuiKey_F3;
+	case GLFW_KEY_F4: return ImGuiKey_F4;
+	case GLFW_KEY_F5: return ImGuiKey_F5;
+	case GLFW_KEY_F6: return ImGuiKey_F6;
+	case GLFW_KEY_F7: return ImGuiKey_F7;
+	case GLFW_KEY_F8: return ImGuiKey_F8;
+	case GLFW_KEY_F9: return ImGuiKey_F9;
+	case GLFW_KEY_F10: return ImGuiKey_F10;
+	case GLFW_KEY_F11: return ImGuiKey_F11;
+	case GLFW_KEY_F12: return ImGuiKey_F12;
+	default: return ImGuiKey_None;
+	}
+}
 
 class FacialFlapsGui {
 public:
@@ -34,6 +146,7 @@ public:
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.WantCaptureMouse) {
+			io.AddMouseButtonEvent(button, action);
 			buttonsDown = 0;
 			return;
 		}
@@ -91,7 +204,13 @@ public:
 
 	static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 	{
-		if (buttonsDown < 1 || ImGui::GetIO().WantCaptureMouse)
+		// (1) ALWAYS forward mouse data to ImGui! This is automatic with default backends. With your own backend:
+		ImGuiIO& io = ImGui::GetIO();
+		io.AddMousePosEvent((float)xpos, (float)ypos);
+		// (2) ONLY forward mouse data to your underlying app/game.
+//		if (!io.WantCaptureMouse)
+//			my_game->HandleMouseData(...);
+		if (buttonsDown < 1 || io.WantCaptureMouse)
 			return;
 		if (xpos < 0.0)
 			xpos = 0.0;
@@ -116,6 +235,12 @@ public:
 
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.WantCaptureKeyboard) {
+			int igKey = ImGui_ImplGlfw_KeyToImGuiKey(key);
+			io.AddKeyEvent(igKey, true);
+			return;
+		}
 		if (action == GLFW_PRESS) {
 			if (key == GLFW_KEY_ESCAPE)
 				glfwSetWindowShouldClose(window, 1);
@@ -154,7 +279,7 @@ public:
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
-		glfwDestroyWindow(window);
+		glfwDestroyWindow(FFwindow);
 		glfwTerminate();
 	}
 
@@ -162,12 +287,14 @@ public:
 		csgToolstate = 0;
 		igGl3w.initializeGraphics();
 		igSurgAct.setGl3wGraphics(&igGl3w);
-		glfwSetMouseButtonCallback(window, &mouse_button_callback);
-		glfwSetCursorPosCallback(window, &cursor_position_callback);
-		glfwSetWindowSizeCallback(window, &window_size_callback);
-		glfwSetKeyCallback(window, &key_callback);
-		glfwGetFramebufferSize(window, &windowWidth, &windowHeight);
+		glfwSetMouseButtonCallback(FFwindow, &mouse_button_callback);
+		glfwSetCursorPosCallback(FFwindow, &cursor_position_callback);
+		glfwSetWindowSizeCallback(FFwindow, &window_size_callback);
+		glfwSetKeyCallback(FFwindow, &key_callback);
+		glfwGetFramebufferSize(FFwindow, &windowWidth, &windowHeight);
 		igGl3w.setViewport(0, 0, windowWidth, windowHeight);
+		minFileDlgSize.x = windowWidth >> 1;
+		minFileDlgSize.y = windowHeight >> 1;
 		return true;
 	}
 
@@ -196,10 +323,10 @@ public:
 #endif
 
 	// Create window with graphics context
-		window = glfwCreateWindow(1280, 720, "Skin Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
-		if (window == NULL)
+		FFwindow = glfwCreateWindow(1280, 720, "Skin Flaps Simulator", NULL, NULL);  // setting 4th argument to glfwGetPrimaryMonitor() creates full screen monitor
+		if (FFwindow == NULL)
 			return false;
-		glfwMakeContextCurrent(window);
+		glfwMakeContextCurrent(FFwindow);
 		glfwSwapInterval(1); // Enable vsync
 
 		// Initialize OpenGL loader
@@ -238,7 +365,7 @@ public:
 		//ImGui::StyleColorsClassic();
 
 		// Setup Platform/Renderer backends
-		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplGlfw_InitForOpenGL(FFwindow, true);
 		ImGui_ImplOpenGL3_Init(glsl_version);
 
 		// Load Fonts
@@ -258,7 +385,6 @@ public:
 		return true;
 	}
 
-	static inline GLFWwindow* getGLFWwindow() { return window; }
 	static inline surgicalActions* getSurgicalActions() { return &igSurgAct; }
 	static inline gl3wGraphics* getgl3wGraphics() { return &igGl3w; }
 
@@ -266,28 +392,36 @@ public:
 
 	static void setToolState(int toolState) { csgToolstate = toolState; }
 
-	static bool loadFile(const char *startPath, const char *fileFilterSuffix, std::string &returnDirectory, std::string &returnFilename){
+	static void getFileName(const char *startPath, const char *fileFilterSuffix, std::string &startDirectory, bool mustExist, bool chooseDirectory=false){
 		// "smd" is a module file and "hst" is a history file
-		nfdchar_t *outPath = NULL;
-		nfdresult_t result = NFD_OpenDialog(fileFilterSuffix, *startPath == '\0' ? NULL : startPath, &outPath);
-		if (result == NFD_OKAY) {
-			returnDirectory = outPath;
-			size_t pos = returnDirectory.rfind('\\');
-			returnFilename = returnDirectory.substr(pos+1, returnDirectory.size());
-			returnDirectory = returnDirectory.substr(0, pos+1);
-			if (returnFilename.empty())
-				return false;
+		std::string suffix(fileFilterSuffix), dialogTitle;
+		int flags = 0;
+		if (chooseDirectory) {
+			FileDlgMode = 2;
+			dialogTitle = "Please select a directory for your blend shapes -";
+			suffix.clear();
+			ImGuiFileDialog::Instance()->OpenDialog("FileDialogKey", dialogTitle.c_str(), nullptr, "C:\\");
+			return;
 		}
-		else if (result == NFD_CANCEL) {
-			puts("User pressed cancel.");
-			return false;
+		else if (mustExist) {  // load dialog
+			FileDlgMode = 0;
+			if (suffix.find("hst") < suffix.size())
+				dialogTitle = "Load Surgical History file -";
+			else
+				dialogTitle = "Load Model file -";
+			flags = ImGuiFileDialogFlags_DisableCreateDirectoryButton | ImGuiFileDialogFlags_ReadOnlyFileNameField;
 		}
-		else {
-			printf("Error: %s\n", NFD_GetError());
-			return false;
+		else {  // save dialog
+			FileDlgMode = 1;
+			if (suffix.find(".hst") < suffix.size())
+				dialogTitle = "Save current Surgical History file -";
+			else { // .obj
+				assert(suffix.find(".obj") < suffix.size());
+				dialogTitle = "Save blend shape .obj file -";
+			}
+			flags = ImGuiFileDialogFlags_DisableCreateDirectoryButton | ImGuiFileDialogFlags_ConfirmOverwrite;
 		}
-
-		return true;
+		ImGuiFileDialog::Instance()->OpenDialog("FileDialogKey", dialogTitle.c_str(), suffix.c_str(), startDirectory.c_str(), "", 1, nullptr, flags);
 	}
 
 	static void sendUserMessage(const char *message, const char *windowTitle) {
@@ -296,29 +430,11 @@ public:
 		user_message_flag = true;
 	}
 
-	static bool saveFile(const char *startPath, const char *fileFilterSuffix, std::string &outPath) {
-		// "smd" is a module file and "hst" is a history file
-		nfdchar_t *outpath = NULL;
-		nfdresult_t result = NFD_SaveDialog(fileFilterSuffix, startPath, &outpath);
-		if (result == NFD_OKAY) {
-			outPath = outpath;
-		}
-		else if (result == NFD_CANCEL) {
-			outPath = "";
-			puts("User pressed cancel.");
-		}
-		else {
-			printf("Error: %s\n", NFD_GetError());
-			return false;
-		}
-		return true;
-	}
-
 	static void showHourglass() {
 		// from: https ://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples#Example-for-OpenGL-users
 		physicsDrag = true;
 		if (hourglassTexture > 0xfffffffe) {
-			std::string str(sceneDirectory);
+			std::string str(modelDirectory);
 			str.append("Hourglass_2.jpg");
 			int image_width = 0;
 			int image_height = 0;
@@ -356,6 +472,32 @@ public:
 		}
 	}
 
+	static void setModelFile(const std::string &modelFileName ) {
+		modelFile = modelFileName;
+	}
+
+	static void setDefaultDirectories() {
+		if (historyDirectory.empty() || modelDirectory.empty()) {
+			char buff[400];
+			GetCurrentDir(buff, 400);
+			modelDirectory.assign(buff);
+			size_t pos = modelDirectory.rfind("Build");
+			if (pos == std::string::npos) {  // not part of program build. Use install dir.
+				historyDirectory = "C:\\Users\\SkinFlaps";
+				modelDirectory = "C:\\Users\\SkinFlaps";
+			}
+			else {  // doing program building and testing
+				pos = modelDirectory.rfind("SkinFlaps");
+				modelDirectory.erase(modelDirectory.begin() + pos + 9, modelDirectory.end());
+				historyDirectory = modelDirectory;
+			}
+			modelDirectory.append("\\Model\\");
+			historyDirectory.append("\\History\\");
+			igSurgAct.setModelDirectory(modelDirectory.c_str());
+			igSurgAct.setHistoryDirectory(historyDirectory.c_str());
+		}
+	}
+
 	static void InstanceCleftGui()
 	{
 		if (ImGui::BeginMainMenuBar())
@@ -363,98 +505,43 @@ public:
 			if (ImGui::BeginMenu("File"))
 			{
 				if (ImGui::MenuItem("Load model")) {
-					char buff[400];
-					GetCurrentDir(buff, 400);
-					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("Build");
-					if (pos == std::string::npos) {  // not part of program build. Use install dir.
-						historyDirectory = "C:\\Users\\SkinFlaps";
-						sceneDirectory = "C:\\Users\\SkinFlaps";
-					}
-					else {  // doing program building and testing
-						pos = sceneDirectory.rfind("SkinFlaps");
-						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-						historyDirectory = sceneDirectory;
-					}
-					sceneDirectory.append("\\Model\\");
-					historyDirectory.append("\\History\\");
-					if (!loadFile(sceneDirectory.c_str(), "smd", sceneDirectory, modelFile)) {
-						puts("Couldn't load model.\n");
-						return;
-					}
-					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
-					igSurgAct.loadScene(sceneDirectory.c_str(), modelFile.c_str(), true);
+					setDefaultDirectories();
+					getFileName(modelDirectory.c_str(), ".smd", modelDirectory, true, false);
 				}
-				if (ImGui::MenuItem("Exit")) { glfwSetWindowShouldClose(window, 1); }
+				if (ImGui::MenuItem("Exit")) { glfwSetWindowShouldClose(FFwindow, 1); }
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("History"))
 			{
 				if (ImGui::MenuItem("Load")) {
-					char buff[400];
-					GetCurrentDir(buff, 400);
-					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("Build");
-					if (pos == std::string::npos) {  // not part of program build. Use install dir.
-						historyDirectory = "C:\\Users\\SkinFlaps";
-						sceneDirectory = "C:\\Users\\SkinFlaps";
-					}
-					else {  // doing program building and testing
-						pos = sceneDirectory.rfind("SkinFlaps");
-						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-						historyDirectory = sceneDirectory;
-					}
-					sceneDirectory.append("\\Model\\");
-					historyDirectory.append("\\History\\");
-					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
-					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
-					if (!loadFile(historyDirectory.c_str(), "hst", historyDirectory, historyFile)) {
-						puts("Couldn't load model.\n");
-						return;
-					}
-					std::string title("Skin Flaps Simulator playing - ");
-					title.append(historyFile);
-					glfwSetWindowTitle(window, title.c_str());
-					igSurgAct.loadHistory(historyDirectory.c_str(), historyFile.c_str());
+					setDefaultDirectories();
+					getFileName(historyDirectory.c_str(), ".hst", historyDirectory, true, false);
 				}
 				if (ImGui::MenuItem("Save")) {
-					std::string outPath;
-					if (!saveFile(historyDirectory.c_str(), "hst", outPath))
-						puts("error in saveFileDialog");
+					if (modelFile.empty())
+						sendUserMessage("A model file must be loaded before a surgical history file can be created.", "User error");
 					else {
-						if (outPath.empty())
-							puts("User Cancelled Save history file action.");
-						else {
-							if (outPath.rfind(".hst", outPath.length() - 4) == std::string::npos)
-								outPath.append(".hst");
-							igSurgAct.saveSurgicalHistory(outPath.c_str());
-						}
+						setDefaultDirectories();
+						getFileName(historyDirectory.c_str(), ".hst", historyDirectory, false, false);
 					}
 				}
-				if (ImGui::MenuItem("Next")) igSurgAct.nextHistoryAction();
-				if (ImGui::MenuItem("Output .obj file")) {
-					if (objDirectory.empty()) {  // std::filesystem not working when switched to C++17.  Put in later when MS fixes problem.  Use nfd for now.
-						nfdchar_t* outpath = NULL;
-						nfdresult_t result = NFD_PickFolder("C:\\Users\\", &outpath);
-						if (result == NFD_OKAY)
-							objDirectory = outpath;
-						else
-							sendUserMessage("You must choose an existing directory for your .obj files-", "User Request");
+				if (ImGui::MenuItem("Next")) {
+					if (modelDirectory.empty()) {
+						setDefaultDirectories();
+						getFileName(historyDirectory.c_str(), ".hst", historyDirectory, true, false);
 					}
-					if (!objDirectory.empty()) {
-						std::string outPath;
-						if (!saveFile(objDirectory.c_str(), "obj", outPath))
-							puts("error in saveFileDialog");
-						else {
-							if (outPath.empty())
-								puts("User Cancelled Save history file action.");
-							else {
-								if (outPath.rfind(".obj", outPath.length() - 4) == std::string::npos)
-									outPath.append(".obj");
-								if(!igSurgAct.saveCurrentObj(outPath.c_str(), "unilatCleftTextures.mtl"))
-									sendUserMessage("Your .obj file could not be saved-", "Error");
-							}
-						}
+					else
+						++nextCounter;
+				}
+				ImGui::Separator();
+				if (ImGui::MenuItem("Output blend shape file")) {
+					if (modelFile.empty())
+						sendUserMessage("A model file must be loaded before a blend shape file can be created.", "User error");
+					else {
+						if (objDirectory.empty())
+							getFileName("C://", ".obj", objDirectory, false, true);
+						else
+							getFileName(objDirectory.c_str(), ".obj", objDirectory, false, false);
 					}
 				}
 				ImGui::EndMenu();
@@ -535,26 +622,12 @@ public:
 
 			ImGui::Separator();
 			if (ImGui::Button("   NEXT   ")) {  // Buttons return true when clicked (most widgets return true when edited/activated)
-				if (historyDirectory.empty() || sceneDirectory.empty()) {
-					char buff[400];
-					GetCurrentDir(buff, 400);
-					sceneDirectory.assign(buff);
-					size_t pos = sceneDirectory.rfind("Build");
-					if (pos == std::string::npos) {  // not part of program build. Use install dir.
-						historyDirectory = "C:\\Users\\SkinFlaps";
-						sceneDirectory = "C:\\Users\\SkinFlaps";
-					}
-					else {  // doing program building and testing
-						pos = sceneDirectory.rfind("SkinFlaps");
-						sceneDirectory.erase(sceneDirectory.begin() + pos + 9, sceneDirectory.end());
-						historyDirectory = sceneDirectory;
-					}
-					sceneDirectory.append("\\Model\\");
-					historyDirectory.append("\\History\\");
-					igSurgAct.setSceneDirectory(sceneDirectory.c_str());
-					igSurgAct.setHistoryDirectory(historyDirectory.c_str());
+				if (modelDirectory.empty()) {
+					setDefaultDirectories();
+					getFileName(historyDirectory.c_str(), ".hst", historyDirectory, true, false);
 				}
-				++nextCounter;
+				else
+					++nextCounter;
 			}
 			ImGui::End();
 		}
@@ -566,25 +639,106 @@ public:
 				user_message_flag = false;
 			ImGui::End();
 		}
+		if (ImGuiFileDialog::Instance()->Display("FileDialogKey", ImGuiWindowFlags_NoCollapse, minFileDlgSize))  // , maxSize))
+		{
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				if (FileDlgMode < 1) {  // read op
+					std::string inFile = ImGuiFileDialog::Instance()->GetCurrentFileName();
+					if (inFile.rfind("hst") < inFile.size()) {
+						if (!historyFile.empty()) {
+							sendUserMessage("A history file is already loaded. Please restart the program if you would like to load another", "User Error");
+						}
+						else {
+							historyDirectory = ImGuiFileDialog::Instance()->GetCurrentPath();
+							historyDirectory.append("\\");
+							historyFile = inFile;
+							std::string title("Skin Flaps Simulator playing - ");
+							title.append(historyFile);
+							glfwSetWindowTitle(FFwindow, title.c_str());
 
+//							loadDir = historyDirectory;
+//							loadFile = historyFile;
+//							physicsDrag = true;
+//							showHourglass();
+
+							igSurgAct.loadHistory(historyDirectory.c_str(), historyFile.c_str());
+						}
+					}
+					else {
+						assert(inFile.rfind("smd") < inFile.size());
+						modelDirectory = ImGuiFileDialog::Instance()->GetCurrentPath();
+						modelDirectory.append("\\");
+						modelFile = inFile;
+						std::string title("Skin Flaps Simulator Model is - ");
+						title.append(modelFile);
+						glfwSetWindowTitle(FFwindow, title.c_str());
+
+//						loadDir = modelDirectory;
+//						loadFile = modelFile;
+
+						if(!igSurgAct.loadScene(modelDirectory.c_str(), modelFile.c_str()))
+							sendUserMessage("The model file did not load successfully.", "Model file Error");
+					}
+				}
+				else if (FileDlgMode < 2) {  // write op
+					std::string outFile = ImGuiFileDialog::Instance()->GetCurrentFileName();
+					if (outFile.rfind(".hst") < outFile.size()) {
+						historyDirectory = ImGuiFileDialog::Instance()->GetCurrentPath();
+						historyDirectory.append("\\");
+						historyFile = outFile;
+						std::string fullPath = historyDirectory;
+						fullPath.append(historyFile);
+						igSurgAct.saveSurgicalHistory(fullPath.c_str());
+					}
+					else{  // blend shape .obj output
+						assert(outFile.rfind(".obj") < outFile.size());
+						if (modelFile.empty())
+							sendUserMessage("Can not save a blend shape without an active model file loaded.", "User error");
+						else {
+							std::string path = objDirectory, prefix = outFile;
+							path.append(outFile);
+							prefix.resize(prefix.size() - 4);  //  .erase(prefix.size() - 4, 4);
+							igSurgAct.saveCurrentObj(path.c_str(), prefix.c_str());
+						}
+					}
+				}
+				else{  // find/create blend shape directory before saving blend shape file
+					objDirectory = ImGuiFileDialog::Instance()->GetCurrentPath();
+					objDirectory.append("\\");
+					ImGuiFileDialog::Instance()->Close();
+					getFileName(objDirectory.c_str(), ".obj", objDirectory, false, false);
+					return;
+				}
+
+			}
+
+			// close
+			ImGuiFileDialog::Instance()->Close();
+		}
 	}
+
 	FacialFlapsGui(){
 		igSurgAct.setFacialFlapsGui(this);
+		user_message_flag = false;
 	}
 
 	~FacialFlapsGui(){}
 
+	static GLFWwindow* FFwindow;
 	static int nextCounter;
 	static bool user_message_flag, physicsDrag;
+//	static std::string loadDir, loadFile;
 
 private:
-	static bool powerHooks, showToolbox, viewPhysics, viewSurface, guiActive;
+	static bool powerHooks, showToolbox, viewPhysics, viewSurface;
 	static int csgToolstate;
-	static std::string sceneDirectory, historyDirectory, objDirectory, modelFile, historyFile, user_message, user_message_title;
-	static GLFWwindow* window;
+	static std::string historyDirectory, modelDirectory, objDirectory, modelFile, historyFile, user_message, user_message_title;
 	static unsigned char buttonsDown;
 	static bool surgicalDrag, ctrlShiftKeyDown;
 	static int windowWidth, windowHeight;
+	static ImVec2 minFileDlgSize;
+	static int FileDlgMode;
 	static GLuint hourglassTexture;
 	static int hourglassWidth, hourglassHeight;
 	static float lastSurgX, lastSurgY;

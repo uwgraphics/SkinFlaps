@@ -36,10 +36,12 @@ class skinCutUndermineTets
 public:
 
 	void setGl3wGraphics(gl3wGraphics *gl3w) { _gl3w = gl3w; }  // for debug - nuke later
-	bool skinCut(std::vector<Vec3f> &topCutPoints, std::vector<Vec3f> &topNormals, bool startOpen, bool endOpen);
+	bool skinCut(std::vector<Vec3f> &topCutPoints, std::vector<Vec3f> &topNormals, bool startOpen, bool endOpen);  // history version
+	float closestSkinIncisionPoint(const Vec3f xyz, int& triangle, int& edge, float& param);  // Input xyz, returns all 4
 	bool addUndermineTriangle(const int triangle, const int undermineMaterial, bool incisionConnect);
 	void undermineSkin();  // completes a user specified undermine
 	void clearCurrentUndermine(const int underminedTissue);
+	bool triangleUndermined(int triangle);
 	void excise(const int triangle);
 	int parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f &gridLocus);
 	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus);

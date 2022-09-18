@@ -78,37 +78,17 @@ void fence::deleteLastPost()
 	displayRemoveWall();
 }
 
-void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(&normal)[3], bool connectToNearestEdge, bool openEnd)
+void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(&normal)[3], bool connectToEdge, bool adjustNormal, bool openEnd)
 {
 	char name[8];
 	sprintf(name,"P_%d",(int)_posts.size());
 	_posts.push_back(fencePost());
-	if(connectToNearestEdge && _posts.empty())	{
-		int edge;
-		float param;
-		tri->getNearestHardEdge(xyz,triangle,edge,param);
-		_posts.back().triangle = triangle;
-		if(edge<1)	{
-			_posts.back().uv[0] = param;
-			_posts.back().uv[1] = 0.0f;
-		}
-		else if(edge<2)	{
-			_posts.back().uv[0] = 1.0f - param;
-			_posts.back().uv[1] = param;
-		}
-		else	{
-			_posts.back().uv[1] = 1.0f - param;
-			_posts.back().uv[0] = 0.0f;
-		}
-	}
-	else	{
-		_posts.back().triangle = triangle;
-		tri->getBarycentricProjection(triangle,xyz,_posts.back().uv);
-	}
+	_posts.back().triangle = triangle;
+	_posts.back().connectToEdge = connectToEdge;
+	tri->getBarycentricProjection(triangle,xyz,_posts.back().uv);
 	_posts.back().openEnd = openEnd;
 	_posts.back().xyz[0]=xyz[0]; _posts.back().xyz[1]=xyz[1]; _posts.back().xyz[2]=xyz[2];
 	_posts.back().nrm[0]=normal[0]; _posts.back().nrm[1]=normal[1]; _posts.back().nrm[2]=normal[2];
-	_posts.back().connectToEdge = connectToNearestEdge;
 	 std::shared_ptr<sceneNode> sh = _posts.back().cylinderShape = _shapes->addShape(sceneNode::nodeType::CYLINDER,name);
 	GLfloat *mm = sh->getModelViewMatrix();
 	loadIdentity4x4(mm);
@@ -121,17 +101,18 @@ void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(
 	axisAngleRotateMatrix4x4(mm, vz._v, angle);
 	translateMatrix4x4(mm,xyz[0],xyz[1],xyz[2]);
 
-	sprintf(name, "NP_%d", (int)_posts.size()-1);
-	sh = _posts.back().sphereShape = _shapes->addShape(sceneNode::nodeType::SPHERE, name);
-	mm = sh->getModelViewMatrix();
-	loadIdentity4x4(mm);
-	sh->setColor(_selectedColor);
-	scaleMatrix4x4(mm, _fenceSize*0.5f, _fenceSize*0.5f, _fenceSize*0.5f);
-	//	vn already done
-	vn *= _fenceSize * 3.0f;
-	translateMatrix4x4(mm, xyz[0] + vn.X, xyz[1] + vn.Y, xyz[2] + vn.Z);
-	_posts.back().spherePos = Vec3f(xyz) + vn;
-
+	if (adjustNormal) {
+		sprintf(name, "NP_%d", (int)_posts.size() - 1);
+		sh = _posts.back().sphereShape = _shapes->addShape(sceneNode::nodeType::SPHERE, name);
+		mm = sh->getModelViewMatrix();
+		loadIdentity4x4(mm);
+		sh->setColor(_selectedColor);
+		scaleMatrix4x4(mm, _fenceSize * 0.5f, _fenceSize * 0.5f, _fenceSize * 0.5f);
+		//	vn already done
+		vn *= _fenceSize * 3.0f;
+		translateMatrix4x4(mm, xyz[0] + vn.X, xyz[1] + vn.Y, xyz[2] + vn.Z);
+		_posts.back().spherePos = Vec3f(xyz) + vn;
+	}
 	vn.set(normal);
 	vn *= _fenceSize * 2.5f;
 	_xyz.push_back(Vec3f(xyz) - vn * 0.75f);

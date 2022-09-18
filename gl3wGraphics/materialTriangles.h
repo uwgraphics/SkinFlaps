@@ -48,7 +48,7 @@ public:
 	inline void getTexture(const int txIndx, float(&tx)[2]) { tx[0] = _uv[txIndx << 1]; tx[1] = _uv[(txIndx << 1) + 1]; }
 	inline void setTexture(const int txIndex, const float(&tx)[2]) { _uv[txIndex << 1] = tx[0]; _uv[(txIndex << 1) + 1] = tx[1]; }
 	void reserveTriangles(int n) { _tris.reserve(n); }
-	int addTriangle(int(&vertices)[3], int material);  // for backward compatibility
+//	int addTriangle(int(&vertices)[3], int material);  // for backward compatibility.  This call now obsolete with texture seam fully integrated.
 	int addTriangle(const int(&vertices)[3], const int material, const int(&textures)[3]);    // newer version
 	// ray inputs below are 3 element array pointers. Outputs triangles intersected and parameters along line.
 	int rayIntersect(const float *rayStart, const float *rayDirection, std::vector<int> &triangles, std::vector<float> &params);
