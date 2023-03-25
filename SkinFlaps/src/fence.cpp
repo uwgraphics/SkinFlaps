@@ -47,8 +47,8 @@ void fence::updatePosts(const std::vector<Vec3f> &positions, const std::vector<V
 		Vec3f vz(0.0f, 0.0f, 1.0f), vn;
 		float angle = acos(_posts[i].nrm*vz);
 		vn = vz^_posts[i].nrm;
-		axisAngleRotateMatrix4x4(mm, vn._v, angle);
-		translateMatrix4x4(mm, positions[i].x(), positions[i].y(), positions[i].z());
+		axisAngleRotateMatrix4x4(mm, vn.xyz, angle);
+		translateMatrix4x4(mm, positions[i].X, positions[i].Y, positions[i].Z);
 		sh = _posts[i].sphereShape;
 		mm = sh->getModelViewMatrix();
 		loadIdentity4x4(mm);
@@ -58,7 +58,7 @@ void fence::updatePosts(const std::vector<Vec3f> &positions, const std::vector<V
 		_xyz[i*2 + 1] = positions[i] + vn * 2.5f * _fenceSize;
 		vn *= _fenceSize * 3.0f;
 		vn += positions[i];
-		translateMatrix4x4(mm, vn._v[0], vn._v[1], vn._v[2]);
+		translateMatrix4x4(mm, vn.xyz[0], vn.xyz[1], vn.xyz[2]);
 	}
 	displayRemoveWall();  // now makeWall always true
 }
@@ -78,37 +78,17 @@ void fence::deleteLastPost()
 	displayRemoveWall();
 }
 
-void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(&normal)[3], bool connectToNearestEdge, bool openEnd)
+void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(&normal)[3], bool connectToEdge, bool adjustNormal, bool openEnd)
 {
 	char name[8];
 	sprintf(name,"P_%d",(int)_posts.size());
 	_posts.push_back(fencePost());
-	if(connectToNearestEdge && _posts.empty())	{
-		int edge;
-		float param;
-		tri->getNearestHardEdge(xyz,triangle,edge,param);
-		_posts.back().triangle = triangle;
-		if(edge<1)	{
-			_posts.back().uv[0] = param;
-			_posts.back().uv[1] = 0.0f;
-		}
-		else if(edge<2)	{
-			_posts.back().uv[0] = 1.0f - param;
-			_posts.back().uv[1] = param;
-		}
-		else	{
-			_posts.back().uv[1] = 1.0f - param;
-			_posts.back().uv[0] = 0.0f;
-		}
-	}
-	else	{
-		_posts.back().triangle = triangle;
-		tri->getBarycentricProjection(triangle,xyz,_posts.back().uv);
-	}
+	_posts.back().triangle = triangle;
+	_posts.back().connectToEdge = connectToEdge;
+	tri->getBarycentricProjection(triangle,xyz,_posts.back().uv);
 	_posts.back().openEnd = openEnd;
 	_posts.back().xyz[0]=xyz[0]; _posts.back().xyz[1]=xyz[1]; _posts.back().xyz[2]=xyz[2];
 	_posts.back().nrm[0]=normal[0]; _posts.back().nrm[1]=normal[1]; _posts.back().nrm[2]=normal[2];
-	_posts.back().connectToEdge = connectToNearestEdge;
 	 std::shared_ptr<sceneNode> sh = _posts.back().cylinderShape = _shapes->addShape(sceneNode::nodeType::CYLINDER,name);
 	GLfloat *mm = sh->getModelViewMatrix();
 	loadIdentity4x4(mm);
@@ -118,20 +98,21 @@ void fence::addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(
 	vn.normalize();
 	float angle = acos(vn*vz);
 	vz = vz^vn;
-	axisAngleRotateMatrix4x4(mm, vz._v, angle);
+	axisAngleRotateMatrix4x4(mm, vz.xyz, angle);
 	translateMatrix4x4(mm,xyz[0],xyz[1],xyz[2]);
 
-	sprintf(name, "NP_%d", (int)_posts.size()-1);
-	sh = _posts.back().sphereShape = _shapes->addShape(sceneNode::nodeType::SPHERE, name);
-	mm = sh->getModelViewMatrix();
-	loadIdentity4x4(mm);
-	sh->setColor(_selectedColor);
-	scaleMatrix4x4(mm, _fenceSize*0.5f, _fenceSize*0.5f, _fenceSize*0.5f);
-	//	vn already done
-	vn *= _fenceSize * 3.0f;
-	translateMatrix4x4(mm, xyz[0] + vn.X, xyz[1] + vn.Y, xyz[2] + vn.Z);
-	_posts.back().spherePos = Vec3f(xyz) + vn;
-
+	if (adjustNormal) {
+		sprintf(name, "NP_%d", (int)_posts.size() - 1);
+		sh = _posts.back().sphereShape = _shapes->addShape(sceneNode::nodeType::SPHERE, name);
+		mm = sh->getModelViewMatrix();
+		loadIdentity4x4(mm);
+		sh->setColor(_selectedColor);
+		scaleMatrix4x4(mm, _fenceSize * 0.5f, _fenceSize * 0.5f, _fenceSize * 0.5f);
+		//	vn already done
+		vn *= _fenceSize * 3.0f;
+		translateMatrix4x4(mm, xyz[0] + vn.X, xyz[1] + vn.Y, xyz[2] + vn.Z);
+		_posts.back().spherePos = Vec3f(xyz) + vn;
+	}
 	vn.set(normal);
 	vn *= _fenceSize * 2.5f;
 	_xyz.push_back(Vec3f(xyz) - vn * 0.75f);
@@ -162,7 +143,7 @@ void fence::setSpherePos(int postNumber, Vec3f& xyz){
 	vn.normalize();
 	float angle = acos(vn * vz);
 	vz = vz ^ vn;
-	axisAngleRotateMatrix4x4(mm, vz._v, angle);
+	axisAngleRotateMatrix4x4(mm, vz.xyz, angle);
 	translateMatrix4x4(mm, fp->xyz[0], fp->xyz[1], fp->xyz[2]);
 
 	_xyz[postNumber*2] = fp->xyz - vn * 0.75f;
@@ -300,8 +281,8 @@ void fence::computeLocalBounds() {
 	for (int n = (int)_xyz.size(), i = 0; i < n; ++i) 
 		bb.Enlarge_To_Include_Point((const float(&)[3])_xyz[i]);
 	Vec3f vmin, vmax;
-	bb.Minimum_Corner(vmin._v);
-	bb.Maximum_Corner(vmax._v);
+	bb.Minimum_Corner(vmin.xyz);
+	bb.Maximum_Corner(vmax.xyz);
 	vmin += vmax;
 	vmin *= 0.5f;
 	GLfloat lc[3], radius;

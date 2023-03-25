@@ -41,14 +41,16 @@ using namespace gl;
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
-bool FacialFlapsGui::powerHooks = false, FacialFlapsGui::showToolbox = true, FacialFlapsGui::viewPhysics = false, FacialFlapsGui::viewSurface = true, FacialFlapsGui::user_message_flag = false;
+bool FacialFlapsGui::powerHooks = false, FacialFlapsGui::showToolbox = true, FacialFlapsGui::viewPhysics = false, FacialFlapsGui::viewSurface = true, FacialFlapsGui::wheelZoom = true, FacialFlapsGui::user_message_flag = false;
 int FacialFlapsGui::nextCounter = 0;
-int FacialFlapsGui::csgToolstate;
-std::string FacialFlapsGui::sceneDirectory, FacialFlapsGui::historyDirectory, FacialFlapsGui::objDirectory, FacialFlapsGui::modelFile, FacialFlapsGui::historyFile, FacialFlapsGui::user_message, FacialFlapsGui::user_message_title;
-GLFWwindow* FacialFlapsGui::window;
+int FacialFlapsGui::csgToolstate, FacialFlapsGui::FileDlgMode = 0;
+std::string FacialFlapsGui::modelDirectory, FacialFlapsGui::historyDirectory, FacialFlapsGui::objDirectory, FacialFlapsGui::modelFile, FacialFlapsGui::historyFile, FacialFlapsGui::user_message, FacialFlapsGui::user_message_title;
+// std::string FacialFlapsGui::loadDir, FacialFlapsGui::loadFile;
+GLFWwindow* FacialFlapsGui::FFwindow;
 unsigned char FacialFlapsGui::buttonsDown;
-bool FacialFlapsGui::surgicalDrag, FacialFlapsGui::ctrlShiftKeyDown = false, FacialFlapsGui::guiActive = false, FacialFlapsGui::physicsDrag = false;
+bool FacialFlapsGui::surgicalDrag, FacialFlapsGui::ctrlShiftKeyDown = false, FacialFlapsGui::physicsDrag = false;
 int FacialFlapsGui::windowWidth, FacialFlapsGui::windowHeight;
+ImVec2 FacialFlapsGui::minFileDlgSize;
 GLuint FacialFlapsGui::hourglassTexture = 0xffffffff;
 int FacialFlapsGui::hourglassWidth, FacialFlapsGui::hourglassHeight;
 float FacialFlapsGui::lastSurgX, FacialFlapsGui::lastSurgY;

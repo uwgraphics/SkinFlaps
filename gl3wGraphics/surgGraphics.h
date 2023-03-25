@@ -73,7 +73,10 @@ private:
 	const std::vector<int> *_undermineTriangles;  // if not NULL shade these with material 10
 	std::vector<GLuint> _incisionLines;  // indexes into incision lines. 0xffffffff is primitive restart index.
 	incisionLines _incis;
+	std::map<int, std::list<int> > _textureSeams;  // vertex positions with multiple textures of same material (2 or 5 guaranteed exclusive) associated with them for normal and tangent blending
+
 	void getSkinIncisionLines();
+	void getTextureSeams();
 
 	friend class incisionLines;
 };

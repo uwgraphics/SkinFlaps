@@ -19,12 +19,13 @@ class materialTriangles;
 class fence
 {
 public:
-	void addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(&normal)[3], bool connectToNearestEdge, bool openEnd = false);
+	void addPost(materialTriangles *tri, int triangle, float(&xyz)[3], float(&normal)[3], bool connectToEdge, bool adjustNormal, bool openEnd = false);
 	int getPostData(std::vector<Vec3f> &positions,std::vector<Vec3f> &normals,std::vector<int> &triangles,std::vector<float> &uv,bool &edgeStart,bool &edgeEnd, bool& startOpen, bool& endOpen);
 	void updatePosts(const std::vector<Vec3f> &positions, const std::vector<Vec3f> &normals);
 	void deleteLastPost();
 	void selectPost(int postNumber);
 	inline void getSpherePos(int postNumber, Vec3f &xyz) { xyz = _posts[postNumber].spherePos; }
+	inline int getPostTriangle(int postNumber) { return _posts[postNumber].triangle; }
 	inline void getPostPos(int postNumber, Vec3f &xyz) { xyz = _posts[postNumber].xyz; }
 	inline void getPostNormal(int postNumber, Vec3f &nrm) { nrm = _posts[postNumber].nrm; }
 	inline int numberOfPosts() { return (int)_posts.size(); }

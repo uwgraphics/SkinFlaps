@@ -54,8 +54,8 @@ void GLmatrices::changeZoom(float dZoom)
 	_mFR[12] = -_center[0]*_mFR[0]-_center[1]*_mFR[4]-_center[2]*_mFR[8];
 	_mFR[13] = -_center[0]*_mFR[1]-_center[1]*_mFR[5]-_center[2]*_mFR[9];
 	_mFR[14] = _zCenter-_center[0]*_mFR[2]-_center[1]*_mFR[6]-_center[2]*_mFR[10];
-	float zfar,zmin = -_zCenter-_radius*1.5f;
-	zfar = zmin + _radius*3.0f;
+	float zfar,zmin = -_zCenter-_radius*2.0f;
+	zfar = zmin + _radius*4.0f;
 	if(zmin<_radius*0.01f)
 		zmin=_radius*0.01f;
 	MakePerspectiveMatrix(_angleRadians,_screenAspect,zmin,zfar);
@@ -81,8 +81,8 @@ void GLmatrices::setView(float angleRadians, float screenAspect)
 void GLmatrices::resetPerspective()
 {	// assumes center and radius have been set
 	_zmin = _radius/tanf(_angleRadians * 0.5f);
-	_zCenter = -(_zmin +_radius*1.5f);
-	MakePerspectiveMatrix(_angleRadians,_screenAspect,_zmin,_zmin+_radius*3.0f);
+	_zCenter = -(_zmin +_radius*2.0f);
+	MakePerspectiveMatrix(_angleRadians,_screenAspect,_zmin,_zmin+_radius*4.0f);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

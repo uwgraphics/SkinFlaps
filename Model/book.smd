@@ -1,0 +1,33 @@
+{
+    "dynamicObjects" : {
+        "book.obj" : {
+            "textureMaps": [
+                1,
+                2,
+                3,
+                4
+            ]
+        }
+    },
+    "textureFiles" : {
+        "CleftTexture.jpg" : 1,
+        "CleftNormal.jpg" : 2,
+        "cleftDeepBed.jpg" : 3,
+        "cleftDeepBed_Nrm.jpg" : 4
+    },
+    "tetrahedralProperties" : {
+        "minStrain" : 0.6,
+        "maxStrain" : 1.8,
+        "lowTetWeight" : 500.0,
+        "highTetWeight" : 1000.0,
+        "collisionWeight" : 40000.0,
+        "selfCollisionWeight" :  10.0,
+        "fixedWeight" : 1000.0,
+        "periferalWeight" : 1.0,
+        "hookWeight" : 65.0,
+        "sutureWeight" : 1200.0,
+        "autoSutureSpacing" : 0.02,
+        "maxDimSubdivisions" : 180
+    }
+    "incisionWidth" : 0.01
+}

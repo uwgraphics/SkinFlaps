@@ -25,7 +25,7 @@ int main(int, char**)
 	surgicalActions* sa = ffg.getSurgicalActions();
 	bccTetScene* bts = sa->getBccTetScene();
 	sa->physicsDone = true;
-	while (!glfwWindowShouldClose(ffg.getGLFWwindow()))
+	while (!glfwWindowShouldClose(ffg.FFwindow))
 	{
 		try {
 				// Poll and handle events (inputs, window resize, etc.)
@@ -38,8 +38,18 @@ int main(int, char**)
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
-			if (FacialFlapsGui::physicsDrag)
-				ffg.showHourglass();
+			if (FacialFlapsGui::physicsDrag) {
+//				if(ffg.loadFile.empty())
+					ffg.showHourglass();
+//				else {
+//					if (ffg.loadFile.rfind(".hst") != std::string::npos) {
+//						ffg.getSurgicalActions()->loadHistory(ffg.loadDir.c_str(), ffg.loadFile.c_str());
+//						ffg.physicsDrag = false;
+//					}
+//					ffg.loadDir.clear();
+//					ffg.loadFile.clear();
+//				}
+			}
 			ffg.InstanceCleftGui();
 
 			// Rendering
@@ -57,7 +67,7 @@ int main(int, char**)
 					sa->newTopology = false;
 				}
 				if (bts->forcesApplied()) {
-					sa->getSutures()->updateSutureGraphics();
+//					sa->getSutures()->updateSutureGraphics();
 					if (sa->getSurgGraphics()->getSceneNode()->visible)
 						bts->updateSurfaceDraw();
 					else {  // draw only tets without the surface
@@ -65,7 +75,7 @@ int main(int, char**)
 							bts->drawTetLattice();
 					}
 				}
-				if (ffg.physicsDrag)
+				if (ffg.physicsDrag)  //  && ffg.loadFile.empty()
 					ffg.physicsDrag = false;
 				if (ffg.nextCounter > 0) {
 					ffg.getSurgicalActions()->nextHistoryAction();
@@ -97,7 +107,9 @@ int main(int, char**)
 		{
 			// speciffic handling for all exceptions extending std::exception, except
 			// std::runtime_error which is handled explicitly
-			ffg.sendUserMessage("Logic error occurred.  Save history file for debug.", "Logic error");
+			std::string err = "Logic error occurred. Save history file for debug.\n";
+			err += ex.what();
+			ffg.sendUserMessage(err.c_str(), "Logic error");
 			std::cerr << "Error occurred: " << ex.what() << std::endl;
 		}
 		catch (...)
@@ -106,7 +118,7 @@ int main(int, char**)
 			ffg.sendUserMessage("Unspecified error occurred.  Save history file for debug.", "Program error");
 			std::cerr << "Unknown failure occurred. Possible memory corruption" << std::endl;
 		}
-		glfwSwapBuffers(ffg.getGLFWwindow());
+		glfwSwapBuffers(ffg.FFwindow);
 	}
 	while (!sa->physicsDone)  // waiting for any running physics thread to complete before destroying its data
 		;

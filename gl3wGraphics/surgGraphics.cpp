@@ -338,36 +338,44 @@ bool surgGraphics::setTextureFilesCreateProgram(std::vector<int> &textureIds, co
 void surgGraphics::setNewTopology()
 {
 	// can't _mt.partitionTriangleMaterials() as it invalidates adjacency arrays
-	_mt.findAdjacentTriangles(true, false);
+	_mt.findAdjacentTriangles(true);
 	_tris.clear();
 	_xyz1.clear();
 	_uv.clear();
 	_incisionLines.clear();
-	std::vector<float>* mtta = _mt.getTextureArray();
-	_uv.assign(mtta->begin(), mtta->end());
-	int n = (int)_uv.size()>>1;
+	auto mtta = _mt.getTextureArray();
+	int n = (int)mtta.size();
+	_uv.reserve(n << 1);
+	for (auto uvit = mtta.begin(); uvit != mtta.end(); ++uvit) {
+		_uv.push_back(uvit->X);
+		_uv.push_back(uvit->Y);
+	}
 	_xyz1.clear();
 	_xyz1.assign(n << 2, 1.0f);
 	_uvPos.clear();
 	_uvPos.assign(n, -1);
-	const materialTriangles::matTriangle *trArr = _mt.getTriangleArray(n);
+//	auto trArr = _mt.getPositionArray();
 	_tris.reserve(n*3);
-	for(int i=0; i<n; ++i) {
+	auto trPos = _mt.getTrianglePositionArray();
+	auto trMat = _mt.getTriangleMaterialArray();
+	auto trTex = _mt.getTriangleTextureArray();
+	for(int n = (int)trTex.size(), i=0; i<n; ++i) {
 		// include possible deleted triangles so numbering matches up.
 		bool valid = true;
-		if (trArr[i].material < 0) {
+		if (trMat[i] < 0) {
 			_tris.push_back(0xffffffff);
 			valid = false;
 		}
 		else
-			_tris.push_back(trArr[i].tex[0]);
-		_tris.push_back(trArr[i].tex[1]);
-		_tris.push_back(trArr[i].tex[2]);
+			_tris.push_back(trTex[i][0]);
+		_tris.push_back(trTex[i][1]);
+		_tris.push_back(trTex[i][2]);
 		if (valid) {
 			for (int j = 0; j < 3; ++j)
-				_uvPos[trArr[i].tex[j]] = trArr[i].v[j];
+				_uvPos[trTex[i][j]] = trPos[i][j];
 		}
 	}
+	getTextureSeams();
 	// Vertex data
 	glBindBuffer(GL_ARRAY_BUFFER, _sn->bufferObjects[0]);	// VERTEX_DATA
 	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*_xyz1.size(), NULL, GL_DYNAMIC_DRAW);  // &(_xyz1[0])
@@ -394,25 +402,24 @@ void surgGraphics::getSkinIncisionLines() {
 		int mat = _mt.triangleMaterial(i);
 		if (mat < 0)
 			continue;
+		int at[3], ae[3];
+		_mt.triangleAdjacencies(i, at, ae);  // triAdjs(i);
+		const int* tr = _mt.triangleVertices(at[0]), * tx = _mt.triangleTextures(at[0]);
 		if (mat == 3) {  // surface skin incision . 2-3 pair
-			unsigned int* adjs = _mt.triAdjs(i);
-			if (_mt.triangleMaterial(adjs[0] >> 2) != 2)  // incision convention
+			if (_mt.triangleMaterial(at[0]) != 2)  // incision convention
 				continue;
-			int* tr = _mt.triangleVertices(adjs[0] >> 2), *tx = _mt.triangleTextures(adjs[0] >> 2);
-			int first = tr[adjs[0] & 3], second = tr[((adjs[0] & 3) + 1) % 3];
+			int first = tr[ae[0]], second = tr[(ae[0] + 1) % 3];
 			triEdges.insert(std::make_pair(first, second));
-			vTex.insert(std::make_pair(first, tx[adjs[0] & 3]));
+			vTex.insert(std::make_pair(first, tx[ae[0]]));
 		}
 		if (mat == 6) {  // deep incision. 5-6, 6-7, or 6-8 pair
-			unsigned int* adjs = _mt.triAdjs(i);
 			for (int j = 0; j < 3; ++j) {
-				int aMat = _mt.triangleMaterial(adjs[j] >> 2);
+				int aMat = _mt.triangleMaterial(at[j]);
 				if (aMat == 6 || aMat == 3)  // any different material except 3 which is a non-undermined deep cut
 					continue;
-				int* tr = _mt.triangleVertices(adjs[j] >> 2), * tx = _mt.triangleTextures(adjs[j] >> 2);
-				int first = tr[adjs[j] & 3], second = tr[((adjs[j] & 3) + 1) % 3];
+				int first = tr[ae[j]], second = tr[(ae[j] + 1) % 3];
 				triEdges.insert(std::make_pair(first, second));
-				vTex.insert(std::make_pair(first, tx[adjs[j] & 3]));
+				vTex.insert(std::make_pair(first, tx[ae[j]]));
 			}
 		}
 	}
@@ -501,25 +508,19 @@ void surgGraphics::updatePositionsNormalsTangents()  // bool doTangents now alwa
 			tangents[k + 2] += tanV[2];
 		}
 	}
-	auto oit = _mt._oneMaterialSeams.begin();
-	while (oit != _mt._oneMaterialSeams.end()) {
-		auto start = oit;
-		do {
-			++oit;
-		}while (oit != _mt._oneMaterialSeams.end() && oit->first == start->first);
+	for(auto &txs : _textureSeams){
 		GLfloat ns[3] = { 0.0f, 0.0f, 0.0f }, ts[3] = { 0.0f, 0.0f, 0.0f };
-		for (auto it = start; it != oit; ++it) {
+		for (auto &bv : txs.second) {
 			for (int j = 0; j < 3; ++j) {
-				ns[j] += normals[it->second * 3 + j];
-				ts[j] += tangents[it->second * 3 + j];
+				ns[j] += normals[bv * 3 + j];
+				ts[j] += tangents[bv * 3 + j];
 			}
 		}
-		while (start != oit) {
+		for (auto& bv : txs.second) {
 			for (int j = 0; j < 3; ++j) {
-				normals[start->second * 3 + j] = ns[j];
-				tangents[start->second * 3 + j] = ts[j];
+				normals[bv * 3 + j] = ns[j];
+				tangents[bv * 3 + j] = ts[j];
 			}
-			++start;
 		}
 	}
 	auto invSqrt = [](float x) ->float{ // Steve Pizer's version of the Quake algorithm
@@ -558,7 +559,45 @@ void surgGraphics::updatePositionsNormalsTangents()  // bool doTangents now alwa
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * tangents.size(), &(tangents[0]));
 }
 
-void surgGraphics::draw(void) 
+void surgGraphics::getTextureSeams() {
+	// vertex positions with multiple textures of same material (2 or 5 guaranteed exclusive) associated with them for normal and tangent blending
+//	_mt.findAdjacentTriangles(true);  // not necessary. done in calling routine
+	auto addSeamVert = [&](int vPos, int tex0, int tex1) {
+		auto pr = _textureSeams.insert(std::make_pair(vPos, std::list<int>()));
+		if (tex0 > tex1) { int tmp = tex1; tex1 = tex0; tex0 = tmp; }
+		if (pr.second) {
+			pr.first->second.push_back(tex0);
+			pr.first->second.push_back(tex1);
+		}
+		else {
+			auto tit = pr.first->second.begin();
+			while (tit != pr.first->second.end() && *tit < tex0)
+				++tit;
+			if(tit == pr.first->second.end() || *tit != tex0)
+				tit = pr.first->second.insert(tit, tex0);
+			while (tit != pr.first->second.end() && *tit < tex1)
+				++tit;
+			if (tit == pr.first->second.end() || *tit != tex1)
+				tit = pr.first->second.insert(tit, tex1);
+		}
+	};
+	for (int n = _mt.numberOfTriangles(), i = 0; i < n; ++i) {
+		int at[3], ae[3], mat0 = _mt.triangleMaterial(i);
+		if (mat0 != 2 && mat0 != 5)
+			continue;
+		_mt.triangleAdjacencies(i, at, ae);
+		int *tx0 = _mt.triangleTextures(i);
+		for (int j = 0; j < 3; ++j) {
+			if (_mt.triangleMaterial(at[j]) != mat0)
+				continue;
+			int* tx1 = _mt.triangleTextures(at[j]);
+			if (tx0[j] != tx1[(ae[j] + 1) % 3])
+				addSeamVert(_mt.triangleVertices(i)[j], tx0[j], tx1[(ae[j] + 1) % 3]);
+		}
+	}
+}
+
+void surgGraphics::draw(void)
 {
 	glBindVertexArray(_sn->vertexArrayBufferObject);
 	for (int n = (int)_sn->textureBuffers.size(), i = 0; i < n; ++i) {

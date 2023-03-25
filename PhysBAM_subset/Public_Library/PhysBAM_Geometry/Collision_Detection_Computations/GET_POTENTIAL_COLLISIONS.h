@@ -42,7 +42,7 @@ namespace POTENTIAL_COLLISIONS
     void Get_Potential_Collisions(const ID index,const RANGE<typename T_COLLISION_GEOMETRY::VECTOR_T::template REBIND<int>::TYPE>& range,const HASHTABLE<typename T_COLLISION_GEOMETRY::VECTOR_T::template REBIND<int>::TYPE,ARRAY<ID>*>& hashtable,const ARRAY<ID>& bodies_not_in_partition,T_ARRAY& collision_bodies,ARRAY<ID>& object_indices,bool only_higher_index,OPERATION_HASH<COLLISION_GEOMETRY_ID>& already_added)
     {
         typedef typename T_COLLISION_GEOMETRY::VECTOR_T TV;
-        typedef typename TV::template REBIND<int>::TYPE TV_INT;
+        typedef typename T_COLLISION_GEOMETRY::VECTOR_T::template REBIND<int>::TYPE TV_INT;
 
         object_indices.Remove_All();
         already_added.Initialize(collision_bodies.Size());

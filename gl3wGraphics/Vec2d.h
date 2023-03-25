@@ -35,120 +35,120 @@ public:
 		struct {
 			value_type X, Y;
 		};
-		value_type _v[2];
+		value_type xy[2];
 	};
 
 
-	Vec2d() { _v[0] = 0.0; _v[1] = 0.0; }
-	Vec2d(value_type x, value_type y) { _v[0] = x; _v[1] = y; }
+	Vec2d() { xy[0] = 0.0; xy[1] = 0.0; }
+	Vec2d(value_type x, value_type y) { xy[0] = x; xy[1] = y; }
 
-	inline bool operator == (const Vec2d& v) const { return _v[0] == v._v[0] && _v[1] == v._v[1]; }
+	inline bool operator == (const Vec2d& v) const { return xy[0] == v.xy[0] && xy[1] == v.xy[1]; }
 
-	inline bool operator != (const Vec2d& v) const { return _v[0] != v._v[0] || _v[1] != v._v[1]; }
+	inline bool operator != (const Vec2d& v) const { return xy[0] != v.xy[0] || xy[1] != v.xy[1]; }
 
 	inline bool operator <  (const Vec2d& v) const
 	{
-		if (_v[0]<v._v[0]) return true;
-		else if (_v[0]>v._v[0]) return false;
-		else return (_v[1]<v._v[1]);
+		if (xy[0]<v.xy[0]) return true;
+		else if (xy[0]>v.xy[0]) return false;
+		else return (xy[1]<v.xy[1]);
 	}
 
-	inline value_type * ptr() { return _v; }
-	inline const value_type * ptr() const { return _v; }
+	inline value_type * ptr() { return xy; }
+	inline const value_type * ptr() const { return xy; }
 
-	inline void set(value_type x, value_type y) { _v[0] = x; _v[1] = y; }
+	inline void set(value_type x, value_type y) { xy[0] = x; xy[1] = y; }
 
-	inline void set(const float x, const float y) { _v[0] = (double)x; _v[1] = (double)y; }
+	inline void set(const float x, const float y) { xy[0] = (double)x; xy[1] = (double)y; }
 
-	inline void set(const float tx[2]) { _v[0] = (double)tx[0]; _v[1] = (double)tx[1]; }
+	inline void set(const float tx[2]) { xy[0] = (double)tx[0]; xy[1] = (double)tx[1]; }
 
-	inline value_type & operator [] (int i) { return _v[i]; }
-	inline value_type operator [] (int i) const { return _v[i]; }
+	inline value_type & operator [] (int i) { return xy[i]; }
+	inline value_type operator [] (int i) const { return xy[i]; }
 
-	inline value_type & x() { return _v[0]; }
-	inline value_type & y() { return _v[1]; }
+	inline value_type & x() { return xy[0]; }
+	inline value_type & y() { return xy[1]; }
 
-	inline value_type x() const { return _v[0]; }
-	inline value_type y() const { return _v[1]; }
+	inline value_type x() const { return xy[0]; }
+	inline value_type y() const { return xy[1]; }
 
 	/** Dot product. */
 	inline value_type operator * (const Vec2d& rhs) const
 	{
-		return _v[0] * rhs._v[0] + _v[1] * rhs._v[1];
+		return xy[0] * rhs.xy[0] + xy[1] * rhs.xy[1];
 	}
 
 	/** Multiply by scalar. */
 	inline const Vec2d operator * (value_type rhs) const
 	{
-		return Vec2d(_v[0] * rhs, _v[1] * rhs);
+		return Vec2d(xy[0] * rhs, xy[1] * rhs);
 	}
 
 	/** Unary multiply by scalar. */
 	inline Vec2d& operator *= (value_type rhs)
 	{
-		_v[0] *= rhs;
-		_v[1] *= rhs;
+		xy[0] *= rhs;
+		xy[1] *= rhs;
 		return *this;
 	}
 
 	/** Divide by scalar. */
 	inline const Vec2d operator / (value_type rhs) const
 	{
-		return Vec2d(_v[0] / rhs, _v[1] / rhs);
+		return Vec2d(xy[0] / rhs, xy[1] / rhs);
 	}
 
 	/** Unary divide by scalar. */
 	inline Vec2d& operator /= (value_type rhs)
 	{
-		_v[0] /= rhs;
-		_v[1] /= rhs;
+		xy[0] /= rhs;
+		xy[1] /= rhs;
 		return *this;
 	}
 
 	/** Binary vector add. */
 	inline const Vec2d operator + (const Vec2d& rhs) const
 	{
-		return Vec2d(_v[0] + rhs._v[0], _v[1] + rhs._v[1]);
+		return Vec2d(xy[0] + rhs.xy[0], xy[1] + rhs.xy[1]);
 	}
 
 	// Unary vector add. Slightly more efficient because no temporary intermediate object.
 	inline Vec2d& operator += (const Vec2d& rhs)
 	{
-		_v[0] += rhs._v[0];
-		_v[1] += rhs._v[1];
+		xy[0] += rhs.xy[0];
+		xy[1] += rhs.xy[1];
 		return *this;
 	}
 
 	// Binary vector subtract.
 	inline const Vec2d operator - (const Vec2d& rhs) const
 	{
-		return Vec2d(_v[0] - rhs._v[0], _v[1] - rhs._v[1]);
+		return Vec2d(xy[0] - rhs.xy[0], xy[1] - rhs.xy[1]);
 	}
 
 	/** Unary vector subtract. */
 	inline Vec2d& operator -= (const Vec2d& rhs)
 	{
-		_v[0] -= rhs._v[0];
-		_v[1] -= rhs._v[1];
+		xy[0] -= rhs.xy[0];
+		xy[1] -= rhs.xy[1];
 		return *this;
 	}
 
 	/** Negation operator. Returns the negative of the Vec2d. */
 	inline const Vec2d operator - () const
 	{
-		return Vec2d(-_v[0], -_v[1]);
+		return Vec2d(-xy[0], -xy[1]);
 	}
 
 	/** Length of the vector = sqrt( vec . vec ) */
 	inline value_type length() const
 	{
-		return sqrt(_v[0] * _v[0] + _v[1] * _v[1]);
+		return sqrt(xy[0] * xy[0] + xy[1] * xy[1]);
 	}
 
 	/** Length squared of the vector = vec . vec */
 	inline value_type length2(void) const
 	{
-		return _v[0] * _v[0] + _v[1] * _v[1];
+		return xy[0] * xy[0] + xy[1] * xy[1];
 	}
 
 	// Normalize the vector so that it has length unity.
@@ -159,8 +159,8 @@ public:
 		if (norm>0.0)
 		{
 			value_type inv = 1.0f / norm;
-			_v[0] *= inv;
-			_v[1] *= inv;
+			xy[0] *= inv;
+			xy[1] *= inv;
 		}
 		return(norm);
 	}

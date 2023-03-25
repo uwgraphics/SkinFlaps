@@ -21,6 +21,7 @@
 #include "closestPointOnTriangle.h"
 #include "remapTetPhysics.h"
 #include <iostream>
+#include <cstdint>
 #include <chrono>
 #include <ctime>
 
@@ -130,7 +131,8 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 				_surgAct->sendUserMessage("Unable to load fixed materialTriangle .obj input file-", "Error Message");
 				return false;
 			}
-			_mt->collectCreateTextureSeams();  // must do this on load to register same material texture seams and create hard texture & normal seams between materials.
+			// same material texture seams processed in graphics,
+			// may want to create hard texture & normal seams between materials here.
 			_surgAct->getSurgGraphics()->setGl3wGraphics(_gl3w);
 			std::string vtxShd(dataDirectory), frgShd(dataDirectory);
 			vtxShd.append("mtVertexShader.txt");
@@ -178,19 +180,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			//			}
 		}
 	}
-//	if ((oit = scnObj.find("areaOfInterest")) != scnObj.end()) {
-//		json::Object fixObj = oit->second.ToObject();
-//		for (suboit = fixObj.begin(); suboit != fixObj.end(); ++suboit) {
-//			if (suboit->first == "boundingBox") {
-//				json::Array bbArr;
-//				bbArr = suboit->second.ToArray();
-// not using at present. Intention was to specify an area of high physics density and create a non-uniform lattice.
-//				_areasOfInterest.push_back(boundingBox3());
-//				for (int i = 0; i < 6; ++i)
-//					_areasOfInterest.back().corners[i] = bbArr[i];
-//			}
-//		}
-//	}
 	if ((oit = scnObj.find("fixedCollisionSets")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
 		std::string lsPath;
@@ -202,7 +191,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			vIdx.reserve(polyArr.size());
 			for (int i = 0; i < polyArr.size(); ++i)
 				vIdx.push_back( polyArr[i].ToInt());
-			_tetCol.addFixedCollisionSet(lsPath, vIdx);
+//			_tetCol.addFixedCollisionSet(lsPath, vIdx);
 		}
 	}
 	int maxDimSubdivs = 180;  // 0.5 million tets for cleft model
@@ -216,7 +205,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			else if (suboit->first == "maxStrain")
 				strainMax = suboit->second.ToFloat();
 			else if (suboit->first == "lowTetWeight")
-				lowTetWeight = suboit->second.ToFloat();
+				_lowTetWeight = lowTetWeight = suboit->second.ToFloat();
 			else if (suboit->first == "highTetWeight")
 				highTetWeight = suboit->second.ToFloat();
 			else if (suboit->first == "collisionWeight")
@@ -242,7 +231,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		}
 		_ptp.setTetProperties(lowTetWeight, highTetWeight, strainMin, strainMax, collisionWeight, selfCollisionWeight, fixedWeight, periferalWeight);
 		_ptp.setHookSutureWeights(hookWeight, sutureWeight, 0.3f);
-		_surgAct->getSutures()->setAutoSutureSpacing(autoSutureSpacing);
+//		_surgAct->getSutures()->setAutoSutureSpacing(autoSutureSpacing);
 		lsFname += collisionObject;  //  "collision_proxy_5_4_20.obj";
 	}
 	struct tetSubset {
@@ -270,44 +259,10 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 					ts.lowTetWeight = dataoit->second.ToFloat();
 				else if (dataoit->first == "highTetWeight")
 					ts.highTetWeight = dataoit->second.ToFloat();
-				//				else if (suboit->first == "objFiles") {
-				//					json::Array objArr = suboit->second.ToArray();
-				//					for (auto fit = objArr.begin(); fit != objArr.end(); ++fit) {
-				//						std::string of(dataDirectory);
-				//						of.append(fit->ToString());
-				//						ts.objFiles.push_back(of);
-				//					}
-				//				}
 				else;
 			}
 			tetSubsets.push_back(ts);
 		}
-
-/*		json::Object tetSubObj = oit->second.ToObject();
-		tetSubset ts;
-		for (suboit = tetSubObj.begin(); suboit != tetSubObj.end(); ++suboit) {
-			if (suboit->first == "name")
-				ts.name = suboit->second.ToString();
-			else if (suboit->first == "minStrain")
-				ts.strainMin = suboit->second.ToFloat();
-			else if (suboit->first == "maxStrain")
-				ts.strainMax = suboit->second.ToFloat();
-			else if (suboit->first == "lowTetWeight")
-				ts.lowTetWeight = suboit->second.ToFloat();
-			else if (suboit->first == "highTetWeight")
-				ts.highTetWeight = suboit->second.ToFloat();
-			else if (suboit->first == "objFiles") {
-				json::Array objArr = suboit->second.ToArray();
-				for (auto fit = objArr.begin(); fit != objArr.end(); ++fit) {
-					std::string of(dataDirectory);
-					of.append(fit->ToString());
-					ts.objFiles.push_back(of);
-				}
-			}
-			else;
-		}
-		tetSubsets.push_back(ts); */
-
 	}
 	else
 		;
@@ -316,14 +271,14 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 
 	// COURT - put back in after cutter debug!
 	createNewPhysicsLattice(maxDimSubdivs);  // now creating operable lattice on load
-	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
-	if (!_surgAct->getDeepCutPtr()->setDeepBed(_mt, deepBedFilepath.c_str(), &_vnTets)){
-		_surgAct->sendUserMessage("Undermine layer .bed file could not be found-", "Error Message");
-	}
+//	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
+//	if (!_surgAct->getDeepCutPtr()->setDeepBed(_mt, deepBedFilepath.c_str(), &_vnTets)){
+//		_surgAct->sendUserMessage("Undermine layer .bed file could not be found-", "Error Message");
+//	}
 	if (!tetSubsets.empty()) {
-		for (auto& ts : tetSubsets)
-			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
-		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
+//		for (auto& ts : tetSubsets)
+//			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
+//		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
 	}
 
 	_gl3w->frameScene(true);  // computes bounding spheres
@@ -332,7 +287,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 
 void bccTetScene::updateOldPhysicsLattice()
 {  // at present regenerate.  May do incrementally later.
-	try {
+/*	try {
 		remapTetPhysics rtp;
 		rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions
 		if(!_tc.remakeVnTets(_mt))
@@ -357,7 +312,7 @@ void bccTetScene::updateOldPhysicsLattice()
 	}  // end try block
 	catch (char *e) {
 		_surgAct->sendUserMessage(e, "Exception thrown:", false);
-	}
+	} */
 }
 
 void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
@@ -367,13 +322,21 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 
 	try {
 		_tetsModified = false;
+
 #ifdef _DEBUG
-		_tc.makeFirstVnTets(_mt, &_vnTets, 30);  // 15
+		maximumDimensionSubdivisions = 17;
 #else
-		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions); // 70 for cleft scene with Eigen solver gives 36K tets in 0.36 seconds, 100 for cleft scene with oldMKL solver gives 102K tets, 20 for sphere test.
-			// in release mode 180 subdivs gives 503,910 tets in 2.27 seconds without multithreading the tet cutter, 0.57 seconds multithreaded. 
+			maximumDimensionSubdivisions = 90;
 #endif
+
+		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
+
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
+		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
+
+		_vnTets.decimate(2, 6, true);
+
+		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
 
 		// COURT - could redo this only using nodes that are outside of boundary.  Revisit after periosteal undermining done.
 		// get fixed scene boundary nodes
@@ -386,11 +349,87 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
 		_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
 #else
-		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
+//		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
+
+		std::vector<uint8_t> tetSizeMult;
+		tetSizeMult.assign(_vnTets.tetNumber(), 1);
+
+		tetSizeMult.reserve(_vnTets.tetNumber());
+		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
+			uint8_t sizeBit = 1;
+			auto& c = _vnTets.tetCentroid(i);
+			while (true) {
+				if (c[0] & sizeBit || c[1] & sizeBit || c[2] & sizeBit)
+					break;
+				sizeBit <<= 1;
+			}
+			tetSizeMult.push_back(sizeBit);
+		}
+		std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
 		_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
 #endif
 
-		_vnTets.materialCoordsToSpatialVector();
+		_vnTets.materialCoordsToNodeSpatialVector();
+
+		std::vector<int> subNodes;
+		std::vector<std::vector<int> > faceNodes;
+		std::vector<std::vector<float> > faceBarys;
+		size_t snSize = _vnTets.decNodeConstraints.size();
+		subNodes.reserve(snSize);
+		faceNodes.reserve(snSize);
+		faceBarys.reserve(snSize);
+		for (auto& dn : _vnTets.decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
+			subNodes.push_back(dn.first);
+			faceNodes.push_back(dn.second.faceNodes);
+			faceBarys.push_back(dn.second.faceParams);
+		}
+		_ptp.addInterNodeConstraints(subNodes, faceNodes, faceBarys, _lowTetWeight);
+
+//		for (auto dn = _vnTets.decNodeConstraints.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
+//			_sot.addFaceSplitConstraint(dn->first, dn->second.faceNodes, dn->second.faceParams, tetWeight);
+
+//		class faceSplitConstraint : public dbConstraint {
+//		public:
+			/** \brief Constraint constructor. The target is the position of vertex idI in the initial positions given in the constructor.
+			  \param idI contains the one index of the vertex that wants to be close to a given target.
+			\param weight The weight of the constraint to be added relative to the other constraints.
+			\param positions The positions of all the n vertices stacked in a 3 by n matrix.
+			*/
+/*			using dbConstraint::idI_;
+			using dbConstraint::weight_;
+			virtual ~faceSplitConstraint() {}
+			// \brief Find the closest configuration from the input positions that satisfy the constraint.
+			///////////////////////////////////////////////////////////////////////////////
+			SHAPEOP_INLINE faceSplitConstraint(const std::vector<int>& idI,  // idI[0] will always be the decimated node
+				const std::vector<Scalar>& parameters,
+				const int faceNode,
+				Scalar weight
+			) :
+				dbConstraint(idI, weight), parameters_(parameters), faceNode_(faceNode) {
+				assert(idI.size() == parameters_.size());
+			}
+			///////////////////////////////////////////////////////////////////////////////
+			SHAPEOP_INLINE void project(const Matrix3X& positions, Matrix3X& projections) const {
+				projections.col(idO_) = Vector3(0.0, 0.0, 0.0);
+			}
+			///////////////////////////////////////////////////////////////////////////////
+			SHAPEOP_INLINE void addConstraint(std::vector<Triplet>& triplets, int& idO) const {
+				idO_ = idO;
+				triplets.push_back(Triplet(idO_, faceNode_, -weight_));
+				for (int n = (int)idI_.size(), i = 0; i < n; ++i)
+					triplets.push_back(Triplet(idO_, idI_[i], parameters_[i] * weight_));
+				idO += 1;
+			}
+			///////////////////////////////////////////////////////////////////////////////
+		private:
+			int faceNode_;
+			std::vector<Scalar> parameters_;
+		};
+		/////////////////////////////////////////////////////////////////////////////// */
+
+
+
+
 
 		//			end = std::chrono::system_clock::now();
 //			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -413,12 +452,12 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 void bccTetScene::initPdPhysics()
 {
 	fixPeriostealPeriferalVertices();
-	if (!_tetCol.empty()) {
-		_tetCol.updateFixedCollisions(_mt, &_vnTets);
-	}
+//	if (!_tetCol.empty()) {
+//		_tetCol.updateFixedCollisions(_mt, &_vnTets);
+//	}
 #ifndef NO_PHYSICS
 	_surgAct->getHooks()->updateHookPhysics();
-	_surgAct->getSutures()->updateSuturePhysics();
+//	_surgAct->getSutures()->updateSuturePhysics();
 	_ptp.initializePhysics();
 #endif
 }
@@ -434,7 +473,7 @@ void bccTetScene::updatePhysics()
 
 #ifndef NO_PHYSICS
 	if (_tetsModified || _forcesApplied) {
-		_tetCol.findSoftCollisionPairs();
+//		_tetCol.findSoftCollisionPairs();
 		_ptp.solve();
 	}
 #endif
@@ -466,11 +505,11 @@ void bccTetScene::setVisability(char surface, char physics)
 void bccTetScene::updateSurfaceDraw()
 {
 	int nv;
-	float *fp = _mt->getPositionArray(nv);
+	auto pArr = _mt->getPositionArrayPtr();
+	nv = pArr->size();
 	for (int i = 0; i < nv; ++i) {
 		if (_vnTets.getVertexTetrahedron(i) > -1)  // an excision may have occurred leaving an empty vertex
-			_vnTets.getBarycentricTetPosition(_vnTets.getVertexTetrahedron(i), *(_vnTets.getVertexWeight(i)), (Vec3f &)*fp);
-		fp += 3;
+			_vnTets.getBarycentricTetPosition(_vnTets.getVertexTetrahedron(i), *(_vnTets.getVertexWeight(i)), pArr->at(i));
 	}
 	_surgAct->getSurgGraphics()->updatePositionsNormalsTangents();
 	if (_gl3w->getLines()->linesVisible())
@@ -479,38 +518,33 @@ void bccTetScene::updateSurfaceDraw()
 
  void bccTetScene::fixPeriostealPeriferalVertices()
 {  // this routine should be done only once after original lattice constructed
-	int numElem, i, k;
 	struct anchorPoint {
 		bool isPeriferal;
 		std::array<float, 3> baryWeight, pos;
 	}ap;
-	std::unordered_map<int, anchorPoint> fixPoints;  // key is tet index
+	std::unordered_map<int, anchorPoint> fixPoints;  // key is tet index. At present only oneper tet.
 	// fixed nodes take precedence over periferal nodes
 	// Fix all nodes surrounding a periosteal or periferalvertex.
-	materialTriangles::matTriangle *tr = _mt->getTriangleArray(numElem);
-	ap.isPeriferal = false;
-	for (i = 0; i < numElem; ++i) {
-		if (tr[i].material == 7) {  // periosteal triangle
-			for (k = 0; k < 3; ++k) {
-				const Vec3f* vp = _vnTets.getVertexWeight(tr[i].v[k]);
-				ap.baryWeight[0] = vp->X;
-				ap.baryWeight[1] = vp->Y;
-				ap.baryWeight[2] = vp->Z;
-				_vnTets.vertexMaterialCoordinate(tr[i].v[k], ap.pos);
-				fixPoints.insert(std::make_pair(_vnTets.getVertexTetrahedron(tr[i].v[k]), ap));
+	auto enterFixPoint = [&](int vId, bool periferal) {
+		const Vec3f* vp = _vnTets.getVertexWeight(vId);
+		ap.baryWeight[0] = vp->X;
+		ap.baryWeight[1] = vp->Y;
+		ap.baryWeight[2] = vp->Z;
+		_vnTets.vertexMaterialCoordinate(vId, ap.pos);
+		ap.isPeriferal = periferal;
+		fixPoints.insert(std::make_pair(_vnTets.getVertexTetrahedron(vId), ap));
+	};
+	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
+		if (_mt->triangleMaterial(i) == 7) {  // periosteal triangle
+			for (int k = 0; k < 3; ++k) {
+				int vIdx = _mt->triangleVertices(i)[k];
+				enterFixPoint(vIdx, false);
 			}
 		}
-	}
-	ap.isPeriferal = true;
-	for (i = 0; i < numElem; ++i) {
-		if (tr[i].material == 1) {  // soft border triangle
-			for (k = 0; k < 3; ++k) {
-				const Vec3f *vp = _vnTets.getVertexWeight(tr[i].v[k]);
-				ap.baryWeight[0] = vp->X;
-				ap.baryWeight[1] = vp->Y;
-				ap.baryWeight[2] = vp->Z;
-				_vnTets.vertexMaterialCoordinate(tr[i].v[k], ap.pos);
-				fixPoints.insert(std::make_pair(_vnTets.getVertexTetrahedron(tr[i].v[k]), ap));
+		if (_mt->triangleMaterial(i) == 1) {  // periosteal triangle
+			for (int k = 0; k < 3; ++k) {
+				int vIdx = _mt->triangleVertices(i)[k];
+				enterFixPoint(vIdx, true);
 			}
 		}
 	}
@@ -542,17 +576,17 @@ void bccTetScene::updateSurfaceDraw()
 
 void bccTetScene::setFixedRegion(const float(&corners)[6])
 {  // AFTER lattice has been created, physics nodes inside this zone are fixed
-	boundingBox<float> bb;
+/*	boundingBox<float> bb;
 	bb.Empty_Box();
 	bb.Enlarge_To_Include_Point((const float(&)[3])corners[0]);
 	bb.Enlarge_To_Include_Point((const float(&)[3])corners[3]);
 	Vec3f v;
 	for (int n = (int)_vnTets.nodeNumber(), i = 0; i < n; ++i) {
-		if (bb.Outside((const float(&)[3])v._v))
+		if (bb.Outside((const float(&)[3])v.xyz))
 			_vnTets.setNodeFixationState(i, false);
 		else
 			_vnTets.setNodeFixationState(i, true);
-	}
+	} */
 }
 
 void bccTetScene::createTetLatticeDrawing()
@@ -561,7 +595,7 @@ void bccTetScene::createTetLatticeDrawing()
 	_nodeGraphicsPositions.assign(_vnTets.nodeNumber() << 2, 1.0f);
 	GLfloat *ngp = &_nodeGraphicsPositions[0];
 	for (int n = _vnTets.nodeNumber(), i = 0; i < n; ++i){
-		float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
+		const float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
 		*(ngp++) = fp[0];
 		*(ngp++) = fp[1];
 		*(ngp++) = fp[2];
@@ -605,7 +639,7 @@ void bccTetScene::drawTetLattice()
 		return;
 	GLfloat *ngp = &_nodeGraphicsPositions[0];
 	for (int n = _vnTets.nodeNumber(), i = 0; i < n; ++i){
-		float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
+		const float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
 		*(ngp++) = fp[0];
 		*(ngp++) = fp[1];
 		*(ngp++) = fp[2];
@@ -616,7 +650,7 @@ void bccTetScene::drawTetLattice()
 
 bccTetScene::bccTetScene() : _physicsPaused(false), _forcesApplied(false), _tetsModified(false)
 {
-	_tetCol.setPdTetPhysics(&_ptp); // Qisi:set ptp for tetCol so things of ptp are accessible inside of tetCol
+//	_tetCol.setPdTetPhysics(&_ptp); // Qisi:set ptp for tetCol so things of ptp are accessible inside of tetCol
 }
 
 

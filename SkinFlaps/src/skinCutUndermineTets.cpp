@@ -49,9 +49,9 @@ bool skinCutUndermineTets::skinCut(std::vector<Vec3f> &topCutPoints, std::vector
 	float uv[2];
 	for (int n=topCutPoints.size(),i = 0; i < n; ++i){
 		int tri = _mt->numberOfTriangles();
-		_mt->closestPoint(topCutPoints[i]._v, tri, uv);
+		_mt->closestPoint(topCutPoints[i].xyz, tri, uv);
 		Vec3f v3;
-		_mt->getBarycentricPosition(tri, uv, v3._v);
+		_mt->getBarycentricPosition(tri, uv, v3.xyz);
 		if ((i<1 && _startOpen) || (i>n - 2 && _endOpen)){  // COURT - fix me. Must allow re-entrant endOpen not yet programmed.
 			topCutPoints[i].set(v3);
 			if (i<1)
@@ -71,7 +71,7 @@ bool skinCutUndermineTets::skinCut(std::vector<Vec3f> &topCutPoints, std::vector
 		if (i < 1)
 			_firstTopVertex = topMtVertices[i];
 	}
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	if (!topDeepSplit(topMtVertices, deepVertexLine, startOpen, endOpen))
 		return false;
 	return true;
@@ -86,13 +86,13 @@ int skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edge
 	gridLocus = tV[0] * (1.0f - param) + tV[1] * param;
 	bccTetCentroid tC;
 	_vbt->gridLocusToTetCentroid(gridLocus, tC);
-	if (tC.ll == _vbt->tetCentroid(_vbt->_vertexTets[tr[edge]])->ll)
-		return _vbt->_vertexTets[tr[edge]];
-	if (tC.ll == _vbt->tetCentroid(_vbt->_vertexTets[tr[(edge + 1) % 3]])->ll)
-		return _vbt->_vertexTets[tr[(edge + 1) % 3]];
+	if (tC == _vbt->tetCentroid(_vbt->getVertexTetrahedron(tr[edge])))
+		return _vbt->getVertexTetrahedron(tr[edge]);
+	if (tC == _vbt->tetCentroid(_vbt->getVertexTetrahedron(tr[(edge + 1) % 3])))
+		return _vbt->getVertexTetrahedron(tr[(edge + 1) % 3]);
 	// find candidate cubes
 	std::list<int> cc, tp;
-	auto pr = _vbt->_tetHash.equal_range(tC.ll);
+	auto pr = _vbt->_tetHash.equal_range(tC);
 	while (pr.first != pr.second){
 		cc.push_back(pr.first->second);
 		++pr.first;
@@ -123,12 +123,12 @@ int skinCutUndermineTets::parametricMTtriangleTet(const int mtTriangle, const fl
 	bccTetCentroid tC;
 	_vbt->gridLocusToTetCentroid(gridLocus, tC);
 	for (int i = 0; i < 3; ++i){
-		if (tC.ll == _vbt->tetCentroid(_vbt->_vertexTets[tr[i]])->ll)
+		if (tC == _vbt->tetCentroid(_vbt->_vertexTets[tr[i]]))
 			return _vbt->_vertexTets[tr[i]];
 	}
 	// find candidate cubes
 	std::list<int> cc, tp;
-	auto pr = _vbt->_tetHash.equal_range(tC.ll);
+	auto pr = _vbt->_tetHash.equal_range(tC);
 	while (pr.first != pr.second){
 		cc.push_back(pr.first->second);
 		++pr.first;
@@ -163,7 +163,7 @@ int skinCutUndermineTets::createDeepBedVertex(std::unordered_map<int, deepPoint>
 	_mt->addVertices(1);
 	Vec3f pos;
 	_vbt->vertexBarycentricPosition(dit->second.deepMtVertex, pos);
-	_mt->setVertexCoordinate(dit->second.deepMtVertex, pos._v);
+	_mt->setVertexCoordinate(dit->second.deepMtVertex, pos.xyz);
 	// Don't add texture here anymore as not unique so make them when using vert to make triangle
 	return dit->second.deepMtVertex;
 }
@@ -171,16 +171,16 @@ int skinCutUndermineTets::createDeepBedVertex(std::unordered_map<int, deepPoint>
 int skinCutUndermineTets::addSurfaceVertex(const int tet, const Vec3f &gridLocus)
 {  // adds both here and to materialTriangles. Return -1 means gridLocus not in tet.
 	Vec3f bw;
-	_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
+	_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), bw);
 	assert(bw[0] >= 0.0f && bw[1] >= 0.0f && bw[2] >= 0.0f && bw[0] <= 1.0f && bw[1] <= 1.0f && bw[2] <= 1.0f && bw[0] + bw[1] + bw[2] <= 1.0f);
 	int newVert = _vbt->vertexNumber();
 	_vbt->_vertexTets.push_back(tet);
 	_vbt->_barycentricWeights.push_back(bw);
-	assert(_mt->numberOfVertices() == newVert);
+//	assert(_mt->numberOfVertices() == newVert);  No longer necessarily true with skin=border deep cut
 	_mt->addVertices(1);
 	Vec3f pos;
 	_vbt->vertexBarycentricPosition(newVert, pos);
-	_mt->setVertexCoordinate(newVert, pos._v);
+	_mt->setVertexCoordinate(newVert, pos.xyz);
 	// texture too often unknown at time of call. Leave for later.
 	return newVert;
 }
@@ -287,10 +287,10 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 		Vec3f gridLocus;
 		int tet = parametricMTedgeTet(topTriangle, edge, param, gridLocus);
 		topVertex = _mt->splitTriangleEdge(topTriangle, edge, param);
-		assert(topVertex == _vbt->_vertexTets.size());
+//		assert(topVertex == _vbt->_vertexTets.size());  No longer necessarily true with skin-border deepCut
 		_vbt->_vertexTets.push_back(tet);
 		_vbt->_barycentricWeights.push_back(Vec3f());
-		_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), _vbt->_barycentricWeights.back());
+		_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), _vbt->_barycentricWeights.back());
 
 		dp.gridLocus = dbit0->second.gridLocus*(1.0f - param) + dbit1->second.gridLocus*param;
 		tet = flapBottomTet(tet, dp.gridLocus);
@@ -304,7 +304,7 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 					bottomVertex = dp.deepMtVertex;
 					_vbt->_vertexTets.push_back(tet);
 					_vbt->_barycentricWeights.push_back(Vec3f());
-					_vbt->gridLocusToBarycentricWeight(dp.gridLocus, *_vbt->tetCentroid(tet), _vbt->_barycentricWeights.back());
+					_vbt->gridLocusToBarycentricWeight(dp.gridLocus, _vbt->tetCentroid(tet), _vbt->_barycentricWeights.back());
 					break;
 				}
 			}
@@ -328,7 +328,7 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 					bottomVertex = dp.deepMtVertex;
 					_vbt->_vertexTets.push_back(tet);
 					_vbt->_barycentricWeights.push_back(Vec3f());
-					_vbt->gridLocusToBarycentricWeight(dp.gridLocus, *_vbt->tetCentroid(tet), _vbt->_barycentricWeights.back());
+					_vbt->gridLocusToBarycentricWeight(dp.gridLocus, _vbt->tetCentroid(tet), _vbt->_barycentricWeights.back());
 					break;
 				}
 			}
@@ -544,10 +544,10 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<int> &topVerts, std::list<
 	int txId = _mt->numberOfTextures();
 	float tx[2] = { 0.0f, pathLen };
 	Vec3f lV, V;
-	_mt->getVertexCoordinate(oppVerts[0], lV._v);
+	_mt->getVertexCoordinate(oppVerts[0], lV.xyz);
 	for (int n = oppVerts.size(), i = 0; i < n; ++i) {
 		if (i > 0) {
-			_mt->getVertexCoordinate(oppVerts[i], V._v);
+			_mt->getVertexCoordinate(oppVerts[i], V.xyz);
 			pathLen += (V - lV).length() * 0.5f;  // COURT note model specific fudge factor
 			lV = V;
 		}
@@ -573,16 +573,16 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<int> &topVerts, std::list<
 	// Two opposing quads will be triangulated in that format.
 	auto triangulateQuad = [&](int lt, int t) {
 		Vec3f lv, vn;
-		_mt->getVertexCoordinate(lt, lv._v);
-		_mt->getVertexCoordinate(t, vn._v);
+		_mt->getVertexCoordinate(lt, lv.xyz);
+		_mt->getVertexCoordinate(t, vn.xyz);
 		pathLen += (vn - lv).length();
 		auto ltit =_deepBed.find(lt);
 		assert(ltit != _deepBed.end());
 		auto tit = _deepBed.find(t);
 		assert(tit != _deepBed.end());
 		Vec3f tet[3];
-		_vbt->barycentricWeightToGridLocus(*_vbt->tetCentroid(_vbt->_vertexTets[lt]), _vbt->_barycentricWeights[lt], tet[0]);
-		_vbt->barycentricWeightToGridLocus(*_vbt->tetCentroid(_vbt->_vertexTets[t]), _vbt->_barycentricWeights[t], tet[1]);
+		_vbt->barycentricWeightToGridLocus(_vbt->tetCentroid(_vbt->_vertexTets[lt]), _vbt->_barycentricWeights[lt], tet[0]);
+		_vbt->barycentricWeightToGridLocus(_vbt->tetCentroid(_vbt->_vertexTets[t]), _vbt->_barycentricWeights[t], tet[1]);
 		tet[2] = tit->second.gridLocus;
 		for (int k = 0; k < 3; ++k)
 			tet[k] -= ltit->second.gridLocus;
@@ -656,16 +656,16 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<int> &topVerts, std::list<
 		++i;
 	}
 	assert(i == topVerts.size());
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	// get all triangles on the edge of a skin cut.
 	_inExCisionTriangles.clear();
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
 		if (_mt->triangleMaterial(i) != 2)
 			continue;
-		unsigned int* adjs = _mt->triAdjs(i);
+		int at[3], ae[3];
+		_mt->triangleAdjacencies(i, at, ae);
 		for (int j = 0; j < 3; ++j) {
-			assert(adjs[j] != 3);
-			if (_mt->triangleMaterial(adjs[j] >> 2) == 3) {
+			if (_mt->triangleMaterial(at[j]) == 3) {
 				_inExCisionTriangles.push_back(i);
 				break;
 			}
@@ -715,8 +715,8 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 	do{
 		oppositeVertices[ovn] = _mt->addVertices(1);
 		Vec3f v;
-		_mt->getVertexCoordinate(*tvit, v._v);
-		_mt->setVertexCoordinate(oppositeVertices[ovn], v._v);
+		_mt->getVertexCoordinate(*tvit, v.xyz);
+		_mt->setVertexCoordinate(oppositeVertices[ovn], v.xyz);
 		int lastTx, txId, materialNow = _mt->triangleMaterial(tri);
 		int* ttx = _mt->triangleTextures(tri);
 		lastTx = txId = ttx[vertIdx];;
@@ -739,10 +739,13 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 		lastV = *tvit;
 		++tvit;
 		while (tr[(vertIdx + 1) % 3] != *tvit) {
-			adj = _mt->triAdjs(tri)[vertIdx];
-			assert(adj != 3);
-			tri = adj >> 2;
-			vertIdx = ((adj & 3) + 1) % 3;
+			int at[3], ae[3];
+			_mt->triangleAdjacencies(tri, at, ae);
+//			adj = _mt->triangleAdjacencies(tri)[vertIdx];
+//			assert(adj != 3);
+//			tri = adj >> 2;
+			tri = at[vertIdx];
+			vertIdx = (ae[vertIdx] + 1) % 3;
 			tr = _mt->triangleVertices(tri);
 			int* ttx = _mt->triangleTextures(tri);
 			assert(tr[vertIdx] == lastV);
@@ -757,8 +760,8 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 				twoTx[1] = txId;
 				if (_mt->triangleMaterial(tri) != materialNow)
 					materialNow = _mt->triangleMaterial(tri);
-				else  // this is a single material texture seam vertex
-					_mt->addOneMaterialTextureSeamVertex(lastV, twoTx);
+//				else  // this is a single material texture seam vertex  // COURT fix me
+//					_mt->addOneMaterialTextureSeamVertex(lastV, twoTx);
 			}
 			_mt->triangleTextures(tri)[vertIdx] = txId;
 		}
@@ -879,14 +882,14 @@ bool skinCutUndermineTets::trianglePath(const int triStart, const int endTriangl
 		return true;
 	}
 	Vec3f vf0, vf1;
-	_mt->getTriangleNormal(triStart, vf0._v, true);
-	_mt->getTriangleNormal(endTriangle, vf1._v, true);
+	_mt->getTriangleNormal(triStart, vf0, true);
+	_mt->getTriangleNormal(endTriangle, vf1, true);
 	Vec3f planeNrm(vf0+vf1);
 	if (planeNrm.length2() < 1e-16)
 		return false;
 	float uv[2] = {0.33333f, 0.33333f};
-	_mt->getBarycentricPosition(triStart, uv, vf0._v);
-	_mt->getBarycentricPosition(endTriangle, uv, vf1._v);
+	_mt->getBarycentricPosition(triStart, uv, vf0.xyz);
+	_mt->getBarycentricPosition(endTriangle, uv, vf1.xyz);
 	planeNrm = planeNrm^(vf0 - vf1);
 	float planeD = planeNrm*vf1;
 	std::vector<unsigned int> triEdges, try2;
@@ -989,8 +992,8 @@ bool skinCutUndermineTets::trianglePath(const int triStart, const int endTriangl
 		int *trV;
 		for (int n = (int)tre.size(), i = 0; i < n; ++i) {
 			trV = _mt->triangleVertices(tre[i] >> 2);
-			_mt->getVertexCoordinate(trV[tre[i] & 3], vtx0._v);
-			_mt->getVertexCoordinate(trV[((tre[i] & 3) + 1) % 3], vtx1._v);
+			_mt->getVertexCoordinate(trV[tre[i] & 3], vtx0.xyz);
+			_mt->getVertexCoordinate(trV[((tre[i] & 3) + 1) % 3], vtx1.xyz);
 			vtx1 -= vtx0;
 			vtx0 += vtx1*(float)prm[i];
 			if (i >0)
@@ -1048,11 +1051,12 @@ int skinCutUndermineTets::deepPointTetWeight(const std::unordered_map<int, deepP
 	bccTetCentroid tc;
 	_vbt->gridLocusToTetCentroid(dit->second.gridLocus, tc);
 	_vbt->gridLocusToBarycentricWeight(dit->second.gridLocus, tc, baryWeight);
-	if (*_vbt->tetCentroid(_vbt->getVertexTetrahedron(dit->first)) == tc)
+	if (_vbt->tetCentroid(_vbt->getVertexTetrahedron(dit->first)) == tc)
 		return _vbt->getVertexTetrahedron(dit->first);
 	std::list<int> lt, tp;
 	_vbt->centroidTets(tc, lt);
-	assert(!lt.empty());
+	if (lt.empty())
+		return -1L;
 	if (lt.size() < 2)
 		return lt.front();
 	for (auto tet : lt){
@@ -1202,9 +1206,9 @@ bool skinCutUndermineTets::addUndermineTriangle(const int triangle, const int un
 	if (incisionConnect) {
 		Vec3f newP, now;
 		int closeT = -1;
-		_mt->getBarycentricPosition(triangle, uv, newP._v);
+		_mt->getBarycentricPosition(triangle, uv, newP.xyz);
 		for (auto &tIdx : *edgeTriangles) {
-			_mt->getBarycentricPosition(tIdx, uv, now._v);
+			_mt->getBarycentricPosition(tIdx, uv, now.xyz);
 			d = (now - newP).length2();
 			if (d < minD) {
 				minD = d;
@@ -1418,7 +1422,7 @@ void skinCutUndermineTets::undermineSkin() {
 
 //	testIncisionsDeepBed();  // COURT - nuke after debug
 
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	_prevUndermineTriangle = -1;
 }
 
@@ -1506,6 +1510,48 @@ bool skinCutUndermineTets::closeUndermineHoles(std::vector<int> &trianglePath, c
 	return true;
 }
 
+float skinCutUndermineTets::closestSkinIncisionPoint(const Vec3f xyz, int& triangle, int& edge, float& param)
+{	// Input xyz, then overwrites all 4 with the point on the nearest incision edge.  Incision edge facing in opposite direction not selected.
+	_mt->findAdjacentTriangles();
+	triangle = -1;
+	edge = -1;
+	param = FLT_MAX;
+	float minDsq = FLT_MAX;
+	float ret = FLT_MAX;
+	for (int n=_mt->numberOfTriangles(), i = 0; i < n; ++i) {
+		if (_mt->triangleMaterial(i) != 3)
+			continue;
+		unsigned int adj = _mt->triAdjs(i)[0];
+		if (_mt->triangleMaterial(adj >> 2) != 2)  // incision convention
+			continue;
+		Vec3f W, P;
+		int* tr = _mt->triangleVertices(i);
+		_mt->getVertexCoordinate(tr[0], P.xyz);
+		_mt->getTriangleNormal(i, W, false);
+		if (W * (P - xyz) < 0.0f)  // edge facing wrong direction
+			continue;
+		_mt->getVertexCoordinate(tr[1], W.xyz);
+		W -= P;
+		float lenSq, p = (W * (xyz - P)) / (W * W);
+		if (p < 0.0f)
+			p = 0.0f;
+		if (p > 1.0f)
+			p = 1.0f;
+		W = W * p + P;
+		lenSq = (xyz - W).length2();
+		if (lenSq < minDsq) {
+			minDsq = lenSq;
+			param = 1.0f - p;
+			triangle = adj >> 2;
+			edge = adj & 3;
+			ret = true;
+		}
+	}
+	if (triangle > -1)
+		ret = sqrt(minDsq);
+	return ret;
+}
+
 int skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f &nextConnectedPoint)
 {  // find the correct side of incision from usually 2 choices; 1 if part of a moved flap
 	// on 7_21_2021 added T out possibility of finding first point in this incision under construction
@@ -1520,11 +1566,11 @@ int skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f 
 		if (_mt->triangleMaterial(_mt->triAdjs(i)[0] >> 2) != 2)
 			continue;
 		// this is a top incision edge
-		_mt->getTriangleNormal(i, dir._v, true);
+		_mt->getTriangleNormal(i, dir, true);
 		if (closeDir*dir < 0.0f) // opposite side
 			continue;
-		_mt->getVertexCoordinate(_mt->triangleVertices(i)[0], P._v);
-		_mt->getVertexCoordinate(_mt->triangleVertices(i)[1], dir._v);
+		_mt->getVertexCoordinate(_mt->triangleVertices(i)[0], P.xyz);
+		_mt->getVertexCoordinate(_mt->triangleVertices(i)[1], dir.xyz);
 		dir -= P;
 		t = dir*dir;
 		if (t < 1e-16f){
@@ -1546,14 +1592,14 @@ int skinCutUndermineTets::addTinEdgeVertex(const Vec3f &closePoint, const Vec3f 
 		}
 	}
 	if (_firstTopVertex > -1) {  // possible closed polygon as this is a T out
-		_mt->getVertexCoordinate(_firstTopVertex, P._v);
+		_mt->getVertexCoordinate(_firstTopVertex, P.xyz);
 		dsq = (closePoint - P).length2();
 		if (dsq < minD)
 			return _firstTopVertex;
 	}
-	if (minParam == 0.0f)
+	if (minParam < 0.001f)
 		return _mt->triangleVertices(minTri)[0];
-	if (minParam == 1.0f)
+	if (minParam > 0.999f)
 		return _mt->triangleVertices(minTri)[1];
 	if (minTri < 0)
 		return -1;
@@ -1645,7 +1691,7 @@ int skinCutUndermineTets::TinSub(const int edgeTriangle, const float edgeParam)
 	Vec3f gridLocus, baryWeight;
 	tris[2][0] = _mt->numberOfTriangles() + 1;
 	int tet = parametricMTedgeTet(edgeTriangle, 0, edgeParam, gridLocus);
-	_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), baryWeight);
+	_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), baryWeight);
 	// must have tris01 + 1 = tris11 for incision convention
 	unsigned int topTriEdge = _mt->triAdjs(edgeTriangle)[0];
 	verts[0][1] = _mt->splitTriangleEdge(topTriEdge >> 2, topTriEdge & 3, 1.0f - edgeParam);
@@ -1654,7 +1700,7 @@ int skinCutUndermineTets::TinSub(const int edgeTriangle, const float edgeParam)
 	_vbt->_barycentricWeights.push_back(baryWeight);
 	tris[3][0] = _mt->numberOfTriangles();
 	tet = parametricMTedgeTet(edgeTriangle + 1, 0, 1.0f - edgeParam, gridLocus);
-	_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), baryWeight);
+	_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), baryWeight);
 	verts[3][1] = verts[1][1] = _mt->splitTriangleEdge(edgeTriangle + 1, 0, 1.0f - edgeParam);
 	tex[1][1] = _mt->triangleTextures(edgeTriangle + 1)[1];
 	tex[3][1] = _mt->numberOfTextures() - 1;  // even if two layers a new texture will have been created since bottom of a material 3 incision groove will have a texture seam
@@ -1669,7 +1715,7 @@ int skinCutUndermineTets::TinSub(const int edgeTriangle, const float edgeParam)
 		tris[2][1] = tris[3][0] + 1;
 		tris[3][1] = _mt->numberOfTriangles();
 		tet = parametricMTedgeTet(tris[0][1], 0, 1.0f - edgeParam, gridLocus);
-		_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), baryWeight);
+		_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), baryWeight);
 		verts[2][1] = _mt->splitTriangleEdge(tris[0][1], 0, 1.0f - edgeParam);
 		tex[2][1] = _mt->triangleTextures(tris[0][1])[1];
 		assert(tex[2][1] == _mt->numberOfTextures() - 2);
@@ -1702,7 +1748,7 @@ int skinCutUndermineTets::TinSub(const int edgeTriangle, const float edgeParam)
 		if (i<1) 
 			tex[1][1] =cloneTexture(tex[1][1]);
 	}
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	return verts[0][1];
 }
 
@@ -1772,7 +1818,7 @@ void skinCutUndermineTets::excise(const int triangle)
 				int *tr = _mt->triangleVertices(i);
 				for (int j = 0; j < 3; ++j) {
 					_vbt->setVertexTetrahedron(tr[j], -1);  // physics marked deleted
-					_mt->_vertexFace[tr[j]] = 0x80000000;  // surface vertex marked deleted
+					*_mt->vertexFaceTriangle(tr[j]) = 0x80000000;  // surface vertex marked deleted
 					_deepBed.erase(tr[j]);  // remove from deepBed
 					_mt->setTriangleMaterial(i, -1);  // surface triangle marked deleted
 				}
@@ -1796,7 +1842,7 @@ void skinCutUndermineTets::excise(const int triangle)
 }
 
 bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections of the deep bed with the deep surface of the object.  For debugging.
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	std::map<int, int> fatTop, fatBot, fatBed, cutFatBot, extraFat;
 	std::multimap<int, int> topEdge, bedEdge, bottomEdge;
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
@@ -1930,8 +1976,8 @@ bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections 
 	auto edgeObjectIntersection = [&](Vec3f& v0, Vec3f& v1, int excludeVertex, int triangle) {
 		boundingBox<float> be, bt;
 		be.Empty_Box();
-		be.Enlarge_To_Include_Point(v0._v);
-		be.Enlarge_To_Include_Point(v1._v);
+		be.Enlarge_To_Include_Point(v0.xyz);
+		be.Enlarge_To_Include_Point(v1.xyz);
 		float bestI = FLT_MAX;
 		int bestTri = -1;
 		for (int m, n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
@@ -1947,7 +1993,7 @@ bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections 
 				if (t2[m] == excludeVertex)
 					break;
 				_vbt->vertexGridLocus(t2[m], tv[m]);
-				bt.Enlarge_To_Include_Point(tv[m]._v);
+				bt.Enlarge_To_Include_Point(tv[m].xyz);
 			}
 			if (m < 3 || !be.Intersection(bt))
 				continue;
@@ -1980,6 +2026,32 @@ bool skinCutUndermineTets::testIncisionsDeepBed() {  // Looks for intersections 
 	else
 		std::cout << "Passed testIncisionsUndermines() veracity test.\n";
 	return success;
+}
+
+bool skinCutUndermineTets::triangleUndermined(int triangle) {
+	int dv[3],  *tr = _mt->triangleVertices(triangle);
+	for (int i = 0; i < 3; ++i) {
+		auto dbit = _deepBed.find(tr[i]);
+		if (dbit == _deepBed.end() || dbit->second.deepMtVertex < 0)  // not material 2 would be found here
+			return false;
+		dv[i] = dbit->second.deepMtVertex;
+	}
+	std::vector<materialTriangles::neighborNode> nei;
+	_mt->getNeighbors(dv[0], nei);
+	auto nit = nei.begin();
+	while (nit != nei.end()) {
+		if (nit->vertex == dv[2])
+			break;
+		++nit;
+	}
+	if ((nit == nei.end()))
+		return false;
+	++nit;
+	if ((nit == nei.end()))
+		nit = nei.begin();
+	if (nit->vertex == dv[1])
+		return true;
+	return false;
 }
 
 skinCutUndermineTets::skinCutUndermineTets()

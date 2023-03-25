@@ -3,412 +3,889 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
-#include "boundingBox.h"
 #include "Mat2x2d.h"
+#include "Vec3d.h"
+#include "Mat2x2f.h"
 #include "Mat3x3f.h"
+#include "triTriIntersect_Shen.h"
+#include "tri_tri_intersect_Guigue.h"
 
-#include <omp.h>
 #include <chrono>  // for openMP timing
 #include <ctime>  // nuke after openMP debug
 #include <fstream>
 
-
 #include "vnBccTetCutter.h"
 
-vnBccTetCutter::vnBccTetCutter(void)
-{
-}
+bool vnBccTetCutter::subcutMacroTets(std::vector<int>& macroTets ) {
+	if (_mt->findAdjacentTriangles(true))	return false;
+	std::vector<int> surfaceTris;
+	std::vector<std::array<int, 3> > boundaryNodeTris;
+	std::sort(macroTets.begin(), macroTets.end());  // COURT if lots should be hash table
+	std::vector<int> subTris;
+	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
+		int* tr = _mt->triangleVertices(i);
+		for (int j = 0; j < 3; ++j) {  //  COURT good only once.  Fix later.
+			if (std::binary_search(macroTets.begin(), macroTets.end(), _vbt->_vertexTets[tr[j]])) {
+				subTris.push_back(i);
+				break;
+			}
+		}
+	}
+	// delete old macrotets but keep all boundary triangles
+	std::set<int> oldNodes;
+	for (int& t : macroTets) {
+		auto& tc = _vbt->_tetCentroids[t];
+		if (!std::binary_search(_macroTetCentroidSubset.begin(), _macroTetCentroidSubset.end(), tc))
+			_macroTetCentroidSubset.push_back(tc);
+		for (int i = 0; i < 4; ++i)
+			oldNodes.insert(_vbt->_tetNodes[t][i]);
+		_vbt->_tetNodes[t][0] = -1;
+	}
+	std::sort(_macroTetCentroidSubset.begin(), _macroTetCentroidSubset.end());
+	for (int n = _vbt->_tetNodes.size(), i = 0; i < n; ++i) {
+		auto& tn = _vbt->_tetNodes[i];
+		if (tn[0] < 0)
+			continue;
+		int on[4] = { -1, -1, -1, -1 }, nFound = 0;;
+		for (int j = 0; j < 4; ++j) {
+			if (oldNodes.find(tn[j]) != oldNodes.end()) {
+				on[j] = tn[j];
+				++nFound;
+			}
+		}
+		if (nFound > 2) {
+			for (int j = 0; j < 4; ++j) {
+				if (on[j] > -1 && on[(j + 1) & 3] > -1 && on[(j + 2) & 3] > -1) {
+					boundaryNodeTris.push_back(std::array<int, 3>());
+					auto& an = boundaryNodeTris.back();
+					an[0] = on[j];
+					if (j & 1) {  // get correct clockwiseness
+						an[1] = on[(j + 2) & 3];
+						an[2] = on[(j + 1) & 3];
+					}
+					else {
+						an[1] = on[(j + 1) & 3];
+						an[2] = on[(j + 2) & 3];
 
-vnBccTetCutter::~vnBccTetCutter(void)
-{
+					}
+				}
+			}
+		}
+	}
+		
+	// leave current intersection data structures except;
+//	_vMatCoords.clear();
+//	_vMatCoords.assign(_mt->numberOfVertices(), Vec3f());
+//	_vertexTetCentroids.clear();
+//	_vertexTetCentroids.assign(_mt->numberOfVertices(), bccTetCentroid());
+//	_vbt->_barycentricWeights.clear();
+//	_vbt->_barycentricWeights.assign(_mt->numberOfVertices(), Vec3f());
+	std::set<int> surfaceVerts;
+	for (auto& st : subTris) {
+		int* tr = _mt->triangleVertices(st);
+		for (int i = 0; i < 3; ++i)
+			surfaceVerts.insert(tr[i]);
+	}
+	// leave old vertices in macrotets where they were barycentrically, but find new locs in microtet space.
+	for (auto& sv : surfaceVerts) {
+		if (!std::binary_search(macroTets.begin(), macroTets.end(), _vbt->_vertexTets[sv]))
+			continue;
+		_vbt->gridLocusToTetCentroid(_vMatCoords[sv], _vertexTetCentroids[sv]);
+		// set barycentric coordinate within that tet
+		auto& bw = _vbt->_barycentricWeights[sv];
+		_vbt->gridLocusToBarycentricWeight(_vMatCoords[sv], _vertexTetCentroids[sv], bw);
+		// any vertex on a tet face boundary should be nudged inside
+		bool nudge = false;
+		for (int j = 0; j < 3; ++j) {
+			if (bw[j] < 1e-4f || bw[j] > 0.9999f)
+				nudge = true;
+		}
+		if (bw[0] + bw[1] + bw[2] > 0.9999)
+			nudge = true;
+		if (nudge) {  // vertices on tet boundarys must be pulled inside to avoid dual identities
+			Vec3f nV = (Vec3f(0.25f, 0.25f, 0.25f) - bw) * 0.0002f;
+			bw += nV;
+			_vbt->barycentricWeightToGridLocus(_vertexTetCentroids[sv], bw, _vMatCoords[sv]);
+		}
+	}
+	// We really don't need all this memory, but it's a pain to subcut it.
+	// setup lines parallel with Z axis
+	evenXy.assign(_gridSize[0] >> 1, std::vector<std::multimap<double, bool> >());  // 0th i always empty
+	oddXy.assign(_gridSize[0] >> 1, std::vector<std::multimap<double, bool> >());
+	int gsy = _gridSize[1] >> 1;
+	for (int n = _gridSize[0] >> 1, i = 0; i < n; ++i) {
+		evenXy[i].assign(gsy, std::multimap<double, bool>());  // 0th j always empty
+		oddXy[i].assign(gsy, std::multimap<double, bool>());
+	}
+	_centroidTriangles.clear();  // COURT later reserve this hash table
+	for (int n = subTris.size(), i = 0; i < n; ++i)
+		inputTriangle(subTris[i]);
+	// cull out data not in this tet subset
+	for (auto ct = _centroidTriangles.begin(); ct != _centroidTriangles.end(); ){
+		// all these are microtets so if its centroid not inside subset delete it
+		Vec3f tc(ct->first[0], ct->first[1], ct->first[2]);
+		tc *= 0.5f;
+		bool found = false;
+		for (auto& mtc : _macroTetCentroidSubset) {
+			if (_vbt->insideTet(mtc, tc)) {
+				found = true;
+				break;
+			}
+		}
+		if (found)
+			++ct;
+		else
+			ct = _centroidTriangles.erase(ct);
+	}
+	for (int n = evenXy.size(), i = 0; i < n; ++i) {
+		for (int m = evenXy[i].size(), j = 0; j < m; ++j) {
+			auto& iLine = evenXy[i][j];
+			if (iLine.empty())
+				continue;
+			Vec3f loc;
+			loc.X = (i << 1);
+			loc.Y = (j << 1);
+			for (auto zit = iLine.begin(); zit != iLine.end(); ) {
+				loc.Z = (float)zit->first;
+				bool found = false;
+				for (auto& mtc : _macroTetCentroidSubset) {
+					if (_vbt->insideTet(mtc, loc)) {
+						found = true;
+						break;
+					}
+				}
+				if (found)
+					++zit;
+				else
+					zit = iLine.erase(zit);
+			}
+		}
+	}
+	for (int n = oddXy.size(), i = 0; i < n; ++i) {
+		for (int m = oddXy[i].size(), j = 0; j < m; ++j) {
+			auto &iLine = oddXy[i][j];
+			if (iLine.empty())
+				continue;
+			Vec3f loc;
+			loc.X = (i << 1) + 1;
+			loc.Y = (j << 1) + 1;
+			for (auto zit = iLine.begin(); zit != iLine.end(); ) {
+				loc.Z = (float)zit->first;
+				bool found = false;
+				for (auto& mtc : _macroTetCentroidSubset) {
+					if (_vbt->insideTet(mtc, loc)) {
+						found = true;
+						break;
+					}
+				}
+				if (found)
+					++zit;
+				else
+					zit = iLine.erase(zit);
+			}
+		}
+	}
+	// backstop even and oddXy with boundaryNodeTris for creation of new interior nodes
+	for (auto& bt : boundaryNodeTris) {
+		// get Z line intersects.  From inputTriangle()
+		Vec3f T[3];
+		for (int i = 0; i < 3; ++i)
+			T[i].set((short (&)[3])*_vbt->_nodeGridLoci[bt[i]].data());
+		int xy[4] = { INT_MAX, -2, INT_MAX, -2 };
+		for (int i = 0; i < 3; ++i) {
+			int f = (int)std::floor(T[i][0]);
+			if (f < xy[0])
+				xy[0] = f;
+			if (f > xy[1])
+				xy[1] = f;
+			f = (int)std::floor(T[i][1]);
+			if (f < xy[2])
+				xy[2] = f;
+			if (f > xy[3])
+				xy[3] = f;
+		}
+		T[1] -= T[0];
+		T[2] -= T[0];
+		bool solidBegin = T[1][0] * T[2][1] - T[1][1] * T[2][0] < 0.0f;  // negative Z starts a solid
+		auto triIntersectZ = [&](const int x, const int y, double& z) ->bool {
+			Mat2x2d M;
+			M.x[0] = T[1][0];  M.x[1] = T[1][1];  M.x[2] = T[2][0]; M.x[3] = T[2][1];
+			Vec2d R = M.Robust_Solve_Linear_System(Vec2d(x - T[0][0], y - T[0][1]));
+			if (R[0] < -1e-5f || R[0] >= 1.00001f || R[1] < -1e-5f || R[1] >= 1.00001f || R[0] + R[1] >= 1.00001f)
+				return false;
+			z = (T[0][2] + T[1][2] * R[0] + T[2][2] * R[1]);
+			return true;
+		};
+		for (int i = xy[0] + 1; i <= xy[1]; ++i) {
+			bool odd = i & 1;
+			for (int j = xy[2] + 1; j <= xy[3]; ++j) {
+				if (odd != (bool)(j & 1))
+					continue;
+				double z;
+				// all boundaryTri intersects should make a legal bound to surfaceTri intersects.
+				// surfaceTri intersects will overshoot bounds of macrotet.
+				if (odd) {
+					if (triIntersectZ(i, j, z))
+						oddXy[(i - 1) >> 1][(j - 1) >> 1].insert(std::make_pair(z, solidBegin));
+				}
+				else {
+					if (triIntersectZ(i, j, z))
+						evenXy[(i - 2) >> 1][(j - 2) >> 1].insert(std::make_pair(z, solidBegin));
+				}
+			}
+		}
+
+	}
+	// create and hash all interior nodes
+	createInteriorNodes();
+
+	return true;
 }
 
 bool vnBccTetCutter::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra *vbt, int maximumGridDimension)
 {  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
+	if (maximumGridDimension > 0x8ffe)
+		throw(std::logic_error("Maximum grid dimension requested must be less than 32K."));
 	// WARNING - no complete tests are done to check for non-self-intersecting closed manifold triangulated surface input!!
-	// This is essential. findAdjacentTriangles() is the closest test I provide.
+	// This is essential. findAdjacentTriangles() is the closest test this routine provides.  Test externally.
 	_mt = mt;
 	_vbt = vbt;
 	_vbt->_mt = mt;
-	_vbt->_vertexTets.clear();
-	_vbt->_vertexTets.assign(mt->numberOfVertices(), -1);
 	_vbt->_barycentricWeights.clear();
 	_vbt->_barycentricWeights.assign(mt->numberOfVertices(), Vec3f());
-	_surfaceTetFaceNumber = 0;
-	_vbt->_fixedNodes.clear();
 	_vbt->_tetHash.clear();
 	_vbt->_tetNodes.clear();
-	if(!_mt->findAdjacentTriangles(true,false))	return false;
+	if(_mt->findAdjacentTriangles(true))	return false;
 	if (!setupBccIntersectionStructures(maximumGridDimension))
 		return false;
-	for (int i = 0; i < 6; ++i){  // only 6 threads but less false sharing
-		int n = _planeSets2[i].size();
-		for (int j = 0; j < n; ++j)
-			getPlanePolygons(i, j);
-	}
-	// first plane set gets all the interior tetrahedral nodes.
-	_vbt->_nodeGridLoci.clear();
-	_vbt->_nodeGridLoci.reserve((_planeSets2[0].size()*_vbt->_gridSize[1] * _vbt->_gridSize[2]) >> 2);  // reasonable guess
-	for (int i = 0; i < 6; ++i){
-		int j, n = _planeSets2[i].size();
-		for (j = 0; j < n; ++j)
-			processIntersectionPlane(i, j);
-	}
+	_centroidTriangles.clear();  // COURT later reserve this hash table
+	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i)
+		inputTriangle(i);
+	// create and hash all interior nodes
+	createInteriorNodes();
 	_interiorNodes.clear();  // only nodes created thus far are interior nodes
 	_interiorNodes.reserve(_vbt->_nodeGridLoci.size());
 	for (int n = _vbt->_nodeGridLoci.size(), j = 0; j < n; ++j)
 		_interiorNodes.insert(std::make_pair(_vbt->_nodeGridLoci[j], j));
-	_surfaceTetFaces.clear();
-	_surfaceTetFaces.reserve(_surfaceTetFaceNumber << 1);
-	collectSurfaceTetCentersFaces();
-	createVirtualNodedSurfaceTets();
-	_surfaceTetFaces.clear();
-	createSurfaceTetNodes();
-	int nSurfaceTets = _vbt->_tetNodes.size();
+	_exteriorNodeIndices.clear();
+	_exteriorNodeIndices.reserve(_centroidTriangles.size() >> 1);    // COURT later check this reserve size
+	_vbt->_tetCentroids.clear();
+	_vbt->_tetCentroids.reserve(_centroidTriangles.size() >> 1);    // COURT perhaps assign() for multi threading
+	for (auto& ct : _centroidTriangles)
+		getConnectedComponents(ct.first, ct.second);  // for this centroid split its triangles into solid connected components
+	_vbt->_tetHash.clear();
+	_vbt->_tetHash.reserve(_vbt->tetNumber());
+	for (int n = _vbt->tetNumber(), i = 0; i < n; ++i)
+		_vbt->_tetHash.insert(std::make_pair(_vbt->tetCentroid(i), i));
+	// get tets where vertices reside
+	_vbt->_vertexTets.clear();
+	_vbt->_vertexTets.assign(mt->numberOfVertices(), -1);
+	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {
+		auto ct = _centroidTriangles.find(_vertexTetCentroids[i]);
+		if (ct == _centroidTriangles.end())
+			throw(std::logic_error("Couldn't find a tetrahedron containing a vertex.\n"));
+		else if (ct->second.size() < 2)
+			_vbt->_vertexTets[i] = ct->second.front().tetindx;
+		else {
+			auto ltit = ct->second.begin();
+			while (ltit != ct->second.end()) {
+				auto tit = ltit->tris.begin();
+				while (tit != ltit->tris.end()) {
+					int *tr = _mt->triangleVertices(*tit);
+					int j;
+					for (j = 0; j < 3; ++j) {
+						if (tr[j] == i) {
+							_vbt->_vertexTets[i] = ltit->tetindx;
+							break;
+						}
+					}
+					if (j < 3)
+						break;
+					++tit;
+				}
+				if (tit != ltit->tris.end())
+					break;
+				++ltit;
+			}
+		}
+	}
+	assignExteriorTetNodes();
+	_vbt->_firstInteriorTet = _vbt->_tetNodes.size();
 	fillNonVnTetCenter();
-	// In some complex solids createVirtualNodedSurfaceTets() will create multiple tets for the same tet locus as they will have no shared connected components,
-	// but they can have the same nodes since the tets surrounding them may have connected components.  While these are not strictly an error, they do the user no good
-	// since the tets are incapable of independent movement.  Further these are tets that are sparsely filled with solid.  Combining them provides somewhat more accurate
-	// physics behavior. The next section removes these identical multiplicities.
-	int k = 0;
-	long *nk = _vbt->_tetNodes[0].data();
-	std::vector<long> tetDispl;
-	tetDispl.assign(nSurfaceTets, -1);
-	tetDispl[0] = 0;
-	bool dupFound = false;
-	for (int i = 1; i < nSurfaceTets; ++i){
-		tetDispl[i] = k + 1;
-		long *ni = _vbt->_tetNodes[i].data();
-		if (ni[0] == nk[0] && ni[1] == nk[1] && ni[2] == nk[2] && ni[3] == nk[3]){  // due to createVirtualNodedSurfaceTets() these identicals will all be sequential
-			--tetDispl[i];
-			dupFound = true;
-			continue;
-		}
-		++k;
-		nk = _vbt->_tetNodes[k].data();;
-		if (dupFound){
-			_vbt->_tetNodes[k] = _vbt->_tetNodes[i];
-			_vbt->_tetCentroids[k] = _vbt->_tetCentroids[i];
-		}
-	}
-	if (dupFound){
-		++k;
-		_vbt->_tetNodes.erase(_vbt->_tetNodes.begin() + k, _vbt->_tetNodes.begin() + nSurfaceTets);
-		_vbt->_tetCentroids.erase(_vbt->_tetCentroids.begin() + k, _vbt->_tetCentroids.begin() + nSurfaceTets);
-		for (int n = _vbt->_vertexTets.size(), i = 0; i < n; ++i){
-			if (_vbt->_vertexTets[i] > -1)
-				_vbt->_vertexTets[i] = tetDispl[_vbt->_vertexTets[i]];
-		}
-	}
 	_vbt->_tetNodes.shrink_to_fit();
 	_vbt->_tetCentroids.shrink_to_fit();
 	_vbt->_tetHash.clear();
 	_vbt->_tetHash.reserve(_vbt->_tetCentroids.size());
 	for (int n = _vbt->_tetCentroids.size(), i = 0; i < n; ++i)
-		_vbt->_tetHash.insert(std::make_pair(_vbt->_tetCentroids[i].ll, i));
-	// for debug - nuke later
- /* #ifdef _DEBUG
-	for (auto &th : _vbt->_tetHash){
-		Vec3f tV[4];
-		std::array<short, 3> mean, tmp;
-		mean.assign(0);
-		bccTetCentroid tc;
-		tc.ll = th.first;
-		for (int i = 0; i < 4; ++i){
-			tmp = _vbt->_nodeGridLoci[_vbt->_tetNodes[th.second][i]];
-			if (i < 1){
-				if ((tc.xyz[tc.halfCoordAxis] + tc.xyz[(tc.halfCoordAxis + 1) % 3]) & 1){
-					assert(tmp[tc.halfCoordAxis] == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] + 1 == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-				else{
-					assert(tmp[tc.halfCoordAxis] - 1 == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] + 1 == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-			}
-			else if (i < 2){
-				if ((tc.xyz[tc.halfCoordAxis] + tc.xyz[(tc.halfCoordAxis + 1) % 3]) & 1){
-					assert(tmp[tc.halfCoordAxis] == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] - 1 == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-				else{
-					assert(tmp[tc.halfCoordAxis] - 1 == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] - 1 == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-			}
-			else if (i < 3){
-				if ((tc.xyz[tc.halfCoordAxis] + tc.xyz[(tc.halfCoordAxis + 1) % 3]) & 1){
-					assert(tmp[tc.halfCoordAxis] - 1 == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] - 1 == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-				else{
-					assert(tmp[tc.halfCoordAxis] == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] + 1 == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-			}
-			else{
-				if ((tc.xyz[tc.halfCoordAxis] + tc.xyz[(tc.halfCoordAxis + 1) % 3]) & 1){
-					assert(tmp[tc.halfCoordAxis] - 1 == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] + 1 == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-				else{
-					assert(tmp[tc.halfCoordAxis] == tc.xyz[tc.halfCoordAxis] && tmp[(tc.halfCoordAxis + 2) % 3] - 1 == tc.xyz[(tc.halfCoordAxis + 2) % 3] && tmp[(tc.halfCoordAxis + 1) % 3] == tc.xyz[(tc.halfCoordAxis + 1) % 3]);
-				}
-			}
-			tV[i].set(tmp[0], tmp[1], tmp[2]);
-			for (int j = 0; j < 3; ++j)
-				mean[j] += tmp[j];
-		}
-		for (int i = 0; i < 3; ++i){
-			if (mean[i] & 2)
-				assert(i == tc.halfCoordAxis);
-			mean[i] >>= 2;
-			tV[i + 1] -= tV[0];
-		}
-		assert(mean == tc.xyz);
-		// test for positiveness in tet ordering
-		float vol = tV[1] * (tV[2] ^ tV[3]);
-		assert(vol > 0.0f);
-	}
-#endif */
-
-	// all vertices in duplicated, virtual noded tets have their tet index already assigned.  Vertices in unique tets still unassigned.
-	for (int n = _vbt->_vertexTets.size(), i = 0; i < n; ++i){
-		if (_vbt->_vertexTets[i] < 0 && *_mt->vertexFaceTriangle(i) < 0x80000000) {  // second test ignores excised vertices
-			auto rng = _vbt->_tetHash.equal_range(_vertexTetLoci[i].ll);
-			assert(std::distance(rng.first, rng.second) == 1);
-			_vbt->_vertexTets[i] = rng.first->second;
-		}
-	}
-
-	// COURT - no longer doing this here
-/*	_vbt->_nodeSpatialCoords.clear();
-	_vbt->_nodeSpatialCoords.assign(_vbt->_nodeGridLoci.size(), Vec3f());
-	for (int n = _vbt->_nodeGridLoci.size(), i = 0; i < n; ++i){
-		const short *np = _vbt->_nodeGridLoci[i].data();
-		Vec3f *vp = &_vbt->_nodeSpatialCoords[i];
-		vp->set((float)np[0], (float)np[1], (float)np[2]);
-		*vp *= (float)_vbt->_unitSpacing;
-		*vp += _vbt->_minCorner;
-	} */
-
+		_vbt->_tetHash.insert(std::make_pair(_vbt->_tetCentroids[i], i));
 	return true;
 }
 
-void vnBccTetCutter::createSurfaceTetNodes()
-{
-	struct sharedTetNode{
-		bool internal;
-		std::set<unsigned long> nSet;
-	}stn;
-	stn.internal = false;
-	stn.nSet.clear();
-	std::unordered_map<std::array<short, 3>, std::list<sharedTetNode>, arrayShort3Hasher> surfaceTetNodes;
-	surfaceTetNodes.reserve(_surfaceTetFaceNumber << 2);
-	std::array<short, 3> nodeLoc;
-	auto addTetNodePair = [&](int triVert, vnTetFace *tfp){
-		unsigned long v0 = tfp->tetNodes[0][triVert], v1 = tfp->tetNodes[1][triVert];
-		assert(v0 < 0xffffffff && v1 < 0xffffffff);  // Should never happen.
-		bool internalNode;
-		if (tfp->interiorNodes & (1 << triVert))
-			internalNode = true;
-		else
-			internalNode = false;
-		auto tnSets = &surfaceTetNodes.insert(std::make_pair(nodeLoc, std::list<sharedTetNode>())).first->second;
-		auto tsit = tnSets->begin();
-		while (tsit != tnSets->end()){
-			if (tsit->nSet.find(v0) != tsit->nSet.end()){
-				tsit->internal |= internalNode;  // if any face says it is an internal node, they all are
-				if (tsit->nSet.insert(v1).second){
-					auto tsit2 = tnSets->begin();
-					while (tsit2 != tnSets->end()){
-						if (tsit == tsit2){
-							++tsit2;
-							continue;
-						}
-						assert(tsit2->nSet.find(v0) == tsit2->nSet.end());
-						if (tsit2->nSet.find(v1) != tsit2->nSet.end()){
-							tsit->internal |= tsit2->internal;
-							tsit->nSet.insert(tsit2->nSet.begin(), tsit2->nSet.end());
-							tnSets->erase(tsit2);
-							tsit2 = tnSets->end();
-							break;
-						}
-						++tsit2;
-					}
-				}
-				break;
+void vnBccTetCutter::createInteriorNodes() {
+	short z;
+	std::array<short, 3> s3;
+	auto runInteriorNodes = [&](std::multimap<double, bool>& mm, bool evenLine) {
+		auto mit = mm.begin();
+		auto mend = mm.end();
+		if (mit == mend)
+			return;
+		if (!mit->second)
+			throw(std::runtime_error("Model is not a closed manifold surface.\n"));
+		while (mit != mend) {
+			// create runs of interior vertices
+			z = (short)std::floor(mit->first);
+			if (z < mit->first)
+				++z;
+			if ((z & 1) == evenLine)
+				++z;
+			++mit;
+			if (mit->second) {  // correct any coincident pairs or micro collisions
+				auto mit2 = mit;
+				while (mit2 != mend && mit2->second && mit2->first - mit->first < 2e-5f)
+					++mit2;
+				if (mit2 == mend || mit2->second)
+					throw(std::runtime_error("Model has a self collision.\n"));
+				mit = mit2;
 			}
-			if (tsit->nSet.find(v1) != tsit->nSet.end()){
-				tsit->internal |= internalNode;  // if any face says it is an internal node, they all are
-				tsit->nSet.insert(v0);  // must happen
-				auto tsit2 = tnSets->begin();
-				while (tsit2 != tnSets->end()){
-					if (tsit == tsit2){
-						++tsit2;
-						continue;
-					}
-					assert(tsit2->nSet.find(v1) == tsit2->nSet.end());
-					if (tsit2->nSet.find(v0) != tsit2->nSet.end()){
-						tsit->internal |= tsit2->internal;
-						tsit->nSet.insert(tsit2->nSet.begin(), tsit2->nSet.end());
-						tnSets->erase(tsit2);
-						tsit2 = tnSets->end();
-						break;
-					}
-					++tsit2;
-				}
-				break;
+			for (; z < mit->first; z += 2) {
+				s3[2] = z;
+				_vbt->_nodeGridLoci.push_back(s3);
 			}
-			++tsit;
-		}
-		if (tsit == tnSets->end()){
-			tnSets->push_back(stn);
-			tnSets->back().internal = internalNode;
-			tnSets->back().nSet.insert(v0);
-			tnSets->back().nSet.insert(v1);
+			++mit;
+			if (mit != mend && !mit->second) {  // correct any coincident pairs or micro collisions
+				auto mit2 = mit;
+				while (mit2 != mend && !mit2->second && mit2->first - mit->first < 2e-5f)
+					++mit2;
+				if (mit2 == mend)
+					return;
+				if (!mit2->second)
+					throw(std::runtime_error("Model has a self collision.\n"));
+				mit = mit2;
+			}
 		}
 	};
-	for (int i = 0; i < 6; ++i){
-		for (int n = _planeSets2[i].size(), j = 0; j < n; ++j){
-			int c0 = i >> 1, oddPlane = i&1;
-			for (auto &tf : _planeSets2[i][j]->vnTetFaces){
-				unsigned short faceOdd = (tf.first.first + tf.first.second) & 1;
-				for (int k = 0; k < 3; ++k){
-					nodeLoc[c0] = oddPlane ? _planeSets2[i][j]->D + tf.first.second + faceOdd : _planeSets2[i][j]->D - tf.first.second - faceOdd;
-					nodeLoc[(c0 + 1) % 3] = tf.first.second + faceOdd;
-					nodeLoc[(c0 + 2) % 3] = tf.first.first;
-					if (k == 1)
-						nodeLoc[(c0 + 2) % 3] += 2;
-					if (k == 2){
-						++nodeLoc[(c0 + 2) % 3];
-						int vOffset = faceOdd ? -1 : 1;
-						nodeLoc[(c0 + 1) % 3] += vOffset;
-						nodeLoc[c0] += oddPlane ? vOffset : -vOffset;
-					}
-					addTetNodePair(k, &tf.second);
-				}
-			}
+	for (short xi = 0; xi < oddXy.size(); ++xi) {
+		for (short yi = 0; yi < oddXy[xi].size(); ++yi) {
+			s3[0] = xi * 2 + 1;
+			s3[1] = yi * 2 + 1;
+			runInteriorNodes(oddXy[xi][yi], false);
 		}
 	}
-	// create and assign all shared surface tet nodes just found
-	std::array<long, 4> emptyTet;
-	emptyTet.fill(-1);
-	_vbt->_tetNodes.assign(_surfaceTetNumber, emptyTet);
-	for (auto &stn : surfaceTetNodes){
-		for (auto &sharedNode : stn.second){
-			long node;
-			if (sharedNode.internal){
-				auto in = _interiorNodes.find(stn.first);
-				assert(in != _interiorNodes.end());
-				node = in->second;
-			}
-			else{
-				node = _vbt->_nodeGridLoci.size();
-				_vbt->_nodeGridLoci.push_back(stn.first);
-			}
-			for (auto &tetNode : sharedNode.nSet){
-
-				if ((tetNode >> 2) > 199 && (tetNode >> 2) < 203)
-					int junk = 0;
-
-				_vbt->_tetNodes[tetNode >> 2][tetNode & 3] = node;
-			}
+	for (short xi = 0; xi < evenXy.size(); ++xi) {
+		for (short yi = 0; yi < evenXy[xi].size(); ++yi) {
+			s3[0] = (xi + 1) * 2;
+			s3[1] = (yi + 1) * 2;
+			runInteriorNodes(evenXy[xi][yi], true);
 		}
 	}
-	_vbt->_tetHash.reserve(_vbt->_tetNodes.size());  // COURT - fix by reserving expected # of interior cubes to avoid rehashing
-	for (int n = _vbt->_tetNodes.size(), i = 0; i < n; ++i){
-		_vbt->_tetHash.insert(std::make_pair(_vbt->_tetCentroids[i].ll, i));
-		for (int j = 0; j < 4; ++j){
-			long *tn = &_vbt->_tetNodes[i][j];
-			// single interior polygon face tet can have 3 faces unpenetrated leaving one vertex isolated.
-			if (*tn < 0){
-				std::array<short, 3> locus = _vbt->nodeGridLocation(_vbt->_tetCentroids[i], j);
-				*tn = _vbt->_nodeGridLoci.size();
-				_vbt->_nodeGridLoci.push_back(locus);
-			}
-		}
-	}
+	evenXy.clear();
+	oddXy.clear();
 }
 
-bool vnBccTetCutter::getPlanePolygons(const int planeSet, const int plane)
-{
-	bccPlane *pp = _planeSets2[planeSet][plane].get();
-	std::vector<double> planeDist;
-	planeDist.reserve(_mt->numberOfVertices());
-	int c2, c1, c0 = planeSet >> 1;
-	c1 = (c0 + 1) % 3;
-	c2 = (c0 + 2) % 3;
-	bool odd = (planeSet & 1), somePos = false, someNeg = false;
-	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i){
-		if (odd)
-			planeDist.push_back(-_vMatCoords[i]._v[c0] + _vMatCoords[i]._v[c1] + pp->D);
-		else
-			planeDist.push_back(-_vMatCoords[i]._v[c0] - _vMatCoords[i]._v[c1] + pp->D);
-		std::signbit(planeDist.back()) ? somePos = true : someNeg = true;
-	}
-	if (!(somePos & someNeg))
+void vnBccTetCutter::assignExteriorTetNodes() {
+	struct tetIndex {
+		int tet;
+		int nodeIndex;
+	};
+	struct tetTris {
+		std::set<int> tris;
+		std::list<tetIndex> tetIndices;
+		int node;
+		tetTriangles *seedTetPtr;
+	};
+	std::list<tetTris> triPools;
+	auto tetsConnect = [&](const std::vector<int>& tris0, const std::set<int> &poolTris) ->bool{
+		for (auto t : tris0) {
+			if (poolTris.find(t) != poolTris.end())
+				return true;
+		}
 		return false;
-	long *tr;
-	auto getIntersect = [&](int edge, Vec2d &intrsct){
-		double denom = abs(planeDist[tr[edge]] - planeDist[tr[(edge + 1) % 3]]);
-		if (denom < 1e-16f){
-			intrsct.X = _vMatCoords[tr[edge]][c2];
-			intrsct.Y = _vMatCoords[tr[edge]][c1];
-		}
-		else{
-			denom = 1.0 / denom;
-			double *dp = _vMatCoords[tr[(edge + 1) % 3]]._v;
-			Vec2d I1(dp[c2], dp[c1]);
-			dp = _vMatCoords[tr[edge]]._v;
-			intrsct.set(dp[c2], dp[c1]);
-			intrsct *= abs(planeDist[tr[(edge + 1) % 3]]) * denom;
-			intrsct += I1 * abs(planeDist[tr[edge]]) * denom;
-		}
 	};
-	std::vector<char> trisDone;
-	trisDone.assign(_mt->numberOfTriangles(),0);
-	for (int n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i){
-		if (trisDone[i] || _mt->triangleMaterial(i) < 0)
-			continue;
-		tr = _mt->triangleVertices(i);
-		for (j = 0; j < 2; ++j){
-			if (std::signbit(planeDist[tr[j]]) != std::signbit(planeDist[tr[(j + 1) % 3]]))  // polygon start
-				break;
-		}
-		if (j > 1)
-			continue;
-		// list polygon counterclockwise in the plane as the triangle edge polygons will be listed that way as well
-		// counterclockwise going edge of triangle will always have signbit going from false to true
-		// triSegment2 elements in polygon list triangle and its EXITING uv.  Entering uv is not listed in a ts2.
-		if (j > 0){
-			if (!std::signbit(planeDist[tr[1]]))
-				j = 2;
-		}
-		else{
-			if (!std::signbit(planeDist[tr[0]])){  // not edge 0. Will be remaining edge crossing
-				if (std::signbit(planeDist[tr[2]]) != std::signbit(planeDist[tr[0]]))
-					j = 2;
+	for (auto& tni : _exteriorNodeIndices) {
+		triPools.clear();
+		for (auto nit = tni.second.begin(); nit != tni.second.end(); ++nit) {
+			bool makeNewPool = true;
+			auto firstConnectedPool = triPools.end();
+			auto pit = triPools.begin();
+			while ( pit != triPools.end()) {
+				if (tetsConnect(nit->ttPtr->tris, pit->tris)) {
+					if (firstConnectedPool == triPools.end()) {
+						firstConnectedPool = pit;
+						tetIndex ti;
+						ti.tet = nit->ttPtr->tetindx;
+						ti.nodeIndex = nit->nodeIndex;
+						firstConnectedPool->tetIndices.push_back(ti);
+						firstConnectedPool->tris.insert(nit->ttPtr->tris.begin(), nit->ttPtr->tris.end());
+						++pit;
+					}
+					else {
+						// merge pools
+						firstConnectedPool->tris.insert(pit->tris.begin(), pit->tris.end());
+						firstConnectedPool->tetIndices.splice(firstConnectedPool->tetIndices.end(), pit->tetIndices);
+						pit = triPools.erase(pit);
+					}
+					makeNewPool = false;
+				}
 				else
-					j = 1;
+					++pit;
+			}
+			if(makeNewPool){
+				tetTris tt;
+				tt.tris.insert(nit->ttPtr->tris.begin(), nit->ttPtr->tris.end());
+				tetIndex ti;
+				ti.tet = nit->ttPtr->tetindx;
+				ti.nodeIndex = nit->nodeIndex;
+				tt.tetIndices.push_back(ti);
+				tt.seedTetPtr = nit->ttPtr;
+				triPools.push_back(tt);
 			}
 		}
-		// this polygon starts at triangle i edge j
-		pp->polygons2.push_back(std::list<triSegment2>());
-		triSegment2 ts;
-		ts.triangle = i;
-		do{
-			getIntersect(j, ts.uv);
-			pp->polygons2.back().push_back(ts);
-			unsigned long adj = _mt->triAdjs(ts.triangle)[j];
-			if (adj == 3)
-				return false;
-			ts.triangle = adj >> 2;
-			tr = _mt->triangleVertices(ts.triangle);
-			trisDone[ts.triangle] = 1;
-			j = adj & 3;
-			for (int k = 1; k < 3; ++k){
-				if (std::signbit(planeDist[tr[(j + k) % 3]]) != std::signbit(planeDist[tr[(j + k + 1) % 3]])){  // next edge
-					j = (j + k) % 3;
-					break;
+		// any remaining triPools should get their own exterior, possibly virtual, node
+		for (auto tp = triPools.begin(); tp != triPools.end(); ) {
+			int eNode = _vbt->_nodeGridLoci.size();
+			_vbt->_nodeGridLoci.push_back(tni.first);
+			for (auto& ti : tp->tetIndices)
+				_vbt->_tetNodes[ti.tet][ti.nodeIndex] = eNode;
+			tp = triPools.erase(tp);
+		}
+	}
+}
+
+int vnBccTetCutter::nearestRayPatchHit(const Vec3f &rayBegin, Vec3f rayEnd, const std::vector<int>& tris, float& distanceSq) {  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
+	distanceSq = FLT_MAX;
+	rayEnd -= rayBegin;
+	int closeT = -1;
+	Vec3f N;
+	for (auto& t : tris) {
+		int* tr = _mt->triangleVertices(t);
+		Vec3f tv[3];
+		for (int i = 0; i < 3; ++i)
+			tv[i] = _vMatCoords[tr[i]];
+		tv[1] -= tv[0];
+		tv[2] -= tv[0];
+		float dSq;
+		Vec3f P, R;
+		Mat3x3f M;
+		M.Initialize_With_Column_Vectors(tv[1], tv[2], -rayEnd);
+		R = M.Robust_Solve_Linear_System(rayBegin - tv[0]);
+		if (R[0] < 0.0f || R[0] > 1.0f || R[1] < 0.0f || R[1] > 1.0f || R[2] < 0.0f || R[2] > 1.0f || R[0] + R[1] > 1.0f)
+			continue;
+		P = rayEnd * R[2];
+		dSq = P * P;
+		if (distanceSq > dSq) {
+			distanceSq = dSq;
+			closeT = t;
+			N = tv[1] ^ tv[2];
+		}
+	}
+	if (distanceSq < FLT_MAX) {
+		if (N * rayEnd > 0.0f)
+			return -1;
+		else
+			return 1;
+	}
+	else
+		return 0;
+}
+
+bool vnBccTetCutter::nearestPatchPoint(const short (&gl)[4][3], const int tetIdx, const std::vector<int>& tris, Vec3f& closeP, float& distanceSq) {
+	// This routine assumes a patch intersection with a tet face.  It also handles possibility of closed patches entirely with a large tet.
+	Vec3d closestP, P = {(double)gl[tetIdx][0], (double)gl[tetIdx][1], (double)gl[tetIdx][2]};
+	double d, minD = DBL_MAX;
+	int triEdge[2] = { -1, -1 };
+	for (int i = 0; i < 4; ++i) {
+		Vec3d tri[3];
+		for (int j = 0; j < 3; ++j) {
+			int nIdx = (tetIdx + 2 + j + i) & 3;
+			tri[j].set((double)gl[nIdx][0], (double)gl[nIdx][1], (double)gl[nIdx][2]);  // each face of tet with last one opposite this tetIdx
+		}
+		for (auto& t : tris) {
+			Vec3d tt[3], source, target;
+			int* tr = _mt->triangleVertices(t);
+			for (int k = 0; k < 3; ++k)
+				tt[k].set(_vMatCoords[tr[k]]);
+			int coplanar = 0;
+			if (tri_tri_intersection_test_3d(tri[0].xyz, tri[1].xyz, tri[2].xyz, tt[0].xyz, tt[1].xyz, tt[2].xyz, &coplanar, source.xyz, target.xyz)) {
+				if (coplanar == 1 || source == target)
+					continue;
+				Vec3d N = target - source;
+				double s = (P - source) * N / (N * N);
+				if (s > 1.0)
+					;
+				else if (s < 0.0)
+					target = source;
+				else {
+					target *= s;
+					target += source * (1.0 - s);
+				}
+				d = (P - target).length2();
+				if (d - minD < 1e-12) {
+					if (d - minD > -1e-12)
+						triEdge[1] = t;
+					else {
+						triEdge[0] = t;
+						triEdge[1] = -1;
+					}
+					minD = d;
+					closestP = target;
 				}
 			}
-		} while (ts.triangle != i);
+		}
+		if (triEdge[0] > -1)
+			break;
 	}
-	return true;
+	if(triEdge[0] < 0)  // this patch is a closed lacuna completely inside this tet with no tet face intersections
+		return closestPatchPoint(Vec3f((float)gl[tetIdx][0], (float)gl[tetIdx][1], (float)gl[tetIdx][2]), tris, closeP, distanceSq);
+	closeP.set((float)closestP[0], (float)closestP[1], (float)closestP[2]);
+	distanceSq = (float)minD;
+	auto triNorm = [&](const int triangle, Vec3f &N) {
+		int* tr = _mt->triangleVertices(triangle);
+		Vec3f U = _vMatCoords[tr[1]] - _vMatCoords[tr[0]], V = _vMatCoords[tr[2]] - _vMatCoords[tr[0]];
+		N = U ^ V;
+		N.q_normalize();
+	};
+	Vec3f N0;
+	triNorm(triEdge[0], N0);  // intersection of edge of tet face with a single triangle if no triEdge[1]
+	if (triEdge[1] > -1){  // face intersection with edge between two triangles
+		Vec3f N1;
+		triNorm(triEdge[1], N1);
+		N0 += N1;
+		if (fabs(N0.X) < 1e-5f && fabs(N0.Y) < 1e-5f && fabs(N0.Z) < 1e-5f)  // at bottom of coincident edge.  Guaranteed inside.
+			return true;
+	}
+	return (Vec3f(P.xyz) - closeP) * N0 < 0.0f;
+}
+
+bool vnBccTetCutter::closestPatchPoint(const Vec3f& P, const std::vector<int>& tris, Vec3f &closeP, float &distanceSq) {
+	// finds and returns closest point on patch triangles to input point P. Return if P is inside patch.
+	float dSq;
+	distanceSq = FLT_MAX;
+	bool repeatFind, coincidentSurface = false;
+	Vec3f closeN;
+	int closestT = -1, closeTI, closestTriIndex = -1;
+	struct edgePoint {
+		int tri0;
+		int tri1;
+	}closeE, closestEdge;
+	closestEdge.tri0 = -1;
+	closestEdge.tri1 = -1;
+	auto setCloseE = [&](int tri, int edge) {
+		int aT[3], aE[3];
+		_mt->triangleAdjacencies(tri, aT, aE);
+		closeE.tri0 = tri;
+		closeE.tri1 = aT[edge];
+		closeTI = -1;
+	};
+	for (auto &t : tris) {
+		closeTI = -1;
+		closeE.tri0 = -1;
+		int *tr = _mt->triangleVertices(t);
+		Vec3f T[3];
+		for (int i = 0; i < 3; ++i)
+			T[i] = _vMatCoords[tr[i]];
+		T[1] -= T[0];
+		T[2] -= T[0];
+		Mat2x2f M = {T[1]*T[1], T[1]*T[2], 0.0f, T[2] * T[2] };
+		M.x[2] = M.x[1];
+		Vec3f Q = P - T[0];
+		Vec2f S(Q * T[1], Q * T[2]);
+		Vec2f R = M.Robust_Solve_Linear_System(S);
+		// as tri barycentrics not orthogonal, must find closest outside edge
+		if (R[0] < 0.0f) {
+			if( R[1] < 0.0f) {
+				R[0] = 0.0f;
+				R[1] = 0.0f;
+				closeTI = 0;
+			}
+			else {
+				Vec3f X = T[0] + T[1] * R[0] + T[2] * R[1];
+				R[0] = 0.0f;
+				R[1] = ((X - T[0]) * T[2]) / M.x[3];
+				if (R[1] < 0.0f) {
+					R[1] = 0.0f;
+					closeTI = 0;
+				}
+				else if (R[1] > 1.0f) {
+					R[1] = 1.0f;
+					closeTI = 2;
+				}
+				else
+					setCloseE(t, 2);
+			}
+		}
+		else if (R[1] < 0.0f) {
+			Vec3f X = T[0] + T[1] * R[0] + T[2] * R[1];
+			R[1] = 0.0f;
+			R[0] = ((X - T[0]) * T[1]) / M.x[0];
+			if (R[0] < 0.0f) {
+				R[0] = 0.0f;
+				closeTI = 0;
+			}
+			else if (R[0] > 1.0f) {
+				R[0] = 1.0f;
+				closeTI = 1;
+			}
+			else
+				setCloseE(t, 0);
+		}
+		else if (R[0] + R[1] > 1.0f) {
+			Vec3f K, L, X = T[0] + T[1] * R[0] + T[2] * R[1];
+			L = T[2] - T[1];
+			K = T[1] + T[0];
+			R[1] = ((X - K) * L) / (L * L);
+			if (R[1] < 0.0f) {
+				R[1] = 0.0f;
+				closeTI = 1;
+			}
+			else if (R[1] > 1.0f) {
+				R[1] = 1.0f;
+				closeTI = 2;
+			}
+			else
+				setCloseE(t, 1);
+			R[0] = 1.0f - R[1];
+		}
+		else
+			;
+		Q -= T[1] * R[0] + T[2] * R[1];
+		dSq = Q * Q;
+		if (dSq <= distanceSq){
+			repeatFind = false;
+			if (dSq == distanceSq)
+				repeatFind = true;
+			if (closeTI > -1) {
+				if (repeatFind && closestTriIndex > -1) {
+					if (_mt->triangleVertices(closestT)[closestTriIndex] != _mt->triangleVertices(t)[closeTI])
+						coincidentSurface = true;
+				}
+				else {
+					closestTriIndex = closeTI;
+					closestT = t;
+				}
+				closestEdge.tri0 = -1;
+			}
+			else if (closeE.tri0 > -1) {
+				if (repeatFind && closestEdge.tri0 > -1) {
+					if (closeE.tri0 != closestEdge.tri0 && closeE.tri0 != closestEdge.tri1)  // opposite triangle not found
+						coincidentSurface = true;
+				}
+				else {
+					closestEdge.tri0 = closeE.tri0;
+					closestEdge.tri1 = closeE.tri1;
+				}
+				closestTriIndex = -1;
+			}
+			else {
+				if (repeatFind && closestT > -1)
+					coincidentSurface = true;
+				closestTriIndex = -1;
+				closestEdge.tri0 = -1;
+				closeN = T[1] ^ T[2];
+				closestT = t;
+			}
+			distanceSq = dSq;
+			closeP = P - Q;
+		}
+	}
+	auto matTriNormal = [&](const int triangle, Vec3f &N) {
+		int* tr = _mt->triangleVertices(triangle);
+		Vec3f W0, W1;
+		W0 = _vMatCoords[tr[2]] - _vMatCoords[tr[0]];
+		W1 = _vMatCoords[tr[1]] - _vMatCoords[tr[0]];
+		N = W0 ^ W1;
+		N.q_normalize();
+	};
+	if (coincidentSurface)  // this connected patch always inside
+		return true;
+	else if (closestEdge.tri0 > -1) {
+		Vec3f N[2];
+		matTriNormal(closestEdge.tri0, N[0]);
+		matTriNormal(closestEdge.tri1, N[1]);
+		N[0] += N[1];
+		if (fabs(N[0].X) < 1e-5f && fabs(N[0].Y) < 1e-5f && fabs(N[0].Z) < 1e-5f)  // coincident surface at a common edge
+			return true;
+		else {
+			closeN = N[0];
+			assert(!(closeN[0] == 0.0f && closeN[1] == 0.0f && closeN[2] == 0.0f));
+		}
+	}
+	else if (closestTriIndex > -1) {
+		return pointInsidePatchVertex(P, closestT, closestTriIndex);
+	}
+	else
+		;
+	return (closeN * (P - closeP)) < 0.0f;
+}
+
+bool vnBccTetCutter::pointInsidePatchVertex(const Vec3f& P, const int triangle, const int tIndex) {
+	// get closest edge neighbor to P
+	std::vector<int> nt, nv;
+	_mt->triangleVertexNeighbors(triangle, tIndex, nt, nv);
+	assert(nt[0] > -1);
+	Vec3f Q, R, S;
+	Q = _vMatCoords[_mt->triangleVertices(triangle)[tIndex]];
+	S = P - Q;
+	S.q_normalize();
+	float maxDot = -1e32f, dot;
+	int edge = -1;
+	for (int n = nv.size(), i = 0; i < n; ++i) {
+		R = _vMatCoords[nv[i]];
+		R -= Q;
+		R.q_normalize();
+		dot = S * R;
+		if (maxDot < dot) {
+			maxDot = dot;
+			edge = i;
+		}
+	}
+	auto tNorm = [&](const int triangle, Vec3f& N) {
+		int *tr = _mt->triangleVertices(triangle);
+		Vec3f N0 = _vMatCoords[tr[1]] - _vMatCoords[tr[0]], N1 = _vMatCoords[tr[2]] - _vMatCoords[tr[0]];
+		N = N0 ^ N1;
+		N.q_normalize();
+	};
+	tNorm(nt[edge], R);
+	tNorm(nt[(edge + 1) % nt.size()], Q);
+	R += Q;
+	if (fabs(R.X) < 1e-8f && fabs(R.Y) < 1e-8f && fabs(R.Z) < 1e-8f)  // coincident surface at a common edge
+		return true;
+	return R * S < 0.0f;
+}
+
+void vnBccTetCutter::getConnectedComponents(const bccTetCentroid& tc, std::list<tetTriangles>& ct) {  // for this centroid split its triangles into single solid connected components
+	auto trVec = &ct.front().tris;  // on entry only one triangle list for this centroid
+	ct.front().tetindx = -1;
+	if (trVec->size() > 1) {
+		std::set<int> trSet, ts;
+		trSet.insert(trVec->begin(), trVec->end());
+		trVec->clear();
+		while (!trSet.empty()) { // find list of connected triangles
+			ts.clear();
+			int t, at[3], ae[3];
+			t = *trSet.begin();
+			trSet.erase(trSet.begin());
+			ts.insert(t);
+			std::forward_list<int> tList;  // unprocessed adjacencies
+			tList.push_front(t);
+			while (!tList.empty()) {
+				t = tList.front();
+				tList.pop_front();
+				_mt->triangleAdjacencies(t, at, ae);  // COURT consider a local implementation of this
+				for (int i = 0; i < 3; ++i) {
+					auto ti = trSet.find(at[i]);
+					if (ti == trSet.end())
+						continue;
+					trSet.erase(ti);
+					ts.insert(at[i]);
+					tList.push_front(at[i]);
+				}
+			}
+			trVec->assign(ts.begin(), ts.end());
+			if (!trSet.empty()) {
+				ct.push_back(tetTriangles());
+				ct.back().tetindx = -1;
+				trVec = &ct.back().tris;
+			}
+		}
+	}
+	struct patch {
+		std::list<tetTriangles>::iterator pit;
+		std::array<int, 4> tetNodes;
+		Vec3f insideP;  // point just inside this patch
+//		Vec3f N;  // normal pointing outside patch from insideP - COURT NUKE?
+		float dsq;
+	}p;
+	std::list<patch> patches;
+	p.tetNodes = { -1, -1, -1, -1 };
+	auto pit = ct.begin();
+	while (pit != ct.end()) {
+		p.pit = pit;
+		patches.push_back(p);
+		++pit;
+	}
+	// find interior nodes for each component, joining patches as appropriate
+	short gl[4][3];
+	_vbt->centroidToNodeLoci(tc, gl);
+	for (int i = 0; i < 4; ++i) {
+		std::array<short, 3> loc = { gl[i][0], gl[i][1], gl[i][2] };
+		auto iit = _interiorNodes.find(loc);
+		Vec3f node(loc[0], loc[1], loc[2]);
+		std::list<std::list<patch>::iterator> outside, inside;
+		for (auto pit = patches.begin(); pit != patches.end(); ++pit) {
+			bool connected = nearestPatchPoint(gl, i, pit->pit->tris, pit->insideP, pit->dsq);
+			if (connected)
+				inside.push_back(pit);
+			else
+				outside.push_back(pit);
+		}
+		if (inside.empty()) {  // No patch bound to an interior node.
+//			if (iit != _interiorNodes.end())
+//				throw(std::logic_error("An existing tet with an interior node has no patches attached to it in getConnectedComponents()\n"));
+		}
+		else if (!outside.empty()) {
+			for (auto ip = inside.begin(); ip != inside.end(); ) {
+				auto oMerge = outside.end();
+				for (auto op = outside.begin(); op != outside.end(); ++op) {
+					int connected = nearestRayPatchHit((*ip)->insideP, node, (*op)->pit->tris, (*op)->dsq);  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
+					if (connected < 0 && (*op)->dsq > 1e-5f) {  // rule out possible coincident surfaces
+						if (oMerge == outside.end() || (*op)->dsq < (*oMerge)->dsq) {
+							oMerge = op;
+						}
+					}
+				}
+				if (oMerge != outside.end()) {
+					(*oMerge)->pit->tris.insert((*oMerge)->pit->tris.end(), (*ip)->pit->tris.begin(), (*ip)->pit->tris.end());
+					ct.erase((*ip)->pit);
+					patches.erase(*ip);
+					ip = inside.erase(ip);
+				}
+				else
+					++ip;
+			}
+		}
+		// any remaining inside patches should be merged along with any interior nodes
+		if (inside.size() > 1) {
+//			assert(iit != _interiorNodes.end());
+			auto ip0 = inside.begin();
+			auto ip = ip0;
+			++ip;
+			while (ip != inside.end()) {
+				(*ip0)->pit->tris.insert((*ip0)->pit->tris.end(), (*ip)->pit->tris.begin(), (*ip)->pit->tris.end());
+				ct.erase((*ip)->pit);
+				patches.erase(*ip);
+				ip = inside.erase(ip);
+			}
+		}
+		if (iit != _interiorNodes.end()) {
+			if (inside.empty())
+				;
+//				throw(std::logic_error("gCC() not working in cutter.\n"));
+			else
+				inside.front()->tetNodes[i] = iit->second;
+		}
+	}
+	for (auto& cTet : patches) {
+		cTet.pit->tetindx = _vbt->_tetNodes.size();
+		_vbt->_tetNodes.push_back(cTet.tetNodes);
+		_vbt->_tetCentroids.push_back(tc);  // careful later with multithreading
+	}
+	for (int i = 0; i < 4; ++i) {
+		bool enNotEntered = true;
+		std::pair< std::unordered_map<std::array<short, 3>, std::list<tetNodeIndex>, arrayShort3Hasher>::iterator, bool> pr;
+		for (auto& p : patches) {
+			if (p.tetNodes[i] < 0) {
+				if (enNotEntered) {
+					std::array<short, 3> loc = { gl[i][0], gl[i][1], gl[i][2] };
+					pr = _exteriorNodeIndices.insert(std::make_pair(loc, std::list<tetNodeIndex>()));
+					enNotEntered = false;
+				}
+				tetNodeIndex tni;
+				tni.nodeIndex = i;
+				tni.ttPtr = &(*p.pit);
+				pr.first->second.push_back(tni);
+			}
+		}
+	}
 }
 
 bool vnBccTetCutter::setupBccIntersectionStructures(int maximumGridDimension)
@@ -417,8 +894,8 @@ bool vnBccTetCutter::setupBccIntersectionStructures(int maximumGridDimension)
 	bbf.Empty_Box();
 	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i)
 		bbf.Enlarge_To_Include_Point((const float(&)[3])(*_mt->vertexCoordinate(i)));
-	bbf.Minimum_Corner(_vbt->_minCorner._v);
-	bbf.Maximum_Corner(_vbt->_maxCorner._v);
+	bbf.Minimum_Corner(_vbt->_minCorner.xyz);
+	bbf.Maximum_Corner(_vbt->_maxCorner.xyz);
 	// In this model all grid distances are 1 and all odd or even Cartesian distances are 2.
 	_vbt->_unitSpacing = -1.0f;
 	int bigDim;
@@ -429,1215 +906,384 @@ bool vnBccTetCutter::setupBccIntersectionStructures(int maximumGridDimension)
 			bigDim = i;
 		}
 	}
-	float offset = FLT_EPSILON * (float)_vbt->_unitSpacing;
+	// object must be inside positive octant
+	float offset = (_vbt->getMaximumCorner() - _vbt->getMinimumCorner()).length() * 0.0001f;
 	_vbt->_minCorner -= Vec3f(offset, offset, offset);
 	_vbt->_maxCorner += Vec3f(offset, offset, offset);
-	double cs = _vbt->_maxCorner._v[bigDim] - _vbt->_minCorner._v[bigDim];
+	double cs = _vbt->_maxCorner.xyz[bigDim] - _vbt->_minCorner.xyz[bigDim];
 	_vbt->_unitSpacing = cs / maximumGridDimension;
 	_vbt->_unitSpacingInv = 1.0 / _vbt->_unitSpacing;
-	{
-		Vec3f box = (_vbt->_maxCorner - _vbt->_minCorner)*(float)_vbt->_unitSpacingInv * 0.5f;
-		for (int i = 0; i < 3; ++i){
-			_vbt->_gridSize[i] = 1 + (int)std::floor(box._v[i]);
-		}
-	}
+	Vec3f maxMaterialCorner = (_vbt->_maxCorner - _vbt->_minCorner)*(float)_vbt->_unitSpacingInv;
+	for (int i = 0; i < 3; ++i)
+		_vbt->_gridSize[i] = _gridSize[i] = 1 + (int)std::floor(maxMaterialCorner.xyz[i]);
 	_vMatCoords.clear();
-	_vMatCoords.assign(_mt->numberOfVertices(), Vec3d());
+	_vMatCoords.assign(_mt->numberOfVertices(), Vec3f());
 	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i){
-		Vec3d Vf;
+		Vec3f Vf;
 		Vf.set((const float(&)[3])*_mt->vertexCoordinate(i));
-		_vMatCoords[i].set((Vf -_vbt->_minCorner)* _vbt->_unitSpacingInv);
+		_vMatCoords[i].set((Vf -_vbt->_minCorner)* (float)_vbt->_unitSpacingInv);
 	}
-	for (int j, i = 0; i < 6; ++i)	{
-		// while there will be physics nodes at the boundaries of the grid, there will be no intersections there as the object is inside the boundary
-		int nf = _vbt->_gridSize[i >> 1], ns = _vbt->_gridSize[((i >> 1) + 1) % 3];
-		_planeSets2[i].reserve(nf + ns - 1);
-		for (j = 0; j < nf + ns - 1; ++j)
-			_planeSets2[i].push_back(std::unique_ptr<bccPlane>(new bccPlane));
-		if (i & 1){
-			for (j = 0; j < ns - 1; ++j)
-				_planeSets2[i][j]->D = -((ns - j - 1) << 1);
-			for (j = 0; j < nf; ++j)
-				_planeSets2[i][ns - 1 + j]->D = j << 1;
-		}
-		else{
-			for (j = 0; j < nf - 1; ++j)
-				_planeSets2[i][j]->D = (j + 1) << 1;
-			for (j = 0; j < ns; ++j)
-				_planeSets2[i][j + nf - 1]->D = (j + nf) << 1;
-		}
-	}
-	_vertexTetLoci.clear();
-	_vertexTetLoci.assign(_mt->numberOfVertices(), bccTetCentroid());
+	_vertexTetCentroids.clear();
+	_vertexTetCentroids.assign(_mt->numberOfVertices(), bccTetCentroid());
 	_vbt->_barycentricWeights.clear();
 	_vbt->_barycentricWeights.assign(_mt->numberOfVertices(), Vec3f());
-	int n = _mt->numberOfVertices();
-	for (int i = 0; i < n; ++i){
-		Vec3f B;
-		B.set(_vMatCoords[i]._v);
-		_vbt->gridLocusToTetCentroid(B, _vertexTetLoci[i]);
+	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i){
+		_vbt->gridLocusToTetCentroid(_vMatCoords[i], _vertexTetCentroids[i]);
 		// set barycentric coordinate within that tet
-		_vbt->gridLocusToBarycentricWeight(B, _vertexTetLoci[i], _vbt->_barycentricWeights[i]);
+		auto& bw = _vbt->_barycentricWeights[i];
+		_vbt->gridLocusToBarycentricWeight(_vMatCoords[i], _vertexTetCentroids[i], bw);
+		// any vertex on a tet face boundary should be nudged inside
+		bool nudge = false;
+		for (int j = 0; j < 3; ++j) {
+			if (bw[j] < 1e-4f || bw[j] > 0.9999f)
+				nudge = true;
+		}
+		if (bw[0] + bw[1] + bw[2] > 0.9999)
+			nudge = true;
+		if (nudge) {  // vertices on tet boundarys must be pulled inside to avoid dual identities
+			Vec3f nV = (Vec3f(0.25f, 0.25f, 0.25f) - bw) * 0.0002f;
+			bw += nV;
+			_vbt->barycentricWeightToGridLocus(_vertexTetCentroids[i], bw, _vMatCoords[i]);
+		}
+	}
+	// setup lines parallel with Z axis
+	evenXy.assign(_gridSize[0] >> 1, std::vector<std::multimap<double, bool> >());  // 0th i always empty
+	oddXy.assign(_gridSize[0] >> 1, std::vector<std::multimap<double, bool> >());
+	int gsy = _gridSize[1] >> 1;
+	for (int n = _gridSize[0]>> 1, i = 0; i < n; ++i) {
+		evenXy[i].assign(gsy, std::multimap<double, bool>());  // 0th j always empty
+		oddXy[i].assign(gsy, std::multimap<double, bool>());
 	}
 	return true;
 }
 
-bool vnBccTetCutter::remakeVnTets(materialTriangles *mt)
-{  // uses old vbt to get material coords of mt vertices and grid data, from which it makes new vbt.
-	int newVertexStart = _vMatCoords.size();
-	_vMatCoords.resize(_mt->numberOfVertices());
-#ifdef _DEBUG
-	for (int i = 0; i < newVertexStart; ++i){
-		if (_vbt->getVertexTetrahedron(i) < 0)
-			continue;
-		Vec3f Vf;
-		_vbt->vertexGridLocus(i, Vf);
-		assert((Vf - Vec3f(_vMatCoords[i]._v)).length2() < 1e-10f);  // old vertices should retain their gridLocus
+void vnBccTetCutter::inputTriangle(int tri) {  // main routine for finding triangle intersections with Z grid lines and with tetCentroid locations
+	int xy[4] = { INT_MAX, -2, INT_MAX, -2 };
+	int* tr = _mt->triangleVertices(tri);
+	Vec3f T[3];
+	bccTetCentroid tc[3];
+	for (int i = 0; i < 3; ++i) {
+		T[i] = _vMatCoords[tr[i]];
+		tc[i] = _vertexTetCentroids[tr[i]];
+		int f = (int)std::floor(T[i][0]);
+		if (f < xy[0])
+			xy[0] = f;
+		if (f > xy[1])
+			xy[1] = f;
+		f = (int)std::floor(T[i][1]);
+		if (f < xy[2])
+			xy[2] = f;
+		if (f > xy[3])
+			xy[3] = f;
 	}
-#endif
-	// all oldVertices should have an unchanged grid locus
-	for (int n = _mt->numberOfVertices(), i = newVertexStart; i < n; ++i){  // after incisions all new vertices should have been assigned a grid locus associated with the old _vbt
-		if (_vbt->getVertexTetrahedron(i) < 0)
-			continue;
-		Vec3f Vf;
-		_vbt->vertexGridLocus(i, Vf);
-		_vMatCoords[i].set(Vf);
-	}
-	_surfaceTetFaceNumber = 0;
-	_vbt->_fixedNodes.clear();
-	_vbt->_tetHash.clear();
-	_vbt->_tetNodes.clear();
-	if (!_mt->findAdjacentTriangles(true, false))	return false;
-	for (int i = 0; i < 6; ++i)	{
-		// while there will be physics nodes at the boundaries of the grid, there will be no intersections there as the object is inside the boundary
-		for (int n = _planeSets2[i].size(), j = 0; j < n; ++j){
-			_planeSets2[i][j]->polygons2.clear();
-			_planeSets2[i][j]->vnTetFaces.clear();
+	// triangle-triangle intersection used to non-recursively grow tets who have a face intersecting triangle
+	// Of 3 algorithms; Moller, Devillers-Guigue, and Shen-Heng-Tang this routine uses the last of these.
+	// Routine modified to set one triangle fixed to evaluate against multiple others.
+	std::set<bccTetCentroid> triTetsS;
+	for (int i = 0; i < 3; ++i)
+		triTetsS.insert(tc[i]);
+	auto recurseTriangleTets = [&](bccTetCentroid& tetC) {
+		std::map<bccTetCentroid, short> doTets;  // tet that need processing and its face which can be ignored
+		doTets.insert(std::make_pair(tetC, -1));
+		short gridLoci[4][3];
+		auto dtit = doTets.begin();
+		while (dtit != doTets.end()) {
+			triTetsS.insert(dtit->first);
+			_vbt->centroidToNodeLoci(dtit->first, gridLoci);
+			bccTetCentroid tAdj;
+			short adjFace;
+			for (int i = 0; i < 4; ++i) {
+				if (i == dtit->second)  // face already processed
+					continue;
+				adjFace = _vbt->faceAdjacentTet(dtit->first, i, tAdj);
+				if (triTetsS.find(tAdj) != triTetsS.end()) // already found
+					continue;
+				Vec3f V0(gridLoci[i]), V1(gridLoci[(i + 1) & 3]), V2(gridLoci[(i + 2) & 3]);
+				if (tri_fixedTri_intersect(V0.xyz, V1.xyz, V2.xyz))
+					doTets.insert(std::make_pair(tAdj, adjFace));
+			}
+			doTets.erase(dtit);
+			dtit = doTets.begin();
+		}
+	};
+	if (triTetsS.size() > 2 || (triTetsS.size() > 1 && !_vbt->adjacentCentroids(*triTetsS.begin(), *triTetsS.rbegin()))) {
+		triTetsS.clear();
+		if (!setFixedTriangle_Shen(T[0].xyz, T[1].xyz, T[2].xyz)) {
+			std::string str("Triangle ");
+			str.append(std::to_string(tri));
+			str.append(" is degenerate with zero area and can't be processed.");
+			throw(std::runtime_error(str.c_str()));
+		}
+		recurseTriangleTets(tc[0]);
+		for (int i = 1; i < 3; ++i){
+			if (triTetsS.find(tc[i]) == triTetsS.end()) // should be there if recurse OK
+				recurseTriangleTets(tc[i]);
 		}
 	}
-	_vertexTetLoci.clear();
-	bccTetCentroid emptyTC;
-	emptyTC.ll = LLONG_MAX;
-	_vertexTetLoci.assign(_mt->numberOfVertices(), emptyTC);
-	_vbt->_barycentricWeights.clear();
-	_vbt->_barycentricWeights.assign(_mt->numberOfVertices(), Vec3f());
-	// set tet centroids and barycentric coordinates within that tet
-	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i){
-		if (_vbt->_vertexTets[i] < 0)
-			continue;
-		Vec3f Vf;
-		Vf.set((double(&)[3])_vMatCoords[i]._v);
-		_vbt->gridLocusToTetCentroid(Vf, _vertexTetLoci[i]);
-		_vbt->gridLocusToBarycentricWeight(Vf, _vertexTetLoci[i], _vbt->_barycentricWeights[i]);
+	tetTriangles ttr;
+	ttr.tetindx = -1;
+	ttr.tris.clear();
+	for (auto& tt : triTetsS) {
+		auto pr = _centroidTriangles.insert(std::make_pair(tt, std::list<tetTriangles>()));
+		if (pr.second)
+			pr.first->second.push_back(ttr);
+		pr.first->second.front().tris.push_back(tri);
 	}
-	_vbt->_vertexTets.clear();
-	_vbt->_vertexTets.assign(mt->numberOfVertices(), -1);
-	for (int i = 0; i < 6; ++i){
-		for (int n = _planeSets2[i].size(), j = 0; j < n; ++j)
-			getPlanePolygons(i, j);
-	}
-	// first plane set gets all the interior tetrahedral nodes.  To avoid need for mutex, don't multithread set 0.
-	_vbt->_nodeGridLoci.clear();
-	_vbt->_nodeGridLoci.reserve((_planeSets2[0].size()*_vbt->_gridSize[1] * _vbt->_gridSize[2]) >> 2);  // reasonable guess
-	for (int i = 0; i < 6; ++i){
-		int n = _planeSets2[i].size();
-		for (int j = 0; j < n; ++j)
-			processIntersectionPlane(i, j);
-	}
-	_interiorNodes.clear();
-	_interiorNodes.reserve(_vbt->_nodeGridLoci.size());
-	for (int n = _vbt->_nodeGridLoci.size(), j = 0; j < n; ++j)
-		_interiorNodes.insert(std::make_pair(_vbt->_nodeGridLoci[j], j));
-	_surfaceTetFaces.clear();
-	_surfaceTetFaces.reserve(_surfaceTetFaceNumber << 1);
-	collectSurfaceTetCentersFaces();
-	createVirtualNodedSurfaceTets();
-	_surfaceTetFaces.clear();
-	createSurfaceTetNodes();
-	int nSurfaceTets = _vbt->_tetNodes.size();
-	fillNonVnTetCenter();
-	// In some complex solids createVirtualNodedSurfaceTets() will create multiple tets for the same tet locus as they will have no shared connected components,
-	// but they can have the same nodes since the tets surrounding them may have connected components.  While these are not strictly an error, they do the user no good
-	// since the tets are incapable of independent movement.  Further these are tets that are sparsely filled with solid.  Combining them provides somewhat more accurate
-	// physics behavior. The next section removes these identical multiplicities.
-	int k = 0;
-	long *nk = _vbt->_tetNodes[0].data();
-	std::vector<long> tetDispl;
-	tetDispl.assign(nSurfaceTets, -1);
-	tetDispl[0] = 0;
-	bool dupFound = false;
-	for (int i = 1; i < nSurfaceTets; ++i){
-		tetDispl[i] = k + 1;
-		long *ni = _vbt->_tetNodes[i].data();
-		if (ni[0] == nk[0] && ni[1] == nk[1] && ni[2] == nk[2] && ni[3] == nk[3]){  // due to createVirtualNodedSurfaceTets() these identicals will all be sequential
-			--tetDispl[i];
-			dupFound = true;
-			continue;
-		}
-		++k;
-		nk = _vbt->_tetNodes[k].data();;
-		if (dupFound){
-			_vbt->_tetNodes[k] = _vbt->_tetNodes[i];
-			_vbt->_tetCentroids[k] = _vbt->_tetCentroids[i];
-		}
-	}
-	if (dupFound){
-		++k;
-		_vbt->_tetNodes.erase(_vbt->_tetNodes.begin() + k, _vbt->_tetNodes.begin() + nSurfaceTets);
-		_vbt->_tetCentroids.erase(_vbt->_tetCentroids.begin() + k, _vbt->_tetCentroids.begin() + nSurfaceTets);
-		for (int n = _vbt->_vertexTets.size(), i = 0; i < n; ++i){
-			if (_vbt->_vertexTets[i] > -1)
-				_vbt->_vertexTets[i] = tetDispl[_vbt->_vertexTets[i]];
-		}
-	}
-	_vbt->_tetNodes.shrink_to_fit();
-	_vbt->_tetCentroids.shrink_to_fit();
-	_vbt->_tetHash.clear();
-	_vbt->_tetHash.reserve(_vbt->_tetCentroids.size());
-	for (int n = _vbt->_tetCentroids.size(), i = 0; i < n; ++i)
-		_vbt->_tetHash.insert(std::make_pair(_vbt->_tetCentroids[i].ll, i));
-	// all vertices in duplicated, virtual noded tets have their tet index already assigned.  Vertices in unique tets still unassigned.
-	for (int n = _vbt->_vertexTets.size(), i = 0; i < n; ++i){
-		if (_vbt->_vertexTets[i] < 0){
-			if (_vertexTetLoci[i].ll < LLONG_MAX) {
-				auto rng = _vbt->_tetHash.equal_range(_vertexTetLoci[i].ll);
-				assert(std::distance(rng.first, rng.second) == 1);
-				_vbt->_vertexTets[i] = rng.first->second;
+	// now get any Z line intersects
+	T[1] -= T[0];
+	T[2] -= T[0];
+	bool solidBegin = T[1][0] * T[2][1] - T[1][1] * T[2][0] < 0.0f;  // negative Z starts a solid
+	auto triIntersectZ = [&](const int x, const int y, double& z) ->bool {
+		Mat2x2d M;
+		M.x[0] = T[1][0];  M.x[1] = T[1][1];  M.x[2] = T[2][0]; M.x[3] = T[2][1];
+		Vec2d R = M.Robust_Solve_Linear_System(Vec2d(x - T[0][0], y - T[0][1]));
+		if (R[0] < -1e-5f || R[0] >= 1.00001f || R[1] < -1e-5f || R[1] >= 1.00001f || R[0] + R[1] >= 1.00001f)
+			return false;
+		z = (T[0][2] + T[1][2] * R[0] + T[2][2] * R[1]);
+		return true;
+	};
+	for (int i = xy[0] + 1; i <= xy[1]; ++i) {
+		bool odd = i & 1;
+		for (int j = xy[2] + 1; j <= xy[3]; ++j) {
+			if (odd != (bool)(j & 1))
+				continue;
+			double z;
+			if (odd) {
+				if (triIntersectZ(i, j, z))
+					oddXy[(i - 1) >> 1][(j - 1) >> 1].insert(std::make_pair(z, solidBegin));
 			}
 			else {
-				assert(*_mt->vertexFaceTriangle(i) == 0x80000000);  // a deleted vertex from an excision
+				if (triIntersectZ(i, j, z))
+					evenXy[(i - 2) >> 1][(j - 2) >> 1].insert(std::make_pair(z, solidBegin));  // 0th in i and j always empty since object always inside box
 			}
 		}
 	}
-
-	// COURT no longer doing this here
-/*	_vbt->_nodeSpatialCoords.clear();
-	_vbt->_nodeSpatialCoords.assign(_vbt->_nodeGridLoci.size(), Vec3f());
-	for (int n = _vbt->_nodeGridLoci.size(), i = 0; i < n; ++i){
-		const short *np = _vbt->_nodeGridLoci[i].data();
-		Vec3f *vp = &_vbt->_nodeSpatialCoords[i];
-		vp->set((float)np[0], (float)np[1], (float)np[2]);
-		*vp *= (float)_vbt->_unitSpacing;
-		*vp += _vbt->_minCorner;
-	} */
-
-	return true;
-}
-
-/* bool vnBccTetCutter::getTriangleAdjacencies(int nTris, const int (*triangles)[3])
-{
-	assert(false);
-	typedef std::map<longPair,int,longPairTest> edgeMap;
-	typedef edgeMap::iterator edgeIt;
-	std::pair <edgeIt,bool> P;
-	edgeIt ei;
-	edgeMap M;
-	M.clear();
-	_adjTris.clear();
-	_adjTris.assign(nTris*3,0x00000003);
-	long maxVert=0;
-	for(int j,oldCode,newCode,i=0; i<nTris; ++i)	{
-		for(j=0; j<3; j++)	{
-			longPair E(triangles[i][j],triangles[i][(j+1)%3]);
-			if(E.lMax>maxVert)	maxVert=E.lMax;
-			newCode = (i<<2)+j;
-			P = M.insert(std::make_pair(E,newCode));
-			if(P.second==false)	// edge match found
-			{
-				oldCode = P.first->second;
-				_adjTris[i*3+j] = oldCode;
-				_adjTris[(oldCode>>2)*3+(oldCode&0x00000003)] = newCode;
-				M.erase(P.first);
-			}
-		}
-	}
-	_vertexTris.assign(++maxVert,-1);
-	for(int j,i=0; i<nTris; ++i)	{
-		for(j=0; j<3; ++j)
-			_vertexTris[triangles[i][j]]=i;	}
-	if(M.empty()) return true;
-	return false;
-} */
-
-/*void vnBccTetCutter::getTriangleVertexNeighbors(int triVert, std::vector<int> &triangles, std::vector<int> &vertices)
-{	// this one only works for a closed manifold surface.  Use other version if not closed.
-	assert(false); 
-	triangles.clear();	vertices.clear();
-	int i,tr=-1,tStart=_vertexTris[triVert];
-	for(i=0; i<3; ++i)
-		if(tri[tStart][i]==triVert)	break;
-	unsigned int adj=_adjTris[tStart*3+i];
-	while(tr!=tStart)	{
-		i = adj&0x00000003;
-		tr = adj>>2;
-		triangles.push_back(tr);
-		vertices.push_back(tri[tr][i]);
-		adj=_adjTris[tr*3+((i+1)%3)];	}
-} */
-
-
-void vnBccTetCutter::processIntersectionPlane(const int planeSet, const int plane)
-{
-	std::vector<PLANE_LINE> planeHorizLines, planeDiagonals[2];
-	int first = planeSet >> 1;
-	int second = (first + 1) % 3;
-	int third = (first + 2) % 3;
-	int diagDim = _vbt->_gridSize[second] + _vbt->_gridSize[third] + 1;
-	planeDiagonals[0].resize(diagDim);
-	planeDiagonals[1].resize(diagDim);
-	int phlDim = (_vbt->_gridSize[second] << 1) + 1;
-	planeHorizLines.resize(phlDim);
-	_planeSets2[planeSet][plane]->vnTetFaces.clear();
-	std::list<std::list<triSegment2> > *L = &_planeSets2[planeSet][plane]->polygons2;
-	if (L->empty())
-		return;
-	std::multimap<std::pair<short, short>, std::list<triSegment2> > planeFaces;
-	for (auto lit = L->begin(); lit != L->end(); ++lit)	{
-		Vec2d lastUv = lit->back().uv;
-		std::pair<short, short> lp, lpLast = uvToPlaneFace(lastUv);
-		std::list<triSegment2> segmentLast, segmentNow;
-		std::list<std::pair<short, short> > triFaces;
-		bool segmentLastDone = false;
-		for (auto pit = lit->begin(); pit != lit->end(); ++pit){  // pit contains triangle and its exiting uv.  Entering uv not listed.
-			if (segmentLastDone)
-				segmentNow.push_back(*pit);
-			else
-				segmentLast.push_back(*pit);
-			lp = uvToPlaneFace(pit->uv);
-			if (lp != lpLast){
-				if (segmentLastDone){
-					segmentNow.back().uv[0] = DBL_MAX;  // last uv not inside previous face.  Mark as an unclosed polygon segment
-					planeFaces.insert(std::make_pair(lpLast, segmentNow));
-				}
-				else{
-					segmentLast.back().uv[0] = DBL_MAX;  // same logic as above
-					segmentLastDone = true;
-				}
-				// next routine collects face path of this polygon segment and logs any triangle edge intersections
-				getFaceEdgePath(&lastUv, lpLast, &pit->uv, lp, pit->triangle, second, triFaces, planeHorizLines, planeDiagonals);
-				segmentNow.clear();
-				// this uv is in the new face
-				segmentNow.push_back(*pit);
-				if (!triFaces.empty()){  // complete triangle pass through these faces with no uv inside
-					double firstU = pit->uv[0];
-					segmentNow.back().uv[0] = DBL_MAX;
-					for (auto &tf : triFaces)
-						planeFaces.insert(std::make_pair(tf, segmentNow));
-					segmentNow.back().uv[0] = firstU;
-				}
-				lpLast = lp;
-			}
-			lastUv = pit->uv;
-		}
-		if (segmentLastDone){
-			segmentNow.splice(segmentNow.end(), segmentLast);
-			planeFaces.insert(std::make_pair(lpLast, segmentNow));
-		}
-		else  // closed poplygon inside one triangular face
-			planeFaces.insert(std::make_pair(lpLast, segmentLast));
-	}
-	L->clear();
-	PLANE_LINE::iterator hit;
-	for (int k, j = 0; j<diagDim; ++j)	{
-		if (!planeDiagonals[0][j].empty())	{
-			k = 1;
-			for (hit = planeDiagonals[0][j].begin(); hit != planeDiagonals[0][j].end(); ++hit)	{
-				if (hit->second.solidRight != k){  // set from polygon in getFaceEdgePath()
-					// may be from floating point roundoff of coincident surface
-					planeLineCrossing plc = hit->second;
-					auto hit2 = hit;
-					++hit2;
-					assert(hit2 != planeDiagonals[0][j].end() && hit2->first - hit->first < 1e-6);
-					hit->second = hit2->second;
-					hit2->second = plc;
-				}
-				k ^= 1;
-			}
-			assert(k>0);
-		}
-		if (planeDiagonals[1][j].empty())	continue;
-		k = 1;
-		for (hit = planeDiagonals[1][j].begin(); hit != planeDiagonals[1][j].end(); ++hit)	{
-			if (hit->second.solidRight != k){  // set from polygon in getFaceEdgePath()
-				// may be from floating point roundoff of coincident surface
-				planeLineCrossing plc = hit->second;
-				auto hit2 = hit;
-				++hit2;
-				assert(hit2 != planeDiagonals[1][j].end() && hit2->first - hit->first < 1e-6);
-				hit->second = hit2->second;
-				hit2->second = plc;
-			}
-			k ^= 1;
-		}
-		assert(k>0);
-	}
-	for (int k, j = 0; j<phlDim; ++j)	{
-		if (planeHorizLines[j].empty())	continue;
-		k = 1;
-		for (hit = planeHorizLines[j].begin(); hit != planeHorizLines[j].end(); ++hit)	{
-			if (hit->second.solidRight != k){  // set from polygon in getFaceEdgePath()
-				// may be from floating point roundoff of coincident surface
-				planeLineCrossing plc = hit->second;
-				auto hit2 = hit;
-				++hit2;
-				assert(hit2 != planeHorizLines[j].end() && hit2->first - hit->first < 1e-6);
-				hit->second = hit2->second;
-				hit2->second = plc;
-			}
-			k ^= 1;
-		}
-		assert(k>0);
-	}
-	if (planeSet < 1)	{	// save interior tet nodes.  Careful here with openMP. Would need to create mutex for interiorNodeLatticeLoci. ?not worth the trouble.
-		assert (planeHorizLines[0].empty());
-		assert(planeHorizLines[phlDim - 1].empty());
-		for (int j = 1; j < phlDim - 1; ++j){
-			if (planeHorizLines[j].empty())	continue;
-			std::array<short, 3> ll;
-			ll[0] = _planeSets2[0][plane]->D - j;
-			ll[1] = j;
-			for (auto hit = planeHorizLines[j].begin(); hit != planeHorizLines[j].end(); ++hit)	{
-				short z = (short)std::floor(hit->first);
-				assert(hit->second.solidRight);
-				++z;	++hit;
-				if (hit->second.solidRight){  // this is floating point indecision at collision of coincident surfaces
-					assert(false);
-					// write me
-				}
-				// COURT - currently making them, but not putting into hash table.
-				while (z < hit->first)	{
-					if ((j & 1) == (z & 1)){  // all nodes in lattice have either all odd or all even coordinates
-						ll[2] = z;
-						_vbt->_nodeGridLoci.push_back(ll);  // no mutex at present
-					}
-					++z;
-				}
-			}
-		}
-	}
-	auto fit = planeFaces.begin();
-	while (fit != planeFaces.end()){
-		auto pr = planeFaces.equal_range(fit->first);
-		makeConnectedComponentTetFaces(planeSet, plane, pr, planeHorizLines, planeDiagonals);
-		fit = pr.second;
-	}
-}
-
-void vnBccTetCutter::makeConnectedComponentTetFaces(int planeSet, int planeNumber, std::pair<PFIT, PFIT> &face,
-	std::vector<PLANE_LINE> &planeHorizLines, std::vector<PLANE_LINE>(&planeDiagonals)[2])
-{
-	std::pair<short, short> fac = face.first->first;
-	bool oddFace = ((fac.first + fac.second) & 1);
-	PLANE_LINE *h, *d0, *d1;
-	if (oddFace)
-		h = &planeHorizLines[fac.second + 1];
-	else
-		h = &planeHorizLines[fac.second];
-	d0 = &planeDiagonals[0][_vbt->_gridSize[((planeSet >> 1) + 1) % 3] + ((fac.first - fac.second + 1) >> 1)];
-	d1 = &planeDiagonals[1][(fac.second + fac.first + 2) >> 1];
-	std::list<std::list<triSegment2> > edgePolygons;
-	// first get all open edgePolygons
-	triSegment2 ts;
-	auto getEdgeSolids = [&](PLANE_LINE *pl, float low, float high, bool fillX, bool reverse) {
-		auto lb = pl->lower_bound(low);
-		auto ub = pl->upper_bound(high);
-		if (lb == ub){
-			if (lb != pl->end() && !lb->second.solidRight){  // entire edge is interior
-				std::list<triSegment2> lt;
-				if (fillX)
-					ts.uv.X = low;
-				else
-					ts.uv.Y = low;
-				ts.triangle = -1;
-				lt.push_back(ts);
-				if (fillX)
-					ts.uv.X = high;
-				else
-					ts.uv.Y = high;
-				lt.push_back(ts);
-				if (reverse){
-					lt.reverse();
-					edgePolygons.push_front(lt);
-				}
-				else
-					edgePolygons.push_back(lt);
-			}
-			return;
-		}
-		if (!lb->second.solidRight){
-			std::list<triSegment2> lt;
-			if (fillX)
-				ts.uv.X = low;
-			else
-				ts.uv.Y = low;
-			ts.triangle = -2;
-			lt.push_back(ts);
-			if (fillX)
-				ts.uv.X = lb->first;
-			else
-				ts.uv.Y = lb->first;
-			ts.triangle = lb->second.triangle;
-			lt.push_back(ts);
-			if (reverse){
-				lt.reverse();
-				edgePolygons.push_front(lt);
-			}
-			else
-				edgePolygons.push_back(lt);
-			++lb;
-		}
-		while (lb != ub){
-			assert(lb->second.solidRight);
-			std::list<triSegment2> lt;
-			if (fillX)
-				ts.uv.X = lb->first;
-			else
-				ts.uv.Y = lb->first;
-			ts.triangle = lb->second.triangle;
-			lt.push_back(ts);
-			++lb;
-			if (lb == ub){
-				if (fillX)
-					ts.uv.X = high;
-				else
-					ts.uv.Y = high;
-				ts.triangle = -2;
-			}
-			else{
-				if (fillX)
-					ts.uv.X = lb->first;
-				else
-					ts.uv.Y = lb->first;
-				ts.triangle = lb->second.triangle;
-			}
-			lt.push_back(ts);
-			if (reverse){
-				lt.reverse();
-				edgePolygons.push_front(lt);
-			}
-			else
-				edgePolygons.push_back(lt);
-			if (lb != ub)
-				++lb;
-		}
-	};
-	if (oddFace){
-		ts.uv.X = -3.0f;
-		getEdgeSolids(d1, (float)fac.second, (float)fac.second + 1.0f, false, true);
-		ts.uv.X = -1.0f;
-		getEdgeSolids(d0, (float)fac.second, (float)fac.second + 1.0f, false, false);
-		ts.uv.Y = fac.second + 1.0f;
-		getEdgeSolids(h, (float)fac.first, (float)fac.first + 2.0f, true, true);
-		// compute diagonal x values
-		for (auto &tp : edgePolygons){
-			for (auto &p : tp){
-				if (p.uv.X < -2.0f)
-					p.uv.X = fac.first + 1.0f - (p.uv.Y - fac.second);
-				else if (p.uv.X < -0.5f)
-					p.uv.X = fac.first + 1.0f + (p.uv.Y - fac.second);
-				else ;
-			}
-		}
-	}
-	else{
-		ts.uv.Y = (float)fac.second;
-		getEdgeSolids(h, (float)fac.first, (float)fac.first + 2.0f, true, false);
-		ts.uv.X = -1.0f;
-		getEdgeSolids(d0, (float)fac.second, (float)fac.second + 1.0f, false, true);
-		ts.uv.X = -3.0f;
-		getEdgeSolids(d1, (float)fac.second, (float)fac.second + 1.0f, false, false);
-		// compute diagonal x values
-		for (auto &tp : edgePolygons){
-			for (auto &p : tp){
-				if (p.uv.X < -2.0f)
-					p.uv.X = fac.first + 2.0f - (p.uv.Y - fac.second);
-				else if (p.uv.X < -0.5f)
-					p.uv.X = fac.first + (p.uv.Y - fac.second);
-				else;
-			}
-		}
-	}
-	// remove any doubled corner points
-	auto epit = edgePolygons.begin();
-	while (epit != edgePolygons.end()){
-		if (epit->back().triangle < 0){  // all corners points should be doubled
-			auto pNext = epit;
-			++pNext;
-			if (pNext == edgePolygons.end())
-				pNext = edgePolygons.begin();
-			assert(pNext->front().triangle < 0 && epit->back().uv == pNext->front().uv);
-			epit->pop_back();
-			if (epit != pNext){
-				epit->splice(epit->end(), *pNext);
-				edgePolygons.erase(pNext);
-			}
-			else
-				break;
-		}
-		else
-			++epit;
-	}
-	std::list<std::list<triSegment2> > facePolygons;
-	// now splice or add (if closed interior polygon) triangle-edge strings traversing this triangle+
-	while (face.first != face.second){
-		if (face.first->second.back().uv.X < FLT_MAX){  // a closed interior polygon
-			facePolygons.push_back(std::list<triSegment2>());
-			facePolygons.back().splice(facePolygons.back().end(), face.first->second);
-		}
-		else{
-			auto lp = &face.first->second;
-			assert(lp->back().uv[0] > 1e32f);  // unclosed chain with this uv not inside face
-			epit = edgePolygons.begin();
-			while (epit != edgePolygons.end()){
-				if (epit->front().triangle == lp->back().triangle){
-					lp->pop_back();
-					epit->splice(epit->begin(), *lp);
-					if (epit->front().triangle == epit->back().triangle){  // polygon closed - done
-						facePolygons.splice(facePolygons.end(), edgePolygons, epit);
-						epit = edgePolygons.end();
-					}
-					break;
-				}
-				++epit;
-			}
-			if (epit == edgePolygons.end()){
-				assert(face.first->second.empty());
-				++face.first;
-				continue;
-			}
-			auto epit2 = edgePolygons.begin();
-			while (epit2 != edgePolygons.end()){
-				if (epit2 == epit){
-					++epit2;
-					continue;
-				}
-				if (epit2->back().triangle == epit->front().triangle){
-					epit->splice(epit->begin(), *epit2);
-					edgePolygons.erase(epit2);
-					break;
-				}
-				++epit2;
-			}
-		}
-		assert(face.first->second.empty());
-		++face.first;
-	}
-	if (!edgePolygons.empty()){  // single polygon of only interior corner points surrounding an interior polygon(s)
-		assert(!facePolygons.empty());
-		assert(edgePolygons.size() < 2);
-		facePolygons.splice(facePolygons.end(), edgePolygons);
-	}
-	// All polygons now are closed polygons with inside edge vertices labelled as < 0
-	createSurfaceTetFaces(fac, facePolygons, _planeSets2[planeSet][planeNumber].get());
-}
-
-void vnBccTetCutter::createSurfaceTetFaces(std::pair<short, short> &face, std::list<std::list<triSegment2> > &facePolygons, bccPlane *planeData)
-{
-	std::list<std::list<triSegment2> > exteriorPolygons, interiorPolygons;
-	std::list<vnTetFace> exteriorTetFaces;
-	bool oddFace = ((face.first + face.second) & 1);
-	auto counterClockwise = [](std::list<triSegment2> &poly) ->bool {
-		std::list<triSegment2>::iterator minIt, pit;
-		double minX = DBL_MAX;
-		for (pit = poly.begin(); pit != poly.end(); ++pit) {
-			if (pit->uv[0] < minX) {
-				minX = pit->uv[0];
-				minIt = pit;
-			}
-		}
-		Vec2d uv0, uv1;
-		pit = minIt;
-		do {
-			if (pit == poly.begin())
-				pit = poly.end();
-			--pit;
-		} while (pit->uv == minIt->uv && pit != minIt);
-		if (pit == minIt)  // zero area polygon
-			return true;
-		uv0 = pit->uv - minIt->uv;
-		pit = minIt;
-		do {
-			++pit;
-			if (pit == poly.end())
-				pit = poly.begin();
-			uv1 = pit->uv - minIt->uv;
-			double a = uv0[0] * uv1[1] - uv0[1] * uv1[0];
-			if (a > 0.0)
-				return false;
-			else if (a < 0.0)
-				return true;
-			else;
-		} while (pit != minIt);
-		return true;  // zero area polygon
-	};
-	auto windingNumber = [](Vec2d &uv, std::list<triSegment2> &poly) ->int{
-		// Winding number test for a point in a polygon.  Assumes closed polygon without repeat of first point.
-		auto lit = poly.end();
-		--lit;
-		int wn = 0;
-		for (auto pit = poly.begin(); pit != poly.end(); ++pit){
-			if (lit->uv.Y <= uv.Y) {  // start
-				if (pit->uv.Y  > uv.Y)  // an upward crossing
-					if (((pit->uv.X - lit->uv.X) * (uv.Y - lit->uv.Y) - (uv.X - lit->uv.X) * (pit->uv.Y - lit->uv.Y)) > 0.0)  // uv left of  edge
-						++wn;            // have  a valid up intersect
-			}
-			else {  // lit->uv.Y > uv.y
-				if (pit->uv.Y <= uv.Y)     // a downward crossing
-					if (((pit->uv.X - lit->uv.X) * (uv.Y - lit->uv.Y) - (uv.X - lit->uv.X) * (pit->uv.Y - lit->uv.Y)) < 0.0)  // uv right of  edge
-						--wn;            // have  a valid down intersect
-			}
-			lit = pit;
-		}
-		return wn;  // winding number.  0 only when P is outside. Sign gives clockwiseness.
-	};
-	while (!facePolygons.empty()){
-		auto fpit = facePolygons.begin();
-		vnTetFace tf;
-		tf.interiorNodes = 0;
-		auto lastIt = fpit->begin();
-		bool exterior = false;
-		for (auto tsit = fpit->end(); tsit != fpit->begin();){
-			--tsit;
-			if (tsit->triangle < 0){  // interior corner point
-				exterior = true;
-				// COURT - decided to have plane horizontal be vertex0 to vertex1 for both odd and even faces. This means even is counterclockwise and odd clockwise
-				if (tsit->uv[0] == face.first){
-					tf.interiorNodes |= 1;
-					assert(tsit->uv[1] == face.second + ((face.first + face.second) & 1) ? 1 : 0);
-				}
-				else if (tsit->uv[0] == face.first + 2.0){
-					tf.interiorNodes |= 2;
-					assert(tsit->uv[1] == face.second + ((face.first + face.second) & 1) ? 1 : 0);
-				}
-				else if (tsit->uv[0] == face.first + 1.0){  // doesn't matter if up or down
-					tf.interiorNodes |= 4;
-					assert(tsit->uv[1] == face.second + ((face.first + face.second) & 1) ? 0 : 1);
-				}
-				else
-					assert(false);
-				if (tsit != fpit->begin()){
-					--tsit;
-					if (tsit->triangle > -1)
-						tf.edgeTriangles.push_back(tsit->triangle);
-					else
-						++tsit;
-				}
-			}
-			else{
-				if (tsit->triangle == lastIt->triangle){  // contains a border segment so is an exterior solid polygon
-					tf.edgeTriangles.push_back(tsit->triangle);
-					--tsit;
-					if (tsit->triangle < 0){
-						++tsit;
-						continue;
-					}
-					assert(tsit->triangle != tf.edgeTriangles.back());
-					tf.edgeTriangles.push_back(tsit->triangle);
-					exterior = true;
-				}
-				else{
-					if (tf.edgeTriangles.empty() || tsit->triangle != tf.edgeTriangles.front())
-						tf.interiorTriangles.push_back(tsit->triangle);
-				}
-
-			}
-			lastIt = tsit;
-		}
-		if (exterior){
-			exteriorTetFaces.push_back(std::move(tf));
-			assert(counterClockwise(*fpit));
-			exteriorPolygons.splice(exteriorPolygons.end(), facePolygons, fpit);
-		}
-		else{  // test this interior polygon for clockwiseness
-			if (counterClockwise(*fpit)){
-				exteriorTetFaces.push_back(std::move(tf));
-				exteriorPolygons.splice(exteriorPolygons.end(), facePolygons, fpit);
-			}
-			else
-				interiorPolygons.splice(interiorPolygons.end(), facePolygons, fpit);
-		}
-	}
-	if (!interiorPolygons.empty()){  // any interior must be inside an exterior one, so add its triangles to its interior tf
-		for (auto &ip : interiorPolygons){
-			auto efit = exteriorTetFaces.begin();
-			auto epit = exteriorPolygons.begin();
-			while (epit != exteriorPolygons.end()){
-				if (windingNumber(ip.front().uv, *epit) != 0){
-					for (auto &ts2 : ip)
-						efit->interiorTriangles.push_back(ts2.triangle);
-					break;
-				}
-				++epit;
-				++efit;
-			}
-			assert(epit != exteriorPolygons.end());
-		}
-	}
-	// create a new tet face for each exteriorPolygon
-	_surfaceTetFaceNumber += exteriorTetFaces.size();
-	for (auto &etf : exteriorTetFaces)
-		planeData->vnTetFaces.insert(std::make_pair(face, std::move(etf)));
-}
-
-void vnBccTetCutter::collectSurfaceTetCentersFaces()
-{
-	// Every tet face intersected by the surface will have at one surface tet on either side.
-	// This routine gets tet centers on either side of each intersected face, hashes them, and adds the face to that hash.
-	// Also fills in any interior nodes in the face.
-	for (int i = 0; i < 6; ++i){
-		int j, n = _planeSets2[i].size();
-		for (j = 0; j < n; ++j){
-			int planeD = _planeSets2[i][j]->D;
-			auto tfit = _planeSets2[i][j]->vnTetFaces.begin();
-			auto tfEnd = _planeSets2[i][j]->vnTetFaces.end();
-			while (tfit != tfEnd){
-				// get tet centers on either side of this face
-				bccTetCentroid tc0, tc1;
-				int axis = i >> 1, oddFace = (tfit->first.first + tfit->first.second) & 1;
-				// midpoint of face horizontal
-				tc0.xyz[axis] = (i & 1) ? planeD + tfit->first.second + oddFace : planeD - tfit->first.second - oddFace;
-				tc0.xyz[(axis + 1) % 3] = tfit->first.second + oddFace;
-				tc0.xyz[(axis + 2) % 3] = tfit->first.first + 1;
-				tc0.halfCoordAxis = axis;
-				assert((tc0.xyz[axis] & 1) == (tc0.xyz[(axis + 1) % 3] & 1) && (tc0.xyz[axis] & 1) != (tc0.xyz[(axis + 2) % 3] & 1));
-				tc1.xyz = tc0.xyz;
-				tc1.halfCoordAxis = ((axis + 1) % 3);
-				if (oddFace){
-					--tc1.xyz[(axis + 1) % 3];
-					if (i & 1)
-						--tc0.xyz[axis];
-				}
-				else{
-					if ((i & 1) < 1)
-						--tc0.xyz[axis];
-				}
-				auto fl0 = &_surfaceTetFaces.insert(std::make_pair(tc0.ll, std::list<vnTetFace*>())).first->second;
-				auto fl1 = &_surfaceTetFaces.insert(std::make_pair(tc1.ll, std::list<vnTetFace*>())).first->second;
-				auto tfLast = tfit;
-				while (tfit->first == tfLast->first){
-					tfit->second.set = i;
-					fl0->push_back(&tfit->second);
-					fl1->push_back(&tfit->second);
-					++tfit;
-					if (tfit == tfEnd)
-						break;
-				}
-			}
-		}
-	}
-}
-
-std::pair<short, short> vnBccTetCutter::uvToPlaneFace(const Vec2d &v)
-{  // plane face indexing has V component in the horizontal span minimum
-	// The U component alternates with even permutation U+V has even U as upward pointing triangles, odd U down pointing.
-	// Similarly odd permutation U+V has odd U as upward pointing triangles, even U down pointing.
-	std::pair<short, short> sp;
-	sp.first = (short)std::floor(v.X);
-	sp.second = (short)std::floor(v.Y);
-	if ((sp.first + sp.second) & 1){
-		if (v.Y - sp.second < sp.first + 1.0 - v.X)
-			--sp.first;
-	}
-	else{
-		if (v.Y - sp.second > v.X - sp.first)
-			--sp.first;
-	}
-	return sp;
-}
-
-void vnBccTetCutter::getFaceEdgePath(const Vec2d *startUv, std::pair<short, short> startFace, const Vec2d *endUv, std::pair<short, short> endFace, int triangle, int secondAxis,
-	std::list<std::pair<short, short> > &triFaces, std::vector<PLANE_LINE> &horizLines, std::vector<PLANE_LINE>(&diagonals)[2])
-{
-	triFaces.clear();
-	int previousEdge = -1;
-	planeLineCrossing plc;
-	plc.solidRight = 0;
-	plc.triangle = triangle;
-	Vec2d N;
-	N = *endUv - *startUv;  // due to counterclockwiseness around solid, its solid surface normal is y, -x
-	double s, t;  // s is parameter along line from startUv to endUv. t is parameter along a candidate triangle edge.
-	std::pair<short, short> faceNow = startFace;
-	while (faceNow != endFace)	{
-		triFaces.push_back(faceNow);
-		bool oddTri = ((faceNow.first + faceNow.second) & 1);
-		int i;
-		for (i = 0; i < 3; ++i)	{
-			if (i == previousEdge)
-				continue;
-			if (i < 1)	{  // horizontal axis crossing?
-				if (faceNow.second == endFace.second)
-					continue;
-				int horizIndx = faceNow.second + (oddTri? 1 : 0);
-				s = (horizIndx - startUv->Y) / N[1];
-				if (s < 0.0 || s > 1.0)
-					continue;
-				if (!(s > 0.0) && N.Y >= 0.0){  // On horizLine but can't be a starting edge in this direction
-					assert(previousEdge < 0);
-					continue;
-				}
-				t = s * N[0] + startUv->X;
-				if (t < (double)faceNow.first || t >= (double)faceNow.first + 2.0)
-					continue;
-				plc.solidRight = N[1] < 0.0 ? 1 : 0;
-				horizLines[horizIndx].insert(std::make_pair(t, plc));
-				if (oddTri)
-					++faceNow.second;
-				else
-					--faceNow.second;
-				previousEdge = i;
-				break;
-			}
-			else if (i < 2)	{  // diag0 axis crossing - increasing direction in uv is [1, 1].
-				if (N.X == N.Y) // crossing not possible
-					continue;
-				double dy = startUv->Y - faceNow.second + (oddTri ? 1.0 : 0.0), dx = startUv->X - faceNow.first;
-				if (dy == dx && ((oddTri && -N.X + N.Y >= 0.0) || (!oddTri && N.X - N.Y >= 0.0))){    // use same test for being exactly on diagonal line as uvToPlaneFace() or possible roundoff error
-					assert(previousEdge < 0);
-					continue;
-				}
-				s = dx - dy;
-				s /= (N.Y - N.X);
-				t = startUv->X - faceNow.first + N.X * s + (oddTri ? -1.0 : 0.0);
-				if (s < 0.0 || s > 1.000001 || t < 0.0 || t > 1.0)  // allow a little destination roundoff error
-					continue;
-				int diagIndx = _vbt->_gridSize[secondAxis] + ((faceNow.first - faceNow.second + 1) >> 1);
-				plc.solidRight = (N[1] - N[0]) < 0.0 ? 1 : 0;
-				diagonals[0][diagIndx].insert(std::make_pair(t + (double)faceNow.second, plc));
-				if (oddTri)
-					++faceNow.first;
-				else
-					--faceNow.first;
-				previousEdge = i;
-				break;
-			}
-			else	{	// diag1 axis crossing - increasing direction in uv is [-1, 1].
-				if (N.X == -N.Y) // crossing not possible
-					continue;
-				double dy = startUv->Y - faceNow.second, dx = faceNow.first + (oddTri ? 1.0 : 2.0) - startUv->X;
-				if (dx == dy && ((oddTri && N.X + N.Y >= 0.0) || (!oddTri && -N.X + -N.Y >= 0.0))){    // use same test for being exactly on diagonal line as uvToPlaneFace() or possible roundoff error
-					assert(previousEdge < 0);
-					continue;
-				}
-				s = dx - dy;
-				s /= N.Y + N.X;
-				t = startUv->Y - faceNow.second + N.Y * s;
-				if (s < 0.0 || s > 1.000001 || t < 0.0 || t > 1.0)  // allow a little destination roundoff error
-					continue;
-				int diagIndx = (faceNow.second + faceNow.first + 2) >> 1;
-				plc.solidRight = (-N[1] - N[0]) < 0.0 ? 1 : 0;
-				diagonals[1][diagIndx].insert(std::make_pair(t + (double)faceNow.second, plc));
-				if (oddTri)
-					--faceNow.first;
-				else
-					++faceNow.first;
-				previousEdge = i;
-				break;
-			}
-		}
-		assert(i < 3);
-	}
-	assert(triFaces.front() == startFace);
-	triFaces.pop_front();
-}
-
-void vnBccTetCutter::tetConnectedSurface(bccTetCentroid tc, std::set<long> &triangles, std::vector<long> &vertices)
-{  // Inputs tc and surface triangles seed.  Returns all the surface triangles and vertices inside the tet.
-	std::set<long> verts;
-	std::forward_list<long> edgeTris;
-	edgeTris.assign(triangles.begin(), triangles.end());
-	triangles.clear();
-	// input triangles should already contain triangles intersecting tet faces. Must find all new interior triangles using their interior vertices.
-	std::function<void(long)> recurseInteriorTriangles = [&](long triangle){
-		if (!triangles.insert(triangle).second)
-			return;
-		long *tr = _mt->triangleVertices(triangle);
-		for (int i = 0; i < 3; ++i){
-			if (_vertexTetLoci[tr[i]] == tc){
-				if (!verts.insert(tr[i]).second)
-					continue;
-				unsigned long adj = _mt->triAdjs(triangle)[i];
-				while (adj >> 2 != triangle){
-					recurseInteriorTriangles(adj >> 2);
-					assert(_mt->triangleVertices(adj >> 2)[((adj & 3) + 1) % 3] == tr[i]);
-					adj = _mt->triAdjs(adj >> 2)[((adj&3)+ 1) % 3];
-				}
-			}
-		}
-	};
-	for (auto &et : edgeTris)
-		recurseInteriorTriangles(et);
-	vertices.assign(verts.begin(), verts.end());
-}
-
-void vnBccTetCutter::createVirtualNodedSurfaceTets()
-{
-	bccTetCentroid tc;
-	int firstAxis;  // secondAxis will be halfCoordAxis
-	bool firstAxisUp;
-	auto createTetAssignNodes = [&](std::list<vnTetFace*> &faces) ->long{
-		long newTet = _surfaceTetNumber.fetch_add(1);
-		_vbt->_tetCentroids.push_back(tc);
-		newTet <<= 2;
-		for (auto &f : faces){
-			assert(f->set >> 1 != ((tc.halfCoordAxis + 1) % 3));
-			if ((f->set >> 1) == firstAxis){
-				int faceSide = f->set & 1 ? 0 : 1;
-				f->tetNodes[faceSide][0] = newTet;
-				f->tetNodes[faceSide][1] = newTet | 1;
-				if (f->set&1)
-					f->tetNodes[faceSide][2] = newTet | 2;
-				else
-					f->tetNodes[faceSide][2] = newTet | 3;
-			}
-			else{  // second axis face
-				int faceSide = f->set & 1;
-				if (firstAxisUp){
-					f->tetNodes[faceSide][0] = newTet | 2;
-					f->tetNodes[faceSide][1] = newTet | 3;
-					if (f->set & 1)
-						f->tetNodes[faceSide][2] = newTet | 1;
-					else
-						f->tetNodes[faceSide][2] = newTet;
-				}
-				else{
-					f->tetNodes[faceSide][0] = newTet | 3;
-					f->tetNodes[faceSide][1] = newTet | 2;
-					if (f->set & 1)
-						f->tetNodes[faceSide][2] = newTet;
-					else
-						f->tetNodes[faceSide][2] = newTet | 1;
-				}
-			}
-		}
-		return newTet >> 2;
-	};
-	_surfaceTetNumber.store(0);
-	_vbt->_tetCentroids.clear();  //  _surfaceTetCenters.clear();
-	_vbt->_tetCentroids.reserve(_surfaceTetFaceNumber);
-	for (auto &st : _surfaceTetFaces){
-		tc.ll = st.first;
-		firstAxis = (tc.halfCoordAxis + 2) % 3;
-		firstAxisUp = (tc.xyz[tc.halfCoordAxis] + tc.xyz[firstAxis]) & 1;
-		// get groups of faces sharing common edge triangle intersects - most common surface tets
-		struct edgeIntersectGroup{
-			std::set<long> edgeTriangles;
-			std::list<vnTetFace*> faces;
-		};
-		std::list<edgeIntersectGroup> eig;
-		auto tfit = st.second.begin();
-		while (tfit != st.second.end()){
-			if ((*tfit)->edgeTriangles.empty()){
-				++tfit;
-				continue;
-			}
-			edgeIntersectGroup *prevFused = NULL;
-			auto egit = eig.begin();
-			while (egit != eig.end()){
-				if (prevFused == NULL){
-					for (auto &fet : (*tfit)->edgeTriangles){
-						if (egit->edgeTriangles.find(fet) != egit->edgeTriangles.end()){
-							egit->edgeTriangles.insert((*tfit)->edgeTriangles.begin(), (*tfit)->edgeTriangles.end());
-							egit->faces.push_back(*tfit);
-							prevFused = &(*egit);
-							break;
-						}
-					}
-					++egit;
-				}
-				else{
-					auto pfit = (*tfit)->edgeTriangles.begin();
-					while (pfit != (*tfit)->edgeTriangles.end()){
-						if (egit->edgeTriangles.find(*pfit) != egit->edgeTriangles.end()){  // fuse these 2 groups
-							prevFused->edgeTriangles.insert(egit->edgeTriangles.begin(), egit->edgeTriangles.end());
-							prevFused->faces.splice(prevFused->faces.end(), egit->faces);
-							egit = eig.erase(egit);
-							break;
-						}
-						++pfit;
-					}
-					if (pfit == (*tfit)->edgeTriangles.end())
-						++egit;
-				}
-			}
-			if (prevFused == NULL){
-				eig.push_back(edgeIntersectGroup());
-				eig.back().edgeTriangles.insert((*tfit)->edgeTriangles.begin(), (*tfit)->edgeTriangles.end());
-				eig.back().faces.push_back(*tfit);
-			}
-			tfit = st.second.erase(tfit);
-		}
-		// have all independent edge groups and interior faces. Do any interior tests for all except single tet centroid locations.
-		if (eig.size() < 2 && st.second.empty())
-			createTetAssignNodes(eig.front().faces);
-		else if (eig.empty() && st.second.size() < 2){
-			std::list<vnTetFace*> oneFace;
-			oneFace.splice(oneFace.end(), st.second, st.second.begin());
-			createTetAssignNodes(oneFace);
-		}
-		else{  // have gone as far as possible using simple common tet edge intersections.  Now must use all triangles and do
-			// interior tests for possible further agglomeration or multiple tets at this location
-			for (auto &eg : eig){
-				for (auto &fac : eg.faces)
-					eg.edgeTriangles.insert(fac->interiorTriangles.begin(), fac->interiorTriangles.end());
-			}
-			for (auto &fac : st.second){
-				eig.push_back(edgeIntersectGroup());
-				assert(fac->edgeTriangles.empty());
-				eig.back().edgeTriangles.insert(fac->interiorTriangles.begin(), fac->interiorTriangles.end());
-				eig.back().faces.push_back(fac);
-			}
-			st.second.clear();
-			auto eit = eig.begin();
-			while (eit != eig.end()){
-				std::vector<long> vertices;
-				tetConnectedSurface(tc, eit->edgeTriangles, vertices);
-				auto eit2 = eit;
-				++eit2;
-				bool recollectInterior = false;  // "dents" into a solid can lead to omissions in gathering interior
-				while (eit2 != eig.end()){
-					bool notFound = true;
-					for (auto tri : eit2->edgeTriangles){
-						if (eit->edgeTriangles.find(tri) != eit->edgeTriangles.end()){
-							for (auto tri2 : eit2->edgeTriangles){  // the full interior connected search should have gotten everything
-								if (eit->edgeTriangles.find(tri2) == eit->edgeTriangles.end()){
-									eit->edgeTriangles.insert(eit2->edgeTriangles.begin(), eit2->edgeTriangles.end());
-									recollectInterior = true;
-								}
-							}
-							eit->faces.splice(eit->faces.end(), eit2->faces);
-							eit2 = eig.erase(eit2);
-							notFound = false;
-							break;
-						}
-					}
-					if (notFound)
-						++eit2;
-				}
-				// now have agglomerated connected faces in eit
-				long thisTet = createTetAssignNodes(eit->faces);
-				// since there are likely multiple tets for this BCC locus, assign this tet to its internal vertices
-				if (recollectInterior){
-					vertices.clear();
-					tetConnectedSurface(tc, eit->edgeTriangles, vertices);
-				}
-				for (auto &v : vertices){
-					assert(_vbt->_vertexTets[v] < 0);  // should only happen in one surface tet
-					_vbt->_vertexTets[v] = thisTet;
-				}
-				eit = eig.erase(eit);
-			}
-		}
-	}
+	return;
 }
 
 void vnBccTetCutter::fillNonVnTetCenter()
 {
 	_vbt->_firstInteriorTet = _vbt->_tetNodes.size();
-	// interior tet nodes are created sequentially in z.  Use this to get all z-x and z-y tets with less hash table searches per tet.
-	for (int n = _interiorNodes.size() - 1, i = 0; i < n; ++i){
-		auto lpi = _vbt->_nodeGridLoci[i].data();
-		auto lpj = _vbt->_nodeGridLoci[i + 1].data();
-		if (lpi[0] == lpj[0] && lpi[1] == lpj[1] && lpi[2] + 2 == lpj[2]){ // this z segment exists.  Look for z-x and z-y tets
-			long nn[4];
-			for (int j = 0; j < 4; ++j){
-				auto ll = _vbt->_nodeGridLoci[i];
-				ll[0] += j & 1 ? 1 : -1;
-				ll[1] += j & 2 ? 1 : -1;
-				++ll[2];
-				auto in = _interiorNodes.find(ll);
-				if (in != _interiorNodes.end()){
-					nn[j] = in->second;
-				}
-				else
-					nn[j] = -1;
-			}
-			// See vnBccTetrahedra.h for how tetrahedral nodes are ordered.
-			for (int j = 0; j < 3; j += 2){
-				if (nn[j] > -1 && nn[j + 1] > -1){
-					std::array<long, 4> nodes;
-					nodes[0] = i;
-					nodes[1] = i + 1;
-					bccTetCentroid tc;
-					tc.halfCoordAxis = 1;
-					tc.xyz = _vbt->_nodeGridLoci[i];  // *lpi
-					tc.xyz[2] += 1;
-					if (j){
-						nodes[2] = nn[j + 1];
-						nodes[3] = nn[j];
-					}
-					else{
-						--tc.xyz[tc.halfCoordAxis];
-						nodes[2] = nn[j];
-						nodes[3] = nn[j + 1];
-					}
-					if (_vbt->_tetHash.find(tc.ll) == _vbt->_tetHash.end()){  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
-						_vbt->_tetCentroids.push_back(tc);
-						_vbt->_tetNodes.push_back(nodes);
-					}
-				}
-			}
-			for (int j = 0; j < 2; ++j){
-				if (nn[j] > -1 && nn[j + 2] > -1){
-					std::array<long, 4> nodes;
-					nodes[0] = nn[j];
-					nodes[1] = nn[j + 2];
-					bccTetCentroid tc;
-					tc.halfCoordAxis = 0;
-					tc.xyz = _vbt->_nodeGridLoci[i];  // *lpi
-					tc.xyz[2] += 1;
-					if (j){
-						nodes[2] = i;
-						nodes[3] = i + 1;
-					}
-					else{
-						--tc.xyz[tc.halfCoordAxis];
-						nodes[2] = i + 1;
-						nodes[3] = i;
-					}
-					if (_vbt->_tetHash.find(tc.ll) == _vbt->_tetHash.end()){  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
-						_vbt->_tetCentroids.push_back(tc);
-						_vbt->_tetNodes.push_back(nodes);
-					}
-				}
-			}
+	//  Use sequential z to get surrounding frame with less hash table searches.
+	auto nextZnode = [&](const int prevNode, std::array<short, 3>& prevLocus) ->int {  // returns next node in z sequence from prevNode at locus. If former is -1 look for locus. If not found return -1
+		prevLocus[2] += 2;
+		if (prevNode > -1) {
+			auto pn = _vbt->_nodeGridLoci[prevNode + 1].data();
+			if (prevLocus[0] == pn[0] && prevLocus[1] == pn[1] && prevLocus[2] == pn[2])
+				return prevNode + 1;
 		}
-	}
-	// now create all x-y tets
-	for (int n = _interiorNodes.size(), i = 0; i < n; ++i){
-		auto ll = _vbt->_nodeGridLoci[i];
-		ll[0] += 2;
-		auto in = _interiorNodes.find(ll);
-		if (in == _interiorNodes.end())
+		auto in = _interiorNodes.find(prevLocus);
+		if (in != _interiorNodes.end())
+			return in->second;
+		else return -1;
+	};
+	auto findNode = [&](std::array<short, 3>& locus) ->int {
+		auto in = _interiorNodes.find(locus);
+		if (in != _interiorNodes.end())
+			return in->second;
+		else
+			return -1;
+
+	};
+	auto zBlock = [&](int start, int stop) {
+		std::array<int, 4> prevQuad, nextQuad;
+		std::array<short, 3> locs[4], yLoc, xLoc = _vbt->_nodeGridLoci[start];
+		yLoc = xLoc;
+		yLoc[1] += 2;
+		int nextY = findNode(yLoc);
+		xLoc[0] += 2;
+		int nextX = findNode(xLoc);
+		locs[0] = xLoc;
+		locs[0][0] -= 3;
+		--locs[0][1];
+		--locs[0][2];
+		locs[1] = locs[0];
+		locs[1][0] += 2;
+		locs[2] = locs[0];
+		locs[2][1] += 2;
+		locs[3] = locs[2];
+		locs[3][0] += 2;
+		for (int i = 0; i < 4; ++i)
+			prevQuad[i] = findNode(locs[i]);
+		for (int i = start; i < stop; ++i) {
+			for (int j = 0; j < 4; ++j)
+				nextQuad[j] = nextZnode(prevQuad[j], locs[j]);
+			// make tets
+			bccTetCentroid center = { (unsigned short)(xLoc[0] - 2), (unsigned short)xLoc[1], (unsigned short)(xLoc[2] + 1) };
+			for (int j = 0; j < 3; ++j)
+				center[j] <<= 1;
+			std::array<int, 4> tet;
+			if (i < stop - 1) { // next even z ray
+				tet[0] = i;
+				tet[1] = i + 1;
+				if (nextQuad[0] > -1 && nextQuad[1] > -1) {
+					tet[2] = nextQuad[0];
+					tet[3] = nextQuad[1];
+					auto tc = center;
+					--tc[1];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (nextQuad[2] > -1 && nextQuad[3] > -1) {
+					tet[2] = nextQuad[3];
+					tet[3] = nextQuad[2];
+					auto tc = center;
+					++tc[1];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (nextQuad[0] > -1 && nextQuad[2] > -1) {
+					tet[0] = nextQuad[0];
+					tet[1] = nextQuad[2];
+					tet[2] = i + 1;
+					tet[3] = i;
+					auto tc = center;
+					--tc[0];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (nextQuad[1] > -1 && nextQuad[3] > -1) {
+					tet[0] = nextQuad[1];
+					tet[1] = nextQuad[3];
+					tet[2] = i;
+					tet[3] = i + 1;
+					auto tc = center;
+					++tc[0];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+			}
+			center[2] -= 2;  // next even x ray
+			center[0] += 2;
+			if (nextX > -1) {
+				tet[0] = i;
+				tet[1] = nextX;
+				if (nextQuad[3] > -1 && nextQuad[1] > -1) {
+					tet[2] = nextQuad[3];
+					tet[3] = nextQuad[1];
+					auto tc = center;
+					++tc[2];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (prevQuad[1] > -1 && prevQuad[3] > -1) {
+					tet[2] = prevQuad[1];
+					tet[3] = prevQuad[3];
+					auto tc = center;
+					--tc[2];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (prevQuad[1] > -1 && nextQuad[1] > -1) {
+					tet[0] = prevQuad[1];
+					tet[1] = nextQuad[1];
+					tet[2] = nextX;
+					tet[3] = i;
+					auto tc = center;
+					--tc[1];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (prevQuad[3] > -1 && nextQuad[3] > -1) {
+					tet[0] = prevQuad[3];
+					tet[1] = nextQuad[3];
+					tet[2] = i;
+					tet[3] = nextX;
+					auto tc = center;
+					++tc[1];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+			}
+			center[0] -= 2;
+			center[1] += 2;
+			if (nextY > -1) {
+				tet[0] = i;
+				tet[1] = nextY;
+				if (prevQuad[2] > -1 && nextQuad[2] > -1) {
+					tet[2] = prevQuad[2];
+					tet[3] = nextQuad[2];
+					auto tc = center;
+					--tc[0];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (prevQuad[3] > -1 && nextQuad[3] > -1) {
+					tet[2] = nextQuad[3];
+					tet[3] = prevQuad[3];
+					auto tc = center;
+					++tc[0];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (prevQuad[2] > -1 && prevQuad[3] > -1) {
+					tet[0] = prevQuad[2];
+					tet[1] = prevQuad[3];
+					tet[2] = nextY;
+					tet[3] = i;
+					auto tc = center;
+					--tc[2];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+				if (nextQuad[2] > -1 && nextQuad[3] > -1) {
+					tet[0] = nextQuad[2];
+					tet[1] = nextQuad[3];
+					tet[2] = i;
+					tet[3] = nextY;
+					auto tc = center;
+					++tc[2];
+					if (_centroidTriangles.find(tc) == _centroidTriangles.end()) {  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
+						_vbt->_tetCentroids.push_back(tc);
+						_vbt->_tetNodes.push_back(tet);
+					}
+				}
+			}
+			// advance to next frame
+			for (int j = 0; j < 4; ++j)
+				prevQuad[j] = nextQuad[j];
+			nextX = nextZnode(nextX, xLoc);
+			nextY = nextZnode(nextX, yLoc);
+		}
+	};
+	// interior tet nodes are created sequentially in z.  Do each z block as nucleus around even lattice
+	for (int n = _interiorNodes.size(), i = 0; i < n; ) {
+		auto lp0 = _vbt->_nodeGridLoci[i].data();
+		if (lp0[0] & 1) {
+			++i;
 			continue;
-		long x2 = in->second;
-		bccTetCentroid tc;
-		tc.xyz = _vbt->_nodeGridLoci[i];
-		tc.xyz[0] += 1;
-		for (int j = 1; j > -1; --j){
-			ll = tc.xyz;
-			ll[2] += j ? 1 : -1;
-			--ll[1];
-			in = _interiorNodes.find(ll);
-			if (in == _interiorNodes.end())
-				continue;
-			long y0 = in->second;
-			ll[1] += 2;
-			in = _interiorNodes.find(ll);
-			if (in == _interiorNodes.end())
-				continue;
-			tc.halfCoordAxis = 2;
-			if (j < 1)
-				--tc.xyz[2];
-			std::array<long, 4> nodes;
-			nodes[0] = i;
-			nodes[1] = x2;
-			nodes[2] = j ? in->second : y0;
-			nodes[3] = j ? y0 : in->second;
-			if (_vbt->_tetHash.find(tc.ll) == _vbt->_tetHash.end()){  // may already be there if penetration by surface. Only create unpenetrated interior cubes.
-				_vbt->_tetCentroids.push_back(tc);  // perhaps just push back if not multithreading
-				_vbt->_tetNodes.push_back(nodes);
-			}
 		}
+		int j = i + 1;
+		auto lp1 = _vbt->_nodeGridLoci[j].data();
+		while (lp0[0] == lp1[0] && lp0[1] == lp1[1] && lp0[2] + 2 == lp1[2]) { // this z segment exists
+			++j;
+			lp0 = lp1;
+			lp1 = _vbt->_nodeGridLoci[j].data();
+		}
+		zBlock(i, j);
+		i = j;
 	}
 }
 

@@ -14,11 +14,12 @@
 #define __BCC_TET_SCENE__
 
 #include "surgGraphics.h"
-#include "vnBccTetrahedra.h"
-//#include "vnBccTetCutter.h"
-#include "vnBccTetCutterTbb.h"
-#include "tetCollisions.h"
-#include "tetSubset.h"
+// #include "vnBccTetrahedra.h"
+#include "bccTetDecimator.h"
+#include "vnBccTetCutter.h"
+// #include "vnBccTetCutterTbb.h"
+// #include "tetCollisions.h"
+// #include "tetSubset.h"
 #include "pdTetPhysics.h"
 
 // forward declarations
@@ -55,16 +56,16 @@ public:
 private:
 	gl3wGraphics *_gl3w;
 	surgicalActions *_surgAct;
-	vnBccTetrahedra _vnTets;
-	tetCollisions _tetCol;
-	tetSubset _tetSubsets;
-//	vnBccTetCutter _tc;  // original serial version giving deterministic outcome, but slow.
-	vnBccTetCutterTbb _tc;  // multithreaded version using Intel threaded building blocks.  Much faster, but indices of nodes and tets different each run as nondeterministic.
+	materialTriangles* _mt;  // pointer from surgGraphics.
+	//	vnBccTetrahedra _vnTets;
+	bccTetDecimator _vnTets;
+//	tetCollisions _tetCol;
+//	tetSubset _tetSubsets;
+	vnBccTetCutter _tc;  // original serial version giving deterministic outcome, but slow.
+//	vnBccTetCutterTbb _tc;  // multithreaded version using Intel threaded building blocks.  Much faster, but indices of nodes and tets different each run as nondeterministic.
 	pdTetPhysics _ptp;
-	bool _forcesApplied;
-	bool _tetsModified;
-
-	materialTriangles *_mt;  // pointer from surgGraphics.
+	bool _forcesApplied, _tetsModified, _physicsPaused;
+	float _lowTetWeight;
 	struct boundingBox3{
 		float corners[6];
 	};
@@ -72,7 +73,6 @@ private:
 
 	std::vector<Vec3f> _firstSpatialCoords;
 
-	bool _physicsPaused;
 	void initPdPhysics();
 };
 

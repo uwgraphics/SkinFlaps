@@ -80,13 +80,13 @@ public:
 		int lastIndex = n - 1, wn = 0;    // the  winding number counter
 		// loop through all edges of the polygon
 		for (int i = 0; i<n; i++) {   // edge from V[lastIndex] to  V[1]
-			if (polygon[lastIndex]._v[dim1] <= P._v[dim1]) {          // start y <= P.y
-				if (polygon[i]._v[dim1]  > P._v[dim1])      // an upward crossing
+			if (polygon[lastIndex].xyz[dim1] <= P.xyz[dim1]) {          // start y <= P.y
+				if (polygon[i].xyz[dim1]  > P.xyz[dim1])      // an upward crossing
 					if (isLeftIgnore(polygon[lastIndex], polygon[i], P) > 0)  // P left of  edge
 						++wn;            // have  a valid up intersect
 			}
 			else {                        // start y > P.y (no test needed)
-				if (polygon[i]._v[dim1] <= P._v[dim1])     // a downward crossing
+				if (polygon[i].xyz[dim1] <= P.xyz[dim1])     // a downward crossing
 					if (isLeftIgnore(polygon[lastIndex], polygon[i], P) < 0.0f)  // P right of  edge
 						--wn;            // have  a valid down intersect
 			}
@@ -127,8 +127,8 @@ private:
 		//    Return: >0 for P2 left of the line through P0 and P1
 		//            =0 for P2  on the line
 		//            <0 for P2  right of the line
-		return ((P1._v[dim0] - P0._v[dim0]) * (P2._v[dim1] - P0._v[dim1])
-			- (P2._v[dim0] - P0._v[dim0]) * (P1._v[dim1] - P0._v[dim1]));
+		return ((P1.xyz[dim0] - P0.xyz[dim0]) * (P2.xyz[dim1] - P0.xyz[dim1])
+			- (P2.xyz[dim0] - P0.xyz[dim0]) * (P1.xyz[dim1] - P0.xyz[dim1]));
 	}
 
 };
