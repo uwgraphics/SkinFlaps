@@ -132,7 +132,7 @@
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Intel\oneAPI\tbb\2021.5.0\lib\intel64\vc_mt;C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\lib\intel64;$(Cuda_Path)\lib\x64;..\..\PhysBAM_subset\x64\Debug;.\x64\Debug;..\..\imgui_glfw_nfd_lib\extLibs\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics_noCuda.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics_noCuda.lib;cusparse.lib;cusolver.lib;cudart.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>MSVCRT;LIBCMT</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
@@ -169,7 +169,7 @@
     <ClCompile Include="..\..\SkinFlaps\src\main.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\skinCutUndermineTets.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\surgicalActions.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutter.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutter_omp.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\vnBccTetrahedra.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -185,7 +185,7 @@
     <ClInclude Include="..\..\SkinFlaps\src\surgicalActions.h" />
     <ClInclude Include="..\..\SkinFlaps\src\triTriIntersect_Shen.h" />
     <ClInclude Include="..\..\SkinFlaps\src\tri_tri_intersect_Guigue.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutter.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutter_omp.h" />
     <ClInclude Include="..\..\SkinFlaps\src\vnBccTetrahedra.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -16,7 +16,7 @@
 #include "surgGraphics.h"
 // #include "vnBccTetrahedra.h"
 #include "bccTetDecimator.h"
-#include "vnBccTetCutter.h"
+#include "vnBccTetCutter_omp.h"
 // #include "vnBccTetCutterTbb.h"
 // #include "tetCollisions.h"
 // #include "tetSubset.h"
@@ -61,7 +61,7 @@ private:
 	bccTetDecimator _vnTets;
 //	tetCollisions _tetCol;
 //	tetSubset _tetSubsets;
-	vnBccTetCutter _tc;  // original serial version giving deterministic outcome, but slow.
+	vnBccTetCutter_omp _tc;  // original serial version giving deterministic outcome, but slow.
 //	vnBccTetCutterTbb _tc;  // multithreaded version using Intel threaded building blocks.  Much faster, but indices of nodes and tets different each run as nondeterministic.
 	pdTetPhysics _ptp;
 	bool _forcesApplied, _tetsModified, _physicsPaused;

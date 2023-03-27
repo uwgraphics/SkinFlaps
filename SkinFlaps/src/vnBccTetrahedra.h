@@ -196,6 +196,7 @@ protected:
 	static Mat3x3f _barycentricInverses[6];
 
 	friend class vnBccTetCutter;
+	friend class vnBccTetCutter_omp;
 	friend class skinCutUndermineTets;
 };
 
