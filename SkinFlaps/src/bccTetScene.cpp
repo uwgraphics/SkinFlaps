@@ -321,7 +321,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 	try {
 		_tetsModified = false;
 #ifdef _DEBUG
-		_tc.makeFirstVnTets(_mt, &_vnTets, 30);  // 30
+		_tc.makeFirstVnTets(_mt, &_vnTets, 35);  // 30
 #else
 		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions); // 70 for cleft scene with Eigen solver gives 36K tets in 0.36 seconds, 100 for cleft scene with oldMKL solver gives 102K tets, 20 for sphere test.
 			// in release mode 180 subdivs gives 503,910 tets in 2.27 seconds without multithreading the tet cutter, 0.57 seconds multithreaded. 

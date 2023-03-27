@@ -2188,9 +2188,9 @@ void materialTriangles::collectCreateTextureSeams() {
 				;
 			++mvit;
 		}
-		assert(source != multiMatVerts.end());
+//		assert(source != multiMatVerts.end());
 		std::vector<neighborNode> nei;
-		while (start != mvit) {
+		while (source != multiMatVerts.end() && start != mvit) {
 			if (start != source && start->second.txId == source->second.txId) {
 				start->second.txId = addTexture();
 				float tex[2];
@@ -2217,9 +2217,6 @@ void materialTriangles::collectCreateTextureSeams() {
 }
 
 void materialTriangles::addOneMaterialTextureSeamVertex(int vertex, int(&textures)[2]) {
-
-	if (vertex == 8151)
-		std::cout << "In addTexSeam at 8151";
 	std::vector<int> newTx;
 	newTx.reserve(2);
 	auto pr = _oneMaterialSeams.equal_range(vertex);

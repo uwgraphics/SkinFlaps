@@ -194,7 +194,7 @@ public:
 								continue;
 							double dy = startUv->Y - faceNow.second + (oddTri ? 1.0 : 0.0), dx = startUv->X - faceNow.first;
 							if (dy == dx && ((oddTri && -N.X + N.Y >= 0.0) || (!oddTri && N.X - N.Y >= 0.0))) {    // use same test for being exactly on diagonal line as uvToPlaneFace() or possible roundoff error
-								assert(previousEdge < 0);
+//								assert(previousEdge < 0);
 								continue;
 							}
 							s = dx - dy;

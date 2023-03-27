@@ -366,9 +366,9 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			if (prevMat > -1)
 				prevMat = _sutures.firstVertexMaterial(prevMat);
 			if (prevMat != 2 || triMat != 2) {
-sendUserMessage("Can only create an automatic suture line on a skin/mucosal edges-", "USER ERROR");
-_sutures.deleteSuture(i);
-return true;
+				sendUserMessage("Can only create an automatic suture line on a skin/mucosal edges-", "USER ERROR");
+				_sutures.deleteSuture(i);
+				return true;
 			}
 			else
 			_sutures.setLinked(i, true);
