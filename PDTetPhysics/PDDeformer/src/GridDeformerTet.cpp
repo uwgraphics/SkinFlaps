@@ -324,7 +324,22 @@ namespace PhysBAM {
                 DiscretizationType::distributeForces(-x1, suture.m_elementIndex2, suture.m_weights2, f);
             }
         }
-
+#if 1
+		{
+			for (int c = 0; c < m_InternodeConstraints.size(); c++) {
+				const auto& nC = m_InternodeConstraints[c];
+				VectorType x1;
+				x1 = DiscretizationType::interpolateX(nC.m_macroNodes, nC.m_macroWeights, m_X);
+				auto x2 = m_X[nC.m_microNodeNumber];
+				x1 = x1 - x2;
+				x1 *= -nC.m_stiffness;
+				std::cout << x1 << std::endl;
+				DiscretizationType::distributeForces(x1, nC.m_macroNodes, nC.m_macroWeights, f);
+				f[nC.m_microNodeNumber] -= x1;
+			}
+			std::cout << std::endl;
+		}
+#endif
 		{
 			for (int c = 0; c < m_fakeSutures.size(); c+=2) {
 				VectorType x0, x1, x;
