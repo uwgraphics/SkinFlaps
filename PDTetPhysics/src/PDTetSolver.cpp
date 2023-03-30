@@ -532,7 +532,7 @@ void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], const si
 
 }
 
-template<class T, int d>
+/* template<class T, int d>
 void PDTetSolver<T, d>::initializeDeformer_multires(const int(*elements)[d + 1], const uint8_t *tetSizeMultipliers, const size_t nEls, const T gridSize)  // COURT - new version for multires tets
 {
 	static_assert(d == 3, "this operation only support 3 dimension");
@@ -590,10 +590,10 @@ void PDTetSolver<T, d>::initializeDeformer_multires(const int(*elements)[d + 1],
 			m_gridDeformer.m_elementRestVolume[i] = T(::vol) * gridSize * gridSize * gridSize;  // *sizeMult* sizeMult* sizeMult;  // COURT same bug as Bouaziz?
 		}
 	}
-}
+} */
 
 
-template<class T, int d>
+/* template<class T, int d>
 int PDTetSolver<T, d>::addInterNodeConstraint(const int microNode, int nMacros, const int *macroNodes, const T *macroWeights, const T stiffness) // COURT added 
 {
 	typename DeformerType::InternodeConstraint inC{};
@@ -604,7 +604,7 @@ int PDTetSolver<T, d>::addInterNodeConstraint(const int microNode, int nMacros, 
 	inC.m_macroWeights.assign(macroWeights, macroWeights + nMacros);
 	m_gridDeformer.m_InternodeConstraints.push_back(inC);
 	return (int)m_gridDeformer.m_InternodeConstraints.size() - 1;
-}
+} */
 
 
 template<class T, int d>
