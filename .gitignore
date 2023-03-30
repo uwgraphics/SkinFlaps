@@ -353,3 +353,4 @@ MigrationBackup/
 !/Model/*
 !/History/*
 /History/junk.hst
+/History/F2.hst
