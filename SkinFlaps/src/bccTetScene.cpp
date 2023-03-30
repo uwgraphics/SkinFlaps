@@ -353,6 +353,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 
 		std::vector<uint8_t> tetSizeMult;
 
+
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
 			uint8_t sizeBit = 1;
