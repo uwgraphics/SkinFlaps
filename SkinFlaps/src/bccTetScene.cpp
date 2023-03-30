@@ -352,8 +352,6 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 //		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
 
 		std::vector<uint8_t> tetSizeMult;
-		tetSizeMult.assign(_vnTets.tetNumber(), 1);
-
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
 			uint8_t sizeBit = 1;
