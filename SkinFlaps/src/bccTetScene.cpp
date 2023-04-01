@@ -334,7 +334,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-		_vnTets.decimate(2, 6, true);
+		_vnTets.decimate(4, 8, false);
 
 		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
 
