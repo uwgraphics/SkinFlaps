@@ -753,8 +753,8 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 		if (_toolState == 0) {  // Too many spurius hook moves recorded due to zoom releases. Fixed in cleftSimViewer.
 			Vec3f xyz, selXyz;
 			int hookNum = atoi(_selectedSurgObject.c_str() + 2);
-//			_hooks.getHookPosition(hookNum, xyz.xyz);
-//			_hooks.getSelectPosition(hookNum, selXyz.xyz);
+			_hooks.getHookPosition(hookNum, xyz.xyz);
+			_hooks.getSelectPosition(hookNum, selXyz.xyz);
 			selXyz -= xyz;
 			if (selXyz.length2() < 0.01f)  // ignore small movements to unclutter history file
 				return true;

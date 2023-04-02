@@ -107,6 +107,24 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	hpr.first->second._strong = tiny;
 	++_hookNow;
 	hpr.first->second.triangle = triangle;
+
+
+	// COURT temporary fix for multires tets
+	int* tr = tri->triangleVertices(triangle), tetIdx;
+	if (uv[0] > 0.5f) {
+		uv[0] = 1.0f;
+		uv[1] = 0.0f;
+	}
+	else if (uv[1] > 0.5f) {
+		uv[0] = 0.0f;
+		uv[1] = 1.0f;
+	}
+	else {
+		uv[0] = 0.0f;
+		uv[1] = 0.0f;
+	}
+
+
 	hpr.first->second.uv[0] = uv[0];
 	hpr.first->second.uv[1] = uv[1];
 	hpr.first->second._tri = tri;
@@ -145,7 +163,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	else
 		hpr.first->second._constraintId = -1;  // signal that this is a dummy hook that needs a constraint later
 
-		// alrewady done above
+		// already done above
 //	tri->getBarycentricPosition(triangle, uv, xyz);
 //	hpr.first->second.xyz = (Vec3f)xyz;
 //	om[12] = xyz[0]; om[13] = xyz[1]; om[14] = xyz[2];
