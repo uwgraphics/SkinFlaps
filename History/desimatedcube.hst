@@ -1,0 +1,20 @@
+[
+  {
+    "loadSceneFile":"cube.smd"
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.381239,
+        0.425561
+      ],
+      "hookNum":0,
+      "material":2
+    }
+  }
+]

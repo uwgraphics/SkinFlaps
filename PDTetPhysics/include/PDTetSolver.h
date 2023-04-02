@@ -87,9 +87,12 @@ public:
 
 	// COURT added these 2 functions for multiresolution physics
 	void initializeDeformer_multires(const int(*elements)[d + 1], const uint8_t *tetSizeMultipliers, const size_t nEls, const T gridSize);
-	int addInterNodeConstraint(const int microNode, int nMacros, const int* macroNodes, const T* macroWeights, const T stiffness);
+	// int addInterNodeConstraint(const int microNode, int nMacros, const int* macroNodes, const T* macroWeights, const T stiffness);
 
 
+
+
+	int addInterNodeConstraint(const int microNode, const int(&macroNodes)[d], const T(&barycentricWeight)[d], const T stiffness);
 
 	int addConstraint(const long tet, const T(&barycentricWeight)[d], const T(&hookPosition)[d], const T stiffness, const T limit = std::numeric_limits<T>::max());  // returns constraint index
 

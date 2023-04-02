@@ -324,7 +324,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_tetsModified = false;
 
 #ifdef _DEBUG
-		maximumDimensionSubdivisions = 17;
+		maximumDimensionSubdivisions = 90; //17;
 #else
 			maximumDimensionSubdivisions = 90;
 #endif
@@ -334,7 +334,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-		_vnTets.decimate(4, 8, false);
+		_vnTets.decimate(4, 6, false);
 
 		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
 
@@ -352,6 +352,8 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 //		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
 
 		std::vector<uint8_t> tetSizeMult;
+
+
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
 			uint8_t sizeBit = 1;

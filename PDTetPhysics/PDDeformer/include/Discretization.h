@@ -33,6 +33,7 @@ template <class StateVariable> struct TetrahedralDiscretization {
     using ConstraintType = SoftConstraint<VectorType, elementNodes, IndexType>;
     using SutureType = SutureConstraint<VectorType, elementNodes, IndexType>;
     using CollisionSutureType = SlidingConstraint <VectorType, elementNodes, IndexType>;
+    using InternodeConstraint = NodeToNodesConstraint<VectorType, IndexType>;  // COURT added
 
 
     using ShapeMatrixType = MATRIX<T, d>;
@@ -43,6 +44,7 @@ template <class StateVariable> struct TetrahedralDiscretization {
 
     static inline const ElementIndexType &getElementIndex(const ElementType &element) { return element; }
 
+#if 0
     static inline VectorType interpolateX(const ElementIndexType &elementIndex, const WeightType &weights,
                                           const StateVariableType &x) {
         VectorType result{};
@@ -51,13 +53,34 @@ template <class StateVariable> struct TetrahedralDiscretization {
         }
         return result;
     }
+#else
+    template <int nNodes>
+    static inline VectorType interpolateX(const std::array<IndexType, nNodes>& elementIndex, const std::array<T, nNodes>& weights,
+        const StateVariableType& x) {
+        VectorType result{};
+        for (int v = 0; v < nNodes; v++) {
+            result += weights[v] * IteratorType::at(x, elementIndex[v]);
+        }
+        return result;
+    }
+#endif
 
-    static inline void distributeForces(const VectorType force, const ElementIndexType &elementIndex, const WeightType weights,
+#if 0
+    static inline void distributeForces(const VectorType force, const ElementIndexType &elementIndex, const WeightType& weights,
                                         StateVariableType &f) {
         for (int v = 0; v < elementNodes; v++) {
             IteratorType::at(f, elementIndex[v]) += weights[v] * force;
         }
     }
+#else 
+    template <int nNodes>
+    static inline void distributeForces(const VectorType force, const std::array<IndexType, nNodes>& elementIndex, const std::array<T, nNodes>& weights,
+        StateVariableType& f) {
+        for (int v = 0; v < nNodes; v++) {
+            IteratorType::at(f, elementIndex[v]) += weights[v] * force;
+        }
+    }
+#endif
 
     static bool isInsideElement(const ElementIndexType &elementIndex, const StateVariableType &x,
                                 const VectorType &vector) {
@@ -180,6 +203,20 @@ template <class StateVariable> struct TetrahedralDiscretization {
             S(i + 2, i + 1) = 1;
         }
         stiffnessMatrix = S * DmInverse * DmInverse.Transposed() * S.Transposed() * constant;
+    }
+
+    static void computeMicroNodeTensor(MATRIX_MXN<T>& stiffnessMatrix, std::array<IndexType, d+1>& elementIndex, const InternodeConstraint& microNode) {
+        for (int i = 0; i < d; i++) {
+            elementIndex[i] = microNode.m_macroNodes[i];
+        }
+        elementIndex[d] = microNode.m_microNodeNumber;
+
+        MATRIX_MXN<T> weightMatrix(1, d+1);
+        for (int i = 0; i < d; i++) {
+            weightMatrix(1, i + 1) = microNode.m_macroWeights[i];
+        }
+        weightMatrix(1, d + 1) = -1;
+        stiffnessMatrix = weightMatrix.Transpose_Times(weightMatrix) * -microNode.m_stiffness;
     }
 
     static void computeConstraintTensor(MATRIX_MXN<T>& stiffnessMatrix, const ConstraintType &constraint) {

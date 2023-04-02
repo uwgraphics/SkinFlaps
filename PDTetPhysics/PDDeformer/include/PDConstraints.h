@@ -29,10 +29,9 @@ namespace PhysBAM {
     };
 
     template <class VectorType, class IndexType> struct NodeToNodesConstraint {  // COURT added
-        std::vector<IndexType> m_macroNodes{};
-        VectorType m_xT;  // always 0 don't bother
+        std::array<IndexType,VectorType::dimension > m_macroNodes{}; // All the T junctions nodes are somehow imbedded on a face (3D) or edge (2D)
         typename VectorType::ELEMENT m_stiffness;
-        std::vector<typename VectorType::ELEMENT> m_macroWeights;
+        std::array<typename VectorType::ELEMENT, VectorType::dimension> m_macroWeights;
         int m_microNodeNumber;
     };
 }
