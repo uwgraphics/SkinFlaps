@@ -301,7 +301,7 @@ void vnBccTetrahedra::vertexMaterialCoordinate(const int vertex, std::array<floa
 }
 
 void vnBccTetrahedra::gridLocusToBarycentricWeight(const Vec3f &gridLocus, const bccTetCentroid &tetCentroid, Vec3f &barycentricWeight)
-{
+{  // COURT fix me for multires
 	Vec3f B(gridLocus);
 	// set barycentric coordinate within that tet
 	std::array<short, 3> xyz;
@@ -890,39 +890,6 @@ void vnBccTetrahedra::materialCoordsToNodeSpatialVector()
 	}
 }
 
-int vnBccTetrahedra::parametricTriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus)
-{  // in material coords
-	int* tr = _mt->triangleVertices(mtTriangle);
-	Vec3f tV[3];
-	for (int i = 0; i < 3; ++i)
-		vertexGridLocus(tr[i], tV[i]);
-	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
-	bccTetCentroid tC;
-	gridLocusToTetCentroid(gridLocus, tC);
-	for (int i = 0; i < 3; ++i) {
-		int vt = getVertexTetrahedron(tr[i]);
-		if (tC == tetCentroid(vt))
-			return vt;
-	}
-	// find candidate cubes
-	std::list<int> cc, tp;
-	centroidTets(tC, cc);
-	if (cc.size() < 1) {
-		assert(false);
-		return -1;
-	}
-	if (cc.size() < 2)
-		return cc.front();
-	for (auto c : cc) {
-		for (int i = 0; i < 3; ++i) {
-			if (decreasingCentroidPath(c, getVertexTetrahedron(tr[i]), tp))
-				return c;
-		}
-	}
-	assert(false);
-	return -1;
-}
-
 bool vnBccTetrahedra::insideTet(const bccTetCentroid& tc, const Vec3f& gridLocus) {
 	int dd = 1, hc = -1;
 	while (true) {
@@ -1051,6 +1018,73 @@ bool vnBccTetrahedra::insideTet(const bccTetCentroid& tc, const std::array<short
 			return false;
 	}
 	return true;
+}
+
+int vnBccTetrahedra::parametricEdgeTet(const int vertex0, const int vertex1, const float param, Vec3f& gridLocus)
+{  // new multi resolution version
+	Vec3f tV[2];
+	vertexGridLocus(vertex0, tV[0]);
+	vertexGridLocus(vertex1, tV[1]);
+	gridLocus = tV[0] * (1.0f - param) + tV[1] * param;
+	bccTetCentroid tC;
+	gridLocusToTetCentroid(gridLocus, tC);  // new version only return a valid tc from current mesh
+	int tetOut = getVertexTetrahedron(vertex0);
+	if (tC == _tetCentroids[tetOut])
+		return tetOut;
+	tetOut = getVertexTetrahedron(vertex1);
+	if (tC == _tetCentroids[tetOut])
+		return tetOut;
+	// find candidate cubes
+	auto pr = _tetHash.equal_range(tC);  // possibly wrong due to multires
+	int nTets = std::distance(pr.first, pr.second);
+	if (nTets < 1) {
+		assert(false);
+		return -1;
+	}
+	else if(nTets < 2)
+		return pr.first->second;
+	std::list<int> tetPath;
+	for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
+		if (decreasingCentroidPath(tcit->second, _vertexTets[vertex0], tetPath))
+			return tcit->second;
+		if (decreasingCentroidPath(tcit->second, _vertexTets[vertex1], tetPath))
+			return tcit->second;
+	}
+	assert(false);
+	return -1;
+}
+
+int vnBccTetrahedra::parametricTriangleTet(const int *vertices, const float (&uv)[2], Vec3f& gridLocus)
+{  // new multi resolution version
+	Vec3f tV[3];
+	for (int i = 0; i < 3; ++i)
+		vertexGridLocus(vertices[i], tV[i]);
+	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
+	bccTetCentroid tC;
+	gridLocusToTetCentroid(gridLocus, tC);  // new version only return a valid tc from current mesh
+	for (int i = 0; i < 3; ++i) {
+		int tetOut = _vertexTets[vertices[i]];
+		if (tC == _tetCentroids[tetOut])
+			return tetOut;
+	}
+	// find candidate cubes
+	auto pr = _tetHash.equal_range(tC);  // possibly wrong due to multires
+	int nTets = std::distance(pr.first, pr.second);
+	if (nTets < 1) {
+		assert(false);
+		return -1;
+	}
+	else if (nTets < 2)
+		return pr.first->second;
+	std::list<int> tetPath;
+	for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
+		for (int i = 0; i < 3; ++i) {
+			if (decreasingCentroidPath(tcit->second, _vertexTets[vertices[i]], tetPath))
+				return tcit->second;
+		}
+	}
+	assert(false);
+	return -1;
 }
 
 vnBccTetrahedra::vnBccTetrahedra() : _nodeSpatialCoords(nullptr), _firstInteriorTet(-1)

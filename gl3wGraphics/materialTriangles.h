@@ -99,7 +99,7 @@ public:
 	std::vector<Vec3f>& getPositionArray() {return _xyz;}
 	std::vector<Vec2f>& getTextureArray() { return _uv; }
 	bool localPick(const float *lineStart, const float *lineDirection, float(&position)[3], int &triangle, float(&triangleParam)[2], const int onlyMaterial = -1);
-//	int linePick(const float *lineStart, const float *lineDirection, std::vector<float> &positions, std::vector<int> &triangles, std::vector<float> &params, const int onlyMaterial=-1);
+	int linePick(const Vec3f& lineStart, const Vec3f& lineDirection, std::vector<Vec3f> &positions, std::vector<int> &triangles, std::vector<float> &params, const int onlyMaterial=-1);
 //	int linePick(const float *lineStart, const float *lineDirection, std::vector<float> &rayParams, std::vector<int> &triangles, std::vector<Vec2f> &triangleParams);
 	int splitTriangleEdge(int triangle, int edge, const float parameter);
 	int addNewVertexInMidTriangle(int triangle, const float (&uvParameters)[2]);

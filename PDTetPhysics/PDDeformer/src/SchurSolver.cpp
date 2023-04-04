@@ -74,7 +74,15 @@ namespace PhysBAM {
         }
     }
 
-   
+
+
+    template<class Discretization, class IntType>  // COURT added for interNodeConstraints
+    inline void SchurSolver<Discretization, IntType>::
+        accumNodeBarycentricsToTensor(const IntType node, const std::vector<IntType>& barycentricIndices, const std::vector<IntType>& barycentricWeights) {
+        using IteratorType = Iterator<NodeArrayType>;
+    }
+
+
 
 
 

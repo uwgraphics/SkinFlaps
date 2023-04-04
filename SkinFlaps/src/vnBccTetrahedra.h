@@ -55,6 +55,9 @@ public:
 	inline const float *nodeSpatialCoordinatePtr(const int nodeIndex) { return _nodeSpatialCoords[nodeIndex].xyz; }
 	inline double getTetUnitSize() { return _unitSpacing; }
 	inline double getTetUnitSizeInv() { return _unitSpacingInv; }
+
+	inline materialTriangles* getMaterialTriangles() { return _mt; }
+
 	// next set of routines do transformations from one coordinate system to another
 	inline void spatialToGridCoords(const Vec3f &spatialCoords, Vec3f &gridCoords){ gridCoords = spatialCoords - _minCorner; gridCoords *= (float)_unitSpacingInv; }  // only for MATERIAL spatial coord input
 	void gridLocusToTetCentroid(const Vec3f &gridLocus, bccTetCentroid &tetCentroid);
@@ -140,7 +143,8 @@ public:
 	void edgeAdjacentTets(const int tet, const int edge, std::list<int> &adjTets);  // input one of six edges in permutation order 0-123, 1-23, and 2-3
 	void edgeNodes(const int tet, const int edge, int &n0, int &n1);  // same edge numbering as above
 	bool decreasingCentroidPath(int startTet, const int targetTet, std::list<int> &tetPath);  // true if constantly decreasing distance centroid path exists.
-	int parametricTriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus);  // returns grid locus and tetrahedron at parametric location uv in input triangle
+	int parametricTriangleTet(const int* vertices, const float(&uv)[2], Vec3f& gridLocus);  // returns grid locus and tetrahedron at parametric location uv in input triangle
+	int parametricEdgeTet(const int vertex0, const int vertex1, const float param, Vec3f& gridLocus);
 
 //	inline void setNodeFixationState(const int node, bool fixed){ if (fixed) _fixedNodes.insert(node);  else  _fixedNodes.erase(node); }
 //	inline bool nodeFixed(const int node){ return _fixedNodes.find(node) != _fixedNodes.end(); }
@@ -198,6 +202,7 @@ protected:
 	friend class vnBccTetCutter;
 	friend class vnBccTetCutter_omp;
 	friend class skinCutUndermineTets;
+	friend class deepCut;
 };
 
 #endif // __VN_BCC_TETS__

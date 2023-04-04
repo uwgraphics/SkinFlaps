@@ -88,14 +88,16 @@ protected:
 		Vec3d N;
 		double d;
 		double VlengthSqInv;
-		std::vector<materialTriangles::matTriangle> quadTriangles;
+		std::vector<int> quadTriangles;
+//		std::vector<materialTriangles::matTriangle> quadTriangles;
 	}_endPlanes[2];
 	struct deepPost {
 		bool closedEnd;
 		std::vector<rayTriangleIntersect> triIntersects;
 		Vec3d rayDirection;
 		bilinearPatch bl;
-		std::vector<materialTriangles::matTriangle> quadTriangles;
+		std::vector<int> quadTriangles;
+//		std::vector<materialTriangles::matTriangle> quadTriangles;
 	};
 	std::vector< deepPost> _deepPosts;
 	struct vertUvPolygon {
@@ -148,7 +150,8 @@ protected:
 	bool deepConnectToPreviousPost(int postNum);
 	void mat2BorderSplit(int borderV, int borderTx, int incisionTopV);
 	bool planeRayIntersection(const Vec3d P, const Vec3d R, const endPlane* ep, double& rayParam, Vec2d& faceParam);
-	void makePolygonTriangles(const std::list<int>& polyVerts, const std::list<Vec2d>& polyUV, const bilinearPatch* blp, const endPlane* ep, std::vector<materialTriangles::matTriangle>& polyTriangles);
+	void makePolygonTriangles(const std::list<int>& polyVerts, const std::list<Vec2d>& polyUV, const bilinearPatch* blp, const endPlane* ep, std::vector<int>& polyTriangles);
+//	void makePolygonTriangles(const std::list<int>& polyVerts, const std::list<Vec2d>& polyUV, const bilinearPatch* blp, const endPlane* ep, std::vector<materialTriangles::matTriangle>& polyTriangles);
 	bool deepCutEndPlane(int endPlane);
 	double surfacePathSub(int topStartV, int deepStartV, int topEndV, int deepEndV, const unsigned int startTE, const double &startParam, const Vec2d& startUV, const int endTriangle,
 		const bilinearPatch* bl, const endPlane* ep, const bool cutPath, surfaceCutLine& scl, double& minimumBilinearV);

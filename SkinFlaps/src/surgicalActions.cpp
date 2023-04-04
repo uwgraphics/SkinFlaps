@@ -272,7 +272,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 //		}
 	}
 	else if (_toolState == 4){	// create suture mode
-/*		auto sn = _gl3w->getNodePtr(objectHit);
+		auto sn = _gl3w->getNodePtr(objectHit);
 		if (sn->getType() != sceneNode::nodeType::MATERIAL_TRIANGLES)
 			return false;
 		materialTriangles* tr = _sg.getMaterialTriangles();
@@ -282,10 +282,13 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_sutures.setGLmatrices(_gl3w->getGLmatrices());
 			_sutures.setPhysicsLattice(_bts.getPdTetPhysics_2());
 			_sutures.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-			_sutures.setDeepCut(&_incisions);
+//			_sutures.setDeepCut(&_incisions);
 			_sutures.setSurgicalActions(this);
 		}
 		int i = 0, edg, triMat = tr->triangleMaterial(triangle);
+
+		triMat = 5;  // COURT another multires hack
+
 		int eTri = triangle;
 		float param, uv[2];
 		tr->getBarycentricProjection(triangle, position, uv);
@@ -378,7 +381,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		_sutures.setSecondVertexPosition(i, _dragXyz);
 		char s[10];
 		sprintf(s, "S_%d", i);
-		_selectedSurgObject = s; */
+		_selectedSurgObject = s;
 	}
 	else if (_toolState == 5) {	// excise mode
 		auto sn = _gl3w->getNodePtr(objectHit);
@@ -530,8 +533,11 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 		}
 		int eTri = triangle;
 		int edge, triMat = tr->triangleMaterial(triangle);
+
+		triMat = 5;  // COURT another multires hack
+
 		float param, uv[2];
-/*		auto invalidate = [&]() {
+		auto invalidate = [&]() {
 			// prevent user from doing a new op until previous one is finished
 			if (!physicsDone)  // physics update thread must be complete before doing next op.
 				throw(std::logic_error("Trying to invalidate a suture while a physics thread is active.\n"));
@@ -615,11 +621,15 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 			return true;
 		}
 		else{
-			if (_sutures.firstVertexMaterial(i) == 2){
-				sendUserMessage("A deep tissue can only be sutured to deep tissue and not a skin/mucosal edge-", "USER ERROR");
-				invalidate();
-				return true;
-			}
+
+			// COURT another multires hack.  Put next section back in later
+//			if (_sutures.firstVertexMaterial(i) == 2){
+//				sendUserMessage("A deep tissue can only be sutured to deep tissue and not a skin/mucosal edge-", "USER ERROR");
+//				invalidate();
+//				return true;
+//			}
+
+
 			tr->getBarycentricProjection(triangle, position, uv);
 			// suturing to a non-skin surface object.
 			if (uv[0] + uv[1] > 0.67f){  // force to an edge
@@ -740,7 +750,7 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 		_sutures.selectSuture(i);
 		_ffg->setToolState(0);
 		_bts.setPhysicsPause(false);
-		setToolState(0); */
+		setToolState(0);
 	}
 	else if (_selectedSurgObject.substr(0, 2) == "H_")	// hook selected. Can only drag hooks.
 	{
@@ -817,7 +827,7 @@ bool surgicalActions::mouseMotion(float dScreenX, float dScreenY)
 		dv.xyz[0] = mm[0]*xyz.xyz[0] + mm[1]*xyz.xyz[1] + mm[2]*xyz.xyz[2];
 		dv.xyz[1] = mm[4]*xyz.xyz[0] + mm[5]*xyz.xyz[1] + mm[6]*xyz.xyz[2];
 		dv.xyz[2] = mm[8]*xyz.xyz[0] + mm[9]*xyz.xyz[1] + mm[10]*xyz.xyz[2];
-//		_sutures.setSecondVertexPosition(sutNum, dv.xyz);
+		_sutures.setSecondVertexPosition(sutNum, dv.xyz);
 	}
 	else if (_toolState != 1 && _selectedSurgObject.substr(0, 2) == "H_")	// hook selected.
 	{

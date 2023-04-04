@@ -5,7 +5,7 @@
 #include <vector>
 #include <list>
 #include "hooks.h"
-//#include "sutures.h"
+#include "sutures.h"
 #include "surgGraphics.h"
 #include "fence.h"
 
@@ -76,7 +76,7 @@ private:
 	std::string _selectedSurgObject,_dragTissue;
 	surgGraphics _sg;	// dynamic triangulated skin object
 	hooks _hooks;
-//	sutures _sutures;
+	sutures _sutures;
 //	deepCut _incisions;  // derived from skinCutUndermineTets class
 	skinCutUndermineTets _incisions;  // derived from skinCutUndermineTets class
 

@@ -101,11 +101,15 @@ public:
 		int sns = subNodes.size();
 		assert(sns == faceNodes.size() && sns == faceBarycentrics.size());
 		for (int i = 0; i < sns; i++) {
-			int l = faceNodes[i].size() < 3 ? faceNodes[i].size() : 3;
+			int l = faceNodes[i].size() < 3 ? faceNodes[i].size() : 3;  // QISI this is wrong. Rarely faceNodes[i].size() can be 4 or more.  COURT
+
+			if (l != 3)
+				int junk = 0;
+
 			int fN[3]{}; for (int v = 0; v < l; ++v) fN[v] = faceNodes[i][v];
 			float bC[3]{}; for (int v = 0; v < l; ++v) bC[v] = faceBarycentrics[i][v];
 			int handle = m_solver.addInterNodeConstraint(subNodes[i], fN, bC, internodeWeight);
-			int junk = handle;
+//			int junk = handle;
 //			fixedTetConstraints.push_back(handle);
 		}
 	}

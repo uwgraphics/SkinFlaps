@@ -380,6 +380,10 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		faceBarys.reserve(snSize);
 		for (auto& dn : _vnTets.decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
 			subNodes.push_back(dn.first);
+
+			if (dn.second.faceNodes.size() != 3)
+				int junk = 0;
+
 			faceNodes.push_back(dn.second.faceNodes);
 			faceBarys.push_back(dn.second.faceParams);
 		}

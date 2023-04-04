@@ -725,27 +725,26 @@ materialTriangles::~materialTriangles(void)
 	return picked;
 } */
 
-/* int materialTriangles::linePick(const float* lineStart, const float* lineDirection, std::vector<float>& positions, std::vector<int>& triangles, std::vector<float>& params, const int onlyMaterial)
+int materialTriangles::linePick(const Vec3f& lineStart, const Vec3f& lineDirection, std::vector<Vec3f>& positions, std::vector<int>& triangles, std::vector<float>& params, const int onlyMaterial)
+// int materialTriangles::linePick(const float* lineStart, const float* lineDirection, std::vector<float>& positions, std::vector<int>& triangles, std::vector<float>& params, const int onlyMaterial)
 {
 	std::map<float, lineHit> hits;
-	rayHits(lineStart, lineDirection, hits);
+	rayHits(lineStart.xyz, lineDirection.xyz, hits);
 	positions.clear();	triangles.clear();	params.clear();
 	positions.reserve(hits.size() * 3);
 	triangles.reserve(hits.size());
 	params.reserve(hits.size());
 	for (auto it = hits.begin(); it != hits.end(); ++it) {
-		if (onlyMaterial>-1 && _tris[it->second.triangle].material != onlyMaterial)
+		if (onlyMaterial>-1 && _triMat[it->second.triangle] != onlyMaterial)
 			continue;
 		params.push_back(it->first);
 		triangles.push_back(it->second.triangle);
-		positions.push_back(it->second.v[0]);
-		positions.push_back(it->second.v[1]);
-		positions.push_back(it->second.v[2]);
+		positions.push_back(it->second.v);
 	}
 	return (int)params.size();
 }
 
-int materialTriangles::linePick(const float *lineStart, const float *lineDirection, std::vector<float> &rayParams, std::vector<int> &triangles, std::vector<Vec2f> &triangleParams)
+/* int materialTriangles::linePick(const float* lineStart, const float* lineDirection, std::vector<float>& rayParams, std::vector<int>& triangles, std::vector<Vec2f>& triangleParams)
 {
 	std::map<float, lineHit> hits;
 	rayHits(lineStart, lineDirection, hits);
