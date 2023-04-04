@@ -44,6 +44,10 @@ private:
 
 	bool hasCollision = false;
 
+	std::vector<int> invalidNodes;
+	std::vector<std::vector<int>> invalidEmbedding;
+	std::vector<std::vector<float>> invalidWeights;
+
 public:
 
 	inline T* getPositionPtr() {
@@ -87,7 +91,7 @@ public:
 
 	// COURT added these 2 functions for multiresolution physics
 	void initializeDeformer_multires(const int(*elements)[d + 1], const uint8_t *tetSizeMultipliers, const size_t nEls, const T gridSize);
-	// int addInterNodeConstraint(const int microNode, int nMacros, const int* macroNodes, const T* macroWeights, const T stiffness);
+	int addInterNodeConstraint(const int microNode, int nMacros, const int* macroNodes, const T* macroWeights, const T stiffness);
 
 
 

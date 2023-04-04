@@ -6,4 +6,4 @@
 #pragma once
 
     enum class NodeType { Inactive = 0, Active = 1, Dirichlet = 2, Collision = 3 };
-    enum class ElementFlag {unCollisionEl = 1, CollisionEl = 2};
+    enum class ElementFlag {unCollisionEl = 1, CollisionEl = 2, inActive = 3};

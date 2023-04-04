@@ -298,8 +298,14 @@ void PDTetSolver<T, d>::solve()
 	}
 
 	for (IteratorType i(delta_X); !i.isEnd(); i.next())
-		if (i.value(m_gridDeformer.m_nodeType) == NodeType::Inactive)
-			i.value(delta_X) = VectorType();
+	 	if (i.value(m_gridDeformer.m_nodeType) == NodeType::Inactive)
+	 		i.value(delta_X) = VectorType();
+	for (int i = 0; i < invalidNodes.size(); ++i) {
+		m_gridDeformer.m_X[invalidNodes[i]] = VectorType();
+		for (int j = 0; j < invalidEmbedding[i].size(); ++j) {
+			m_gridDeformer.m_X[invalidNodes[i]] += invalidWeights[i][j] * m_gridDeformer.m_X[invalidEmbedding[i][j]];
+		}
+	}
 }
 
 template<class T, int d>
@@ -443,6 +449,9 @@ inline void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], c
 	m_gridDeformer.m_sutures.clear();
 	m_gridDeformer.m_collisionSutures.clear();
 	m_gridDeformer.m_InternodeConstraints.clear();
+	invalidNodes.clear();
+	invalidEmbedding.clear();
+	invalidWeights.clear();
 
 
 	m_gridDeformer.m_X.resize(nNodes);
@@ -534,7 +543,7 @@ void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], const si
 }
 
 template<class T, int d>
-void PDTetSolver<T, d>::initializeDeformer_multires(const int(*elements)[d + 1], const uint8_t *tetSizeMultipliers, const size_t nEls, const T gridSize)  // COURT - new version for multires tets
+void PDTetSolver<T, d>::initializeDeformer_multires(const int(*elements)[d + 1], const uint8_t* tetSizeMultipliers, const size_t nEls, const T gridSize)  // COURT - new version for multires tets
 {
 	static_assert(d == 3, "this operation only support 3 dimension");
 	using namespace PhysBAM;
@@ -593,24 +602,23 @@ void PDTetSolver<T, d>::initializeDeformer_multires(const int(*elements)[d + 1],
 	}
 }
 
-#if 0
 template<class T, int d>
-int PDTetSolver<T, d>::addInterNodeConstraint(const int microNode, int nMacros, const int *macroNodes, const T *macroWeights, const T stiffness) // COURT added 
+int PDTetSolver<T, d>::addInterNodeConstraint(const int microNode, int nMacros, const int *macroNodes, const T *macroWeights, const T stiffness) // Qisi: nodes that are actually completely internal
 {
-	std::cout << microNode << " -> ";
-	for (int i = 0; i < nMacros; ++i)
-		std::cout << macroNodes[i] << " ";
-	std::cout << std::endl;
-	typename DeformerType::InternodeConstraint inC{};
-	inC.m_microNodeNumber = microNode;
-	// inC.m_xT = { 0.0, 0.0, 0.0 };  // COURT unnecessary?
-	inC.m_stiffness = stiffness;
-	inC.m_macroNodes.assign(macroNodes, macroNodes + nMacros);
-	inC.m_macroWeights.assign(macroWeights, macroWeights + nMacros);
-	m_gridDeformer.m_InternodeConstraints.push_back(inC);
-	return (int)m_gridDeformer.m_InternodeConstraints.size() - 1;
+	m_gridDeformer.m_nodeType[microNode] = NodeType::Inactive;
+	std::vector<int> macroN;
+	std::vector<T> macroW;
+
+	for (int i = 0; i < nMacros; ++i) {
+		macroN.push_back(macroNodes[i]);
+		macroW.push_back(macroWeights[i]);
+	}
+	invalidEmbedding.push_back(macroN);
+	invalidWeights.push_back(macroW);
+	invalidNodes.push_back(microNode);
+
+	return invalidEmbedding.size() - 1;
 }
-#endif
 
 template<class T, int d>
 int PDTetSolver<T, d>::addInterNodeConstraint(const int microNode, const int (&macroNodes)[d], const T(&barycentricWeight)[d],  const T stiffness) // COURT added 
