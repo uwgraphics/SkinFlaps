@@ -75,15 +75,27 @@ namespace PhysBAM {
     }
 
 
-
-    template<class Discretization, class IntType>  // COURT added for interNodeConstraints
+    template<class Discretization, class IntType>  // COURT added this debug subroutine to isolate Release only crash of physics thread
+    template<int elementNodesN>
     inline void SchurSolver<Discretization, IntType>::
-        accumNodeBarycentricsToTensor(const IntType node, const std::vector<IntType>& barycentricIndices, const std::vector<IntType>& barycentricWeights) {
+        accumToTensor_debug(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix, const std::array<IndexType, elementNodesN>& elementIndex) {
         using IteratorType = Iterator<NodeArrayType>;
+        for (int i = 0; i < elementNodesN; i++) {
+            int row = IteratorType::at(m_numbering, elementIndex[i]);
+            if (row >= 0) {
+                for (int j = 0; j < elementNodesN; j++) {
+                    int col = IteratorType::at(m_numbering, elementIndex[j]);
+                    if (col >= row) {
+                        if (m_tensor[row].find(col) == m_tensor[row].end())
+//                            ;
+                            m_tensor[row].insert(std::pair<int, T>(col, stiffnessMatrix(i + 1, j + 1)));
+                        else
+                            m_tensor[row][col] += stiffnessMatrix(i + 1, j + 1);
+                    }
+                }
+            }
+        }
     }
-
-
-
 
 
 
@@ -294,15 +306,20 @@ namespace PhysBAM {
                 elementIndex);
         }
 
+        std::cout << "About to add microNode constraints in computeTensor()\n";  // COURT debug
+
         for (const auto& c : microNodes) {
             MATRIX_MXN<T> stiffnessMatrix;
             std::array<IndexType, d + 1> elementIndex;
             auto tmp = c;
             tmp.m_stiffness = 0;
             DiscretizationType::computeMicroNodeTensor(stiffnessMatrix, elementIndex, tmp);
-            accumToTensor<d + 1>(stiffnessMatrix,
-                elementIndex);
+            accumToTensor_debug<d + 1>(stiffnessMatrix,
+                elementIndex);  // COURT created this routine to isolate Release only exception in accumToTensor()
         }
+
+        std::cout << "Accumulated microNode constraints in computeTensor()\n";  // COURT debug
+
     }
 
     template<class Discretization, class IntType>
@@ -369,7 +386,7 @@ namespace PhysBAM {
             auto tmp = c;
             tmp.m_stiffness = 0;
             DiscretizationType::computeMicroNodeTensor(stiffnessMatrix, elementIndex, tmp);
-            accumToTensor<d+1>(stiffnessMatrix,
+            accumToTensor_debug<d+1>(stiffnessMatrix,
                 elementIndex);
         }
 

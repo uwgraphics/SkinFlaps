@@ -133,7 +133,7 @@ void gl3wGraphics::drawAll()
 	_glM.setFrameAndRotation(&m[0][0]);
 //	std::list<sceneNode*>::iterator nit;
 	GLuint currentProgram=0;
-	for(auto nit=_nodes.begin(); nit!=_nodes.end(); ++nit)	{ // textured TRIANGLES will always happen first
+	for(auto nit = _nodes.begin(); nit != _nodes.end(); ++nit)	{ // textured TRIANGLES will always happen first
 		if (!(*nit)->visible)  continue;
 		if((*nit)->getGlslProgramNumber()!=currentProgram) {
 			currentProgram=(*nit)->getGlslProgramNumber();

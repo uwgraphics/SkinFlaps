@@ -105,18 +105,20 @@ int main(int, char**)
 		}
 		catch (const std::exception& ex)
 		{
-			// speciffic handling for all exceptions extending std::exception, except
+			// specific handling for all exceptions extending std::exception, except
 			// std::runtime_error which is handled explicitly
 			std::string err = "Logic error occurred. Save history file for debug.\n";
 			err += ex.what();
 			ffg.sendUserMessage(err.c_str(), "Logic error");
 			std::cerr << "Error occurred: " << ex.what() << std::endl;
+			std::cerr << "Bye-\n";
 		}
 		catch (...)
 		{
 			// catch any other errors (that we have no information about)
 			ffg.sendUserMessage("Unspecified error occurred.  Save history file for debug.", "Program error");
 			std::cerr << "Unknown failure occurred. Possible memory corruption" << std::endl;
+			std::cerr << "Bye-\n";
 		}
 		glfwSwapBuffers(ffg.FFwindow);
 	}

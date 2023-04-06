@@ -61,9 +61,8 @@ template <class Discretization, class IntType> struct SchurSolver {
     void accumToTensor(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix,
         const std::array<IndexType, elementNodesN>& elementIndex);
 
-
-    inline void accumNodeBarycentricsToTensor(const IntType node, const std::vector<IntType>& barycentricIndices, const std::vector<IntType>& barycentricWeights);  // COURT added for interNodeConstraints
-
+    template <int elementNodesN>
+    void accumToTensor_debug(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix, const std::array<IndexType, elementNodesN>& elementIndex);  // COURT added to separate out microNode crash in Release
 
     template <int elementNodesN>
     void updateTensor(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix,

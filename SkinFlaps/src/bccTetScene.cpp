@@ -326,7 +326,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 #ifdef _DEBUG
 		maximumDimensionSubdivisions = 90; //17;
 #else
-			maximumDimensionSubdivisions = 17;  // 90
+			maximumDimensionSubdivisions = 90;  // 90
 #endif
 
 		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
@@ -389,53 +389,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		}
 		_ptp.addInterNodeConstraints(subNodes, faceNodes, faceBarys, _lowTetWeight);
 
-//		for (auto dn = _vnTets.decNodeConstraints.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
-//			_sot.addFaceSplitConstraint(dn->first, dn->second.faceNodes, dn->second.faceParams, tetWeight);
-
-//		class faceSplitConstraint : public dbConstraint {
-//		public:
-			/** \brief Constraint constructor. The target is the position of vertex idI in the initial positions given in the constructor.
-			  \param idI contains the one index of the vertex that wants to be close to a given target.
-			\param weight The weight of the constraint to be added relative to the other constraints.
-			\param positions The positions of all the n vertices stacked in a 3 by n matrix.
-			*/
-/*			using dbConstraint::idI_;
-			using dbConstraint::weight_;
-			virtual ~faceSplitConstraint() {}
-			// \brief Find the closest configuration from the input positions that satisfy the constraint.
-			///////////////////////////////////////////////////////////////////////////////
-			SHAPEOP_INLINE faceSplitConstraint(const std::vector<int>& idI,  // idI[0] will always be the decimated node
-				const std::vector<Scalar>& parameters,
-				const int faceNode,
-				Scalar weight
-			) :
-				dbConstraint(idI, weight), parameters_(parameters), faceNode_(faceNode) {
-				assert(idI.size() == parameters_.size());
-			}
-			///////////////////////////////////////////////////////////////////////////////
-			SHAPEOP_INLINE void project(const Matrix3X& positions, Matrix3X& projections) const {
-				projections.col(idO_) = Vector3(0.0, 0.0, 0.0);
-			}
-			///////////////////////////////////////////////////////////////////////////////
-			SHAPEOP_INLINE void addConstraint(std::vector<Triplet>& triplets, int& idO) const {
-				idO_ = idO;
-				triplets.push_back(Triplet(idO_, faceNode_, -weight_));
-				for (int n = (int)idI_.size(), i = 0; i < n; ++i)
-					triplets.push_back(Triplet(idO_, idI_[i], parameters_[i] * weight_));
-				idO += 1;
-			}
-			///////////////////////////////////////////////////////////////////////////////
-		private:
-			int faceNode_;
-			std::vector<Scalar> parameters_;
-		};
-		/////////////////////////////////////////////////////////////////////////////// */
-
-
-
-
-
-		//			end = std::chrono::system_clock::now();
+//			end = std::chrono::system_clock::now();
 //			std::chrono::duration<double> elapsed_seconds = end - start;
 //			std::time_t end_time = std::chrono::system_clock::to_time_t(end);
 //			std::string message("Physics initial creation took ");
