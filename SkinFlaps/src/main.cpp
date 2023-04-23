@@ -99,7 +99,7 @@ int main(int, char**)
 		}
 		catch (const std::runtime_error& re)
 		{
-			// speciffic handling for runtime_error
+			// specific handling for runtime_error
 			ffg.sendUserMessage("Runtime error occurred.  Save history file for debug.", "Runtime error");
 			std::cerr << "Runtime error: " << re.what() << std::endl;
 		}

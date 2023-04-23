@@ -126,14 +126,14 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 						break;
 					}
 				} */
-		//		triangle = 19520;
-		//		uv[0] = 0.33;
-		//		uv[1] = 0.33;
+//				triangle = 18120;
+//				uv[0] = 0.33;
+//				uv[1] = 0.33;
 
 		if ((hookNum = _hooks.addHook(tr, triangle, uv, _strongHooks)) > -1)
 		{
 
-			//			return true;  // for above debug use
+//			return true;  // for above debug use
 
 			if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook
 				_ffg->physicsDrag = true;
@@ -196,11 +196,11 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_fence.getPostPos(0, vtx);
 			_fence.getPostNormal(0, nrm);
 			_fence.addPost(tr, _fence.getPostTriangle(0), vtx.xyz, nrm.xyz, endConn, false, false);
-//			_hooks.selectHook(-1);
+			_hooks.selectHook(-1);
 //			_sutures.selectSuture(-1);
 			onKeyDown(GLFW_KEY_ENTER);	// press enter key for user
 		};
-/*		if (_ffg->CtrlOrShiftKeyIsDown()) {
+		if (_ffg->CtrlOrShiftKeyIsDown()) {
 			endConn = true;
 			int edg, oldTriangle = triangle;
 			float param, closeIncisionDistance = _incisions.closestSkinIncisionPoint(vtx, triangle, edg, param);
@@ -239,7 +239,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			}
 		}
 		else
-			tr->getBarycentricProjection(triangle, position, uv); */
+			tr->getBarycentricProjection(triangle, position, uv);
 		if (tr->triangleMaterial(triangle) != 2) {
 			sendUserMessage("With this tool you can only incise from top side of skin.", "USER ERROR");
 			return true;
@@ -247,7 +247,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		tr->getBarycentricPosition(triangle, uv, vtx.xyz);
 		tr->getBarycentricNormal(triangle, uv, nrm.xyz);
 		_fence.addPost(tr, triangle, vtx.xyz, nrm.xyz, endConn, false, false);
-//		_hooks.selectHook(-1);
+		_hooks.selectHook(-1);
 //		_sutures.selectSuture(-1);
 		if (_fence.numberOfPosts() > 1 && endConn)	// this must finish an incision
 			onKeyDown(GLFW_KEY_ENTER);	// press enter key for user
@@ -266,10 +266,10 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		ut.incisionConnect = !_ffg->CtrlOrShiftKeyIsDown();
 		_undermineTriangles.push_back(ut);
 		_bts.updateSurfaceDraw();
-//		if (!_incisions.addUndermineTriangle(triangle, 2, ut.incisionConnect)) {
+		if (!_incisions.addUndermineTriangle(triangle, 2, ut.incisionConnect)) {
 			// ignore false return as it does no harm
-//			_undermineTriangles.pop_back();
-//		}
+			_undermineTriangles.pop_back();
+		}
 	}
 	else if (_toolState == 4){	// create suture mode
 		auto sn = _gl3w->getNodePtr(objectHit);
@@ -1052,7 +1052,7 @@ void surgicalActions::onKeyDown(int key)
 			_historyArray.push_back(iObj);
 			_historyIt = _historyArray.end();
 			if(!nukeThis)	{
-/*				if (!_incisions.skinCut(positions, normals, edgeStart, edgeEnd)) {
+				if (!_incisions.skinCut(positions, normals, edgeStart, edgeEnd)) {
 						sendUserMessage("Incision tool error.  Please save history file for debugging-", "Error Message");
 				}
 				else {
@@ -1060,19 +1060,19 @@ void surgicalActions::onKeyDown(int key)
 						_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
 						while (!physicsDone)  // physics update thread must be complete before doing next op.
 							;
-						physicsDone = false;
-						_ffg->physicsDrag = true;
-						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+//						physicsDone = false;
+//						_ffg->physicsDrag = true;
+//						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 							_bts.updateOldPhysicsLattice();
 							newTopology = true;
 							physicsDone = true;
-							}
-						);
+//							}
+//						);
 					}
 					else {
 						newTopology = true;
 					}
-				} */
+				}
 			}
 			_bts.setPhysicsPause(false);
 			_fence.clear();
@@ -1117,16 +1117,16 @@ void surgicalActions::onKeyDown(int key)
 			while (!physicsDone)
 				;
 			_bts.updateSurfaceDraw();
-//			_incisions.undermineSkin();
+			_incisions.undermineSkin();
 			_undermineTriangles.clear();
-			physicsDone = false;
-			_ffg->physicsDrag = true;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+//			physicsDone = false;
+//			_ffg->physicsDrag = true;
+//			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
 				physicsDone = true;
-				}
-			);
+//				}
+//			);
 			_bts.setPhysicsPause(false);
 		}
 		else if (_toolState == 6)	// deep cut mode
@@ -1902,23 +1902,23 @@ void surgicalActions::nextHistoryAction()
 				mtp->getBarycentricPosition(tri, uv, positions[i].xyz);
 				mtp->getBarycentricNormal(tri, uv, normals[i].xyz);
 			}
-/*			if (!_incisions.skinCut(positions, normals, startIncis, endIncis)) {
+			if (!_incisions.skinCut(positions, normals, startIncis, endIncis)) {
 				sendUserMessage("Incision in history file failed.", "Program error", false);
 			}
 			else {
 				if (_incisions.physicsRecutRequired()) {
-					physicsDone = false;
-					_ffg->physicsDrag = true;
-					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+//					physicsDone = false;
+//					_ffg->physicsDrag = true;
+//					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 						_bts.updateOldPhysicsLattice();
 						newTopology = true;
 						physicsDone = true;
-						}
-					);
+//						}
+//					);
 				}
 				else
 					newTopology = true;
-			} */
+			}
 			++_historyIt;
 		}
 		else if (_historyIt->HasKey("undermine"))
@@ -1949,21 +1949,21 @@ void surgicalActions::nextHistoryAction()
 					historyAttachFailure(msg);
 					return;
 				}
-//				_incisions.addUndermineTriangle(tri, 2, ic);
+				_incisions.addUndermineTriangle(tri, 2, ic);
 			}
 			_gl3w->drawAll();
 			glfwSwapBuffers(_ffg->FFwindow);
 			std::this_thread::sleep_for(std::chrono::milliseconds(800));
-//			_incisions.undermineSkin();
+			_incisions.undermineSkin();
 			_undermineTriangles.clear();
-			physicsDone = false;
-			_ffg->physicsDrag = true;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+//			physicsDone = false;
+//			_ffg->physicsDrag = true;
+//			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
 				physicsDone = true;
-				}
-			);
+//				}
+//			);
 			++_historyIt;
 		}
 		else if (_historyIt->HasKey("excise"))

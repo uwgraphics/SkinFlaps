@@ -458,13 +458,12 @@ int materialTriangles::findAdjacentTriangles(bool forceCompute)
 			if(P.second==false)	// edge match found
 			{
 				if (P.first->reversed == E.reversed && E.vtxMin != E.vtxMax) {
-					throw(std::logic_error("triangle ordering error"));
-					return 2;  // triangle ordering error
+//					throw(std::logic_error("Triangle ordering error"));
+//					return 2;  // triangle ordering error
 				}
 				tcode = P.first->adjCode;
 				adjNow[j] = tcode;
 				_adjs[tcode>>2][tcode&3] = E.adjCode;
-//				_adjs[(tcode>>2)*3+(tcode&0x00000003)] = E.adjCode;
 				M.erase(P.first);
 			}
 			else

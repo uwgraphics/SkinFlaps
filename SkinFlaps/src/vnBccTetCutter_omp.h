@@ -17,6 +17,7 @@ class vnBccTetCutter_omp
 {
 public:
 	bool makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra* vbt, int maximumCubeGridDimension);  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
+	bool remakeVnTets(materialTriangles* mt);  // use above setup with new material coord incisions made in mt
 	vnBccTetCutter_omp(void) {}
 	~vnBccTetCutter_omp(void){}
 
@@ -101,12 +102,14 @@ private:
 	void assignExteriorTetNodes(int exteriorNodeNum, std::vector<extNode>& eNodes);
 	int nearestRayPatchHit(const Vec3f& rayBegin, Vec3f rayEnd, const std::vector<int>& tris, float& distanceSq);  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
 	bool nearestPatchPoint(const short(&gl)[4][3], const int tetIdx, const std::vector<int>& tris, Vec3f& closeP, float& distanceSq);
+	int nearestPatchEdgePoint(const short(&gl)[4][3], const int tetIdx, const std::vector<int>& tris, Vec3f& closeP, float& distanceSq);
 	bool closestPatchPoint(const Vec3f& P, const std::vector<int>& tris, Vec3f& closeP, float& distanceSq);
 	bool pointInsidePatchVertex(const Vec3f& P, const int triangle, const int tIndex);
 	void getConnectedComponents(tetTriangles& tt, std::vector<newTet>& nt_vec, std::unordered_map<std::array<short, 3>, std::list<nodeTetSegment>, arrayShort3Hasher>& local_nts);  // for this centroid split its triangles into solid connected components
 	bool setupBccIntersectionStructures(int maximumGridDimension);
 	void inputTriangle(int tri, std::unordered_map<bccTetCentroid, std::vector<int>, bccTetCentroidHasher>& tc_loc, std::vector<zIntrsct>& zi_loc);
 	void fillNonVnTetCenter();
+	bool tetCutCore();
 
 	friend class bccTetDecimator;
 };

@@ -79,13 +79,16 @@ bool skinCutUndermineTets::skinCut(std::vector<Vec3f> &topCutPoints, std::vector
 
 int skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f &gridLocus)
 {
+
+	assert(false);  // NUKE THIS ROUTINE  use new on in vnt for multires
+
 	int *tr = _mt->triangleVertices(triangle);
 	Vec3f tV[2];
 	_vbt->vertexGridLocus(tr[edge], tV[0]);
 	_vbt->vertexGridLocus(tr[(edge + 1) % 3], tV[1]);
 	gridLocus = tV[0] * (1.0f - param) + tV[1] * param;
 	bccTetCentroid tC;
-	_vbt->gridLocusToTetCentroid(gridLocus, tC);
+	_vbt->gridLocusToLowestTetCentroid(gridLocus, tC);
 	if (tC == _vbt->tetCentroid(_vbt->getVertexTetrahedron(tr[edge])))
 		return _vbt->getVertexTetrahedron(tr[edge]);
 	if (tC == _vbt->tetCentroid(_vbt->getVertexTetrahedron(tr[(edge + 1) % 3])))
@@ -115,13 +118,16 @@ int skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edge
 
 int skinCutUndermineTets::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus)
 {  // in material coords
+
+	assert(false);  // NUKE THIS ROUTINE  use new on in vnt for multires
+
 	int *tr = _mt->triangleVertices(mtTriangle);
 	Vec3f tV[3];
 	for (int i = 0; i < 3; ++i)
 		_vbt->vertexGridLocus(tr[i], tV[i]);
 	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
 	bccTetCentroid tC;
-	_vbt->gridLocusToTetCentroid(gridLocus, tC);
+	_vbt->gridLocusToLowestTetCentroid(gridLocus, tC);
 	for (int i = 0; i < 3; ++i){
 		if (tC == _vbt->tetCentroid(_vbt->_vertexTets[tr[i]]))
 			return _vbt->_vertexTets[tr[i]];
@@ -285,7 +291,8 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 		auto dbit1 = _deepBed.find(tr[(edge + 1) % 3]);
 		assert(dbit0 != _deepBed.end() && dbit1 != _deepBed.end());
 		Vec3f gridLocus;
-		int tet = parametricMTedgeTet(topTriangle, edge, param, gridLocus);
+		int* tr = _mt->triangleVertices(topTriangle);
+		int tet = _vbt->parametricEdgeTet(tr[edge], tr[(edge + 1) % 3], param, gridLocus);
 		topVertex = _mt->splitTriangleEdge(topTriangle, edge, param);
 //		assert(topVertex == _vbt->_vertexTets.size());  No longer necessarily true with skin-border deepCut
 		_vbt->_vertexTets.push_back(tet);
@@ -340,7 +347,7 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 		return;
 	}
 	// New vertex to be created in mid triangle
-	int tet = parametricMTtriangleTet(topTriangle, uv, dp.gridLocus);
+	int tet = _vbt->parametricTriangleTet(_mt->triangleVertices(topTriangle), uv, dp.gridLocus);
 	topVertex = _mt->addNewVertexInMidTriangle(topTriangle, uv);
 	int topTexture = _mt->numberOfTextures() - 1;  // texture of this new vertex
 	assert(topVertex == _vbt->_vertexTets.size());
@@ -694,6 +701,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 	}
 	if (endVertex > -1)
 		vertexCutLine.push_back(endVertex);
+	_mt->findAdjacentTriangles(true);
 	assert(*_mt->vertexFaceTriangle(*tvit) != 0x80000000);  // would signal an unconnected startVertex
 	_mt->getNeighbors(*tvit, nei);
 	auto nit = nei.begin();
@@ -1049,38 +1057,61 @@ bool skinCutUndermineTets::setDeepBed(materialTriangles *mt, const std::string &
 int skinCutUndermineTets::deepPointTetWeight(const std::unordered_map<int, deepPoint>::iterator &dit, Vec3f &baryWeight)
 {  // return deepPoint tet number and baryweight from its grid locus
 	bccTetCentroid tc;
-	_vbt->gridLocusToTetCentroid(dit->second.gridLocus, tc);
-	_vbt->gridLocusToBarycentricWeight(dit->second.gridLocus, tc, baryWeight);
-	if (_vbt->tetCentroid(_vbt->getVertexTetrahedron(dit->first)) == tc)
+	_vbt->gridLocusToLowestTetCentroid(dit->second.gridLocus, tc);
+	if (_vbt->tetCentroid(_vbt->getVertexTetrahedron(dit->first)) == tc) {
+		_vbt->gridLocusToBarycentricWeight(dit->second.gridLocus, tc, baryWeight);
 		return _vbt->getVertexTetrahedron(dit->first);
+	}
 	std::list<int> lt, tp;
 	_vbt->centroidTets(tc, lt);
-	if (lt.empty())
-		return -1L;
-	if (lt.size() < 2)
-		return lt.front();
-	for (auto tet : lt){
-		if (_vbt->decreasingCentroidPath(_vbt->getVertexTetrahedron(dit->first), tet, tp))
-			return tet;
+	int tetOut = -1, count = 0;
+	while (lt.empty()) {
+		tc = _vbt->centroidUpOneLevel(tc);
+		_vbt->centroidTets(tc, lt);
+		++count;
 	}
-	return -1L;
+	if (count > 15)
+		throw(std::logic_error("Modelling error.  Deep bed point not inside solid.\n"));
+	if (lt.size() < 2)
+		tetOut = lt.front();
+	else {
+		for (auto tet : lt) {
+			assert(false);  // COURT debug me for multires
+			if (_vbt->decreasingCentroidPath(_vbt->getVertexTetrahedron(dit->first), tetOut, tp))
+				break;
+		}
+	}
+	_vbt->gridLocusToBarycentricWeight(dit->second.gridLocus, tc, baryWeight);
+	return tetOut;
 }
 
 int skinCutUndermineTets::flapBottomTet(const int topTet, const Vec3f &bottomGridLocus)
 {  // material coord flap bottom tet finder. Return -1 signals error in deep bed data input
 	bccTetCentroid tc;
-	_vbt->gridLocusToTetCentroid(bottomGridLocus, tc);
+	_vbt->gridLocusToLowestTetCentroid(bottomGridLocus, tc);
+	if (_vbt->tetCentroid(topTet) == tc) {
+		return topTet;
+	}
 	std::list<int> lt, tp;
 	_vbt->centroidTets(tc, lt);
-	if (lt.empty())
-		return -1;
-	if (lt.size() < 2)
-		return lt.front();
-	for (auto tet : lt){
-		if (_vbt->decreasingCentroidPath(tet, topTet, tp))
-			return tet;
+	int tetOut = -1, count = 0;
+	while (lt.empty()) {
+		tc = _vbt->centroidUpOneLevel(tc);
+		_vbt->centroidTets(tc, lt);
+		++count;
 	}
-	return -1;
+	if (count > 15)
+		throw(std::logic_error("Modelling error.  Deep bed point not inside solid.\n"));
+	if (lt.size() < 2)
+		tetOut = lt.front();
+	else {
+		for (auto tet : lt) {
+			assert(false);  // COURT debug me for multires
+//			if (_vbt->decreasingCentroidPath(_vbt->getVertexTetrahedron(dit->first), tetOut, tp))
+//				break;
+		}
+	}
+	return tetOut;
 }
 
 void skinCutUndermineTets::collectOldUndermineData()

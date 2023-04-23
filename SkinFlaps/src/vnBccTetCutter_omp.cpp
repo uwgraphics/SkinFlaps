@@ -7,6 +7,7 @@
 #include "Vec3d.h"
 #include "Mat2x2f.h"
 #include "Mat3x3f.h"
+#include "Mat3x3d.h"
 #include "triTriIntersect_Shen.h"
 #include "tri_tri_intersect_Guigue.h"
 
@@ -34,7 +35,99 @@ bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra 
 	if(_mt->findAdjacentTriangles(true))	return false;
 	if (!setupBccIntersectionStructures(maximumGridDimension))
 		return false;
+	return tetCutCore();
+}
 
+
+
+bool vnBccTetCutter_omp::remakeVnTets(materialTriangles* mt)
+{  // uses old vbt to get material coords of mt vertices and grid data, from which it makes new vbt.
+	_mt = mt;
+	_vbt->_mt = mt;
+
+
+/*	_vbt->_barycentricWeights.clear();
+	_vbt->_barycentricWeights.assign(mt->numberOfVertices(), Vec3f());
+	_vbt->_tetHash.clear();
+	_vbt->_tetNodes.clear();
+	evenXy.clear();
+	oddXy.clear();
+	if (_mt->findAdjacentTriangles(true))	return false;
+	if (!setupBccIntersectionStructures(90))
+		return false; */
+
+
+
+
+//	int newVertexStart = _vMatCoords.size();
+	_vMatCoords.resize(_mt->numberOfVertices());
+	// all oldVertices should have an unchanged grid locus
+	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {  // after incisions all new vertices should have been assigned a grid locus associated with the old _vbt
+//	for (int n = _mt->numberOfVertices(), i = newVertexStart; i < n; ++i) {  // after incisions all new vertices should have been assigned a grid locus associated with the old _vbt
+		if (_vbt->getVertexTetrahedron(i) < 0)  // deleted vertex
+			continue;
+		Vec3f Vf;
+		_vbt->vertexGridLocus(i, Vf);
+		_vMatCoords[i].set(Vf);
+	}
+
+
+/*	_vMatCoords.clear();
+	_vMatCoords.assign(_mt->numberOfVertices(), Vec3f());
+	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {
+		Vec3f Vf;
+		Vf.set((const float(&)[3]) * _mt->vertexCoordinate(i));
+		_vMatCoords[i].set((Vf - _vbt->_minCorner) * (float)_vbt->_unitSpacingInv);
+	} */
+
+
+
+	_vbt->_tetHash.clear();
+	_vbt->_tetNodes.clear();
+	_vbt->_nodeGridLoci.clear();
+	_vbt->_tetCentroids.clear();
+	_vbt->_vertexTets.clear();
+	_vbt->_vertexTets.assign(mt->numberOfVertices(), -1);
+
+	_vbt->_nodeSpatialCoords = nullptr;
+	if (_mt->findAdjacentTriangles(true))
+		throw(std::logic_error("topological error in vnBccTetCutter_omp::remakeVnTets()\n"));
+	_vertexTetCentroids.clear();
+	_vertexTetCentroids.assign(_mt->numberOfVertices(), bccTetCentroid());
+//	_vbt->_barycentricWeights.clear();  // unnecessary as memory already allocated. Data will be changed here.
+//	_vbt->_barycentricWeights.assign(_mt->numberOfVertices(), Vec3f());
+	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {
+		_vbt->gridLocusToLowestTetCentroid(_vMatCoords[i], _vertexTetCentroids[i]);
+		// set barycentric coordinate within that tet
+		auto& bw = _vbt->_barycentricWeights[i];
+		_vbt->gridLocusToBarycentricWeight(_vMatCoords[i], _vertexTetCentroids[i], bw);
+		// any vertex on a tet face boundary should be nudged inside
+		bool nudge = false;
+		for (int j = 0; j < 3; ++j) {
+			if (bw[j] < 1e-4f || bw[j] > 0.9999f)
+				nudge = true;
+		}
+		if (bw[0] + bw[1] + bw[2] > 0.9999)
+			nudge = true;
+		if (nudge) {  // vertices on tet boundarys must be pulled inside to avoid dual identities
+			Vec3f nV = (Vec3f(0.25f, 0.25f, 0.25f) - bw) * 0.0002f;
+			bw += nV;
+			_vbt->barycentricWeightToGridLocus(_vertexTetCentroids[i], bw, _vMatCoords[i]);
+		}
+	}
+	// setup lines parallel with Z axis
+	for (auto& exyRow : evenXy) {  // since calling this routine many times just emptying contents
+		for(auto &exyCol : exyRow)
+			exyCol.clear();
+	}
+	for (auto& oxyRow : oddXy) {  // since calling this routine many times just emptying contents
+		for (auto& oxyCol : oxyRow)
+			oxyCol.clear();
+	}
+	return tetCutCore();
+}
+
+bool vnBccTetCutter_omp::tetCutCore() {  // same cut core for first cut and recuts
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
 
@@ -84,13 +177,15 @@ bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra 
 	message += std::to_string(_vbt->_tetNodes.size());
 	message += " tets.";
 	std::cout << message << "\n";
-//	_surgAct->sendUserMessage(message.c_str(), "Timer");
+	//	_surgAct->sendUserMessage(message.c_str(), "Timer");
 
 
 	start = std::chrono::system_clock::now();
 
 	// create and hash all interior nodes
 	createInteriorNodes();
+//	evenXy.clear();  // am reusing these structures for remakeVnTets()
+//	oddXy.clear();
 
 	end = std::chrono::system_clock::now();
 	elapsed_seconds = end - start;
@@ -107,8 +202,8 @@ bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra 
 	_interiorNodes.reserve(_vbt->_nodeGridLoci.size());
 	for (int n = _vbt->_nodeGridLoci.size(), j = 0; j < n; ++j)
 		_interiorNodes.insert(std::make_pair(_vbt->_nodeGridLoci[j], j));
-//	_exteriorNodeIndices.clear();
-//	_exteriorNodeIndices.reserve(_tetTris.size() >> 1);    // COURT later check this reserve size
+	//	_exteriorNodeIndices.clear();
+	//	_exteriorNodeIndices.reserve(_tetTris.size() >> 1);    // COURT later check this reserve size
 	_vbt->_tetCentroids.clear();
 	_vbt->_tetCentroids.reserve(_tetTris.size() >> 1);    // COURT perhaps assign() for multi threading
 
@@ -160,7 +255,7 @@ bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra 
 					nts_locs.push_back(pr.first->first);
 				}
 				else {
-					auto &vr = nts_vec[pr.first->second];
+					auto& vr = nts_vec[pr.first->second];
 					for (auto& nr : nts.second)
 						vr.push_back(std::move(nr));
 				}
@@ -180,10 +275,10 @@ bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra 
 
 	// get tets where vertices reside
 	_vbt->_vertexTets.clear();
-	_vbt->_vertexTets.assign(mt->numberOfVertices(), -1);
+	_vbt->_vertexTets.assign(_mt->numberOfVertices(), -1);
 	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {
 		auto ci = _centroidTriangles.find(_vertexTetCentroids[i]);
-		if(ci == _centroidTriangles.end())
+		if (ci == _centroidTriangles.end())
 			throw(std::logic_error("Couldn't find a tetrahedron containing a vertex.\n"));
 		else if (ci->second.size() < 2)
 			_vbt->_vertexTets[i] = ci->second.front().tetIdx;
@@ -192,7 +287,7 @@ bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra 
 			while (ltit != ci->second.end()) {
 				auto tit = ltit->tris.begin();
 				while (tit != ltit->tris.end()) {
-					int *tr = _mt->triangleVertices(*tit);
+					int* tr = _mt->triangleVertices(*tit);
 					int j;
 					for (j = 0; j < 3; ++j) {
 						if (tr[j] == i) {
@@ -274,6 +369,44 @@ bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra 
 void vnBccTetCutter_omp::createInteriorNodes() {
 	short z;
 	std::array<short, 3> s3;
+	auto solidFilter = [&](std::multimap<double, bool>& mm) {  // isolate solid runs from surface edge and vertex hits and correct switch of coincident surfaces.
+		auto mit = mm.begin();
+		bool even = true;
+		while (mit != mm.end()) {
+			auto mNext = mit;
+			++mNext;
+			if (mNext == mm.end())
+				break;
+			while (mNext->first - mit->first < 1e-4f) {
+				if (mit->second == mNext->second) {  // surface edge or vertex hit
+					mm.erase(mNext);
+					mNext = mit;
+					++mNext;
+				}
+				else if (mit->second != even) {  // coincident surfaces
+					mit->second = even;
+					mNext->second = !even;
+					break;
+				}
+				else
+					break;
+			}
+			even = !even;
+			++mit;
+		}
+
+#ifdef _DEBUG
+		if (mm.size() & 1)
+			int junk = 0;
+		bool inside = true;
+		for (auto mit = mm.begin(); mit != mm.end(); ++mit) {
+			if (mit->second != inside)
+				int junk2 = 0;
+			inside = !inside;
+		}
+#endif
+
+	};
 	auto runInteriorNodes = [&](std::multimap<double, bool>& mm, bool evenLine) {
 		auto mit = mm.begin();
 		auto mend = mm.end();
@@ -316,20 +449,32 @@ void vnBccTetCutter_omp::createInteriorNodes() {
 	};
 	for (short xi = 0; xi < oddXy.size(); ++xi) {
 		for (short yi = 0; yi < oddXy[xi].size(); ++yi) {
+			if (oddXy[xi][yi].empty())
+				continue;
+
+//			if (xi == 31 && yi == 7)
+//				int junk = 0;
+
 			s3[0] = xi * 2 + 1;
 			s3[1] = yi * 2 + 1;
+			solidFilter(oddXy[xi][yi]);
 			runInteriorNodes(oddXy[xi][yi], false);
 		}
 	}
 	for (short xi = 0; xi < evenXy.size(); ++xi) {
 		for (short yi = 0; yi < evenXy[xi].size(); ++yi) {
+			if (evenXy[xi][yi].empty())
+				continue;
+
+//			if (xi == 32 && yi == 7)
+//				solidFilter(evenXy[xi][yi]);;
+
 			s3[0] = (xi + 1) * 2;
 			s3[1] = (yi + 1) * 2;
+			solidFilter(evenXy[xi][yi]);
 			runInteriorNodes(evenXy[xi][yi], true);
 		}
 	}
-	evenXy.clear();
-	oddXy.clear();
 }
 
 void vnBccTetCutter_omp::assignExteriorTetNodes(int exteriorNodeNum, std::vector<extNode>& eNodes) {
@@ -402,24 +547,26 @@ void vnBccTetCutter_omp::assignExteriorTetNodes(int exteriorNodeNum, std::vector
 
 int vnBccTetCutter_omp::nearestRayPatchHit(const Vec3f &rayBegin, Vec3f rayEnd, const std::vector<int>& tris, float& distanceSq) {  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
 	distanceSq = FLT_MAX;
-	rayEnd -= rayBegin;
+	Vec3d rE(rayBegin - rayEnd);
+//	rayEnd -= rayBegin;
 	int closeT = -1;
-	Vec3f N;
+	Vec3d N;
 	for (auto& t : tris) {
 		int* tr = _mt->triangleVertices(t);
-		Vec3f tv[3];
+		Vec3d tv[3];
 		for (int i = 0; i < 3; ++i)
 			tv[i] = _vMatCoords[tr[i]];
 		tv[1] -= tv[0];
 		tv[2] -= tv[0];
-		float dSq;
-		Vec3f P, R;
-		Mat3x3f M;
-		M.Initialize_With_Column_Vectors(tv[1], tv[2], -rayEnd);
-		R = M.Robust_Solve_Linear_System(rayBegin - tv[0]);
+		double dSq;
+		Vec3d P, R;
+		Mat3x3d M;
+		M.Initialize_With_Column_Vectors(tv[1], tv[2], rE);  // Vec3d(- rayEnd)
+		R = M.Robust_Solve_Linear_System(Vec3d(rayBegin) - tv[0]);
 		if (R[0] < 0.0f || R[0] > 1.0f || R[1] < 0.0f || R[1] > 1.0f || R[2] < 0.0f || R[2] > 1.0f || R[0] + R[1] > 1.0f)
 			continue;
-		P = rayEnd * R[2];
+//		P = rayEnd * R[2];
+		P = rE * R[2];
 		dSq = P * P;
 		if (distanceSq > dSq) {
 			distanceSq = dSq;
@@ -428,26 +575,30 @@ int vnBccTetCutter_omp::nearestRayPatchHit(const Vec3f &rayBegin, Vec3f rayEnd, 
 		}
 	}
 	if (distanceSq < FLT_MAX) {
-		if (N * rayEnd > 0.0f)
-			return -1;
-		else
+		if(distanceSq < 1e-3)  // coincident surfaces don't connect
 			return 1;
+		if (N * rE > 0.0f)
+			return 1;
+		else
+			return -1;
 	}
 	else
 		return 0;
 }
 
 bool vnBccTetCutter_omp::nearestPatchPoint(const short (&gl)[4][3], const int tetIdx, const std::vector<int>& tris, Vec3f& closeP, float& distanceSq) {
-	// This routine assumes a patch intersection with a tet face.  It also handles possibility of closed patches entirely with a large tet.
+	// This routine assumes a patch intersection with an adjacent tet face.  It also hands off cases of opposing face intersections and closed patches entirely with a large tet.
 	Vec3d closestP, P = {(double)gl[tetIdx][0], (double)gl[tetIdx][1], (double)gl[tetIdx][2]};
-	double d, minD = DBL_MAX;
-	int triEdge[2] = { -1, -1 };
-	for (int i = 0; i < 4; ++i) {
+	double d, minD;
+	int triEdge[4] = { -1, -1, -1, -1 }, teNext;
+	for (int i = 0; i < 3; ++i) {  // search the 3 faces surrounding tetIdx
+		minD = DBL_MAX;
 		Vec3d tri[3];
 		for (int j = 0; j < 3; ++j) {
 			int nIdx = (tetIdx + 2 + j + i) & 3;
 			tri[j].set((double)gl[nIdx][0], (double)gl[nIdx][1], (double)gl[nIdx][2]);  // each face of tet with last one opposite this tetIdx
 		}
+		teNext = 0;
 		for (auto& t : tris) {
 			Vec3d tt[3], source, target;
 			int* tr = _mt->triangleVertices(t);
@@ -468,41 +619,94 @@ bool vnBccTetCutter_omp::nearestPatchPoint(const short (&gl)[4][3], const int te
 					target += source * (1.0 - s);
 				}
 				d = (P - target).length2();
-				if (d - minD < 1e-12) {
-					if (d - minD > -1e-12)
-						triEdge[1] = t;
+				if (d - 1e-5 < minD) {  // looking for a surface edge so admit double hit
+					if (abs(d - minD) < 1e-5) {
+						if (teNext > 3) {  // exceedingly rare vertex hit on a face
+							throw(std::logic_error("Vertex intersection in nearestPatchPoint() not yet programmed.\n"));
+						}
+						triEdge[teNext++] = t;
+					}
 					else {
 						triEdge[0] = t;
-						triEdge[1] = -1;
+						teNext = 1;
+						minD = d;
+						closestP = target;
 					}
-					minD = d;
-					closestP = target;
 				}
 			}
 		}
 		if (triEdge[0] > -1)
 			break;
 	}
-	if(triEdge[0] < 0)  // this patch is a closed lacuna completely inside this tet with no tet face intersections
+	if(triEdge[0] < 0)  // this patch is a closed lacuna completely inside this tet, or intersects with tet face opposite tetIdx
 		return closestPatchPoint(Vec3f((float)gl[tetIdx][0], (float)gl[tetIdx][1], (float)gl[tetIdx][2]), tris, closeP, distanceSq);
 	closeP.set((float)closestP[0], (float)closestP[1], (float)closestP[2]);
 	distanceSq = (float)minD;
-	auto triNorm = [&](const int triangle, Vec3f &N) {
+	if (teNext > 2)  // 2 coincident edges so always inside
+		return true;
+	auto triNorm = [&](const int triangle, Vec3d &N) {
 		int* tr = _mt->triangleVertices(triangle);
-		Vec3f U = _vMatCoords[tr[1]] - _vMatCoords[tr[0]], V = _vMatCoords[tr[2]] - _vMatCoords[tr[0]];
+		Vec3d U = _vMatCoords[tr[1]] - _vMatCoords[tr[0]], V = _vMatCoords[tr[2]] - _vMatCoords[tr[0]];
 		N = U ^ V;
 		N.q_normalize();
 	};
-	Vec3f N0;
+	Vec3d N0;
 	triNorm(triEdge[0], N0);  // intersection of edge of tet face with a single triangle if no triEdge[1]
 	if (triEdge[1] > -1){  // face intersection with edge between two triangles
-		Vec3f N1;
+		Vec3d N1;
 		triNorm(triEdge[1], N1);
 		N0 += N1;
-		if (fabs(N0.X) < 1e-5f && fabs(N0.Y) < 1e-5f && fabs(N0.Z) < 1e-5f)  // at bottom of coincident edge.  Guaranteed inside.
+		if (abs(N0.X) < 0.02 && abs(N0.Y) < 0.02 && abs(N0.Z) < 0.02)  // at bottom of coincident edge.  Guaranteed inside. Generous due to Quake normalization
 			return true;
 	}
-	return (Vec3f(P.xyz) - closeP) * N0 < 0.0f;
+	return (P - closeP) * N0 < 0.0;
+}
+
+int vnBccTetCutter_omp::nearestPatchEdgePoint(const short(&gl)[4][3], const int tetIdx, const std::vector<int>& tris, Vec3f& closeP, float& distanceSq) {
+	// This routine looks for a patch intersection with a tet edge surrounding tetIdx. Return 1 if tetIdx inside patch, -1 outside, and 0 is none of the 3 edge intersects.
+	Vec3d closestP, P = { (double)gl[tetIdx][0], (double)gl[tetIdx][1], (double)gl[tetIdx][2] };
+	double minD;
+	bool inside, both = false;
+	for (int i = 1; i < 4; ++i) {
+		minD = DBL_MAX;
+		Vec3d Q;
+		int nIdx = (tetIdx + i) & 3;
+		Q.set((double)gl[nIdx][0], (double)gl[nIdx][1], (double)gl[nIdx][2]);  // each face of tet with last one opposite this tetIdx
+		Q -= P;
+		for (auto& t : tris) {
+			Vec3d tt[3], R;
+			int* tr = _mt->triangleVertices(t);
+			for (int k = 0; k < 3; ++k)
+				tt[k].set(_vMatCoords[tr[k]]);
+			tt[1] -= tt[0];
+			tt[2] -= tt[0];
+			Mat3x3d M(tt[1], tt[2], -Q);
+			R = M.Robust_Solve_Linear_System(P - tt[0]);
+			if (R[2] < 0.0 || R[2] > 1.0 || R[0] < 0.0 || R[0] > 1.0 || R[1] < 0.0 || R[1] > 1.0 || R[0] + R[1] > 1.0)
+				continue;
+			if (R[2] - 3e-3 < minD) {
+				if (minD - R[2] < 3e-3) {
+					if(inside != ((tt[1] ^ tt[2]) * Q >= 0))
+						both = true;
+				}
+				else {
+					minD = R[2];
+					distanceSq = (Q * R[2]).length2();
+					closestP = P + Q * R[2];
+					inside = ((tt[1] ^ tt[2]) * Q >= 0);
+					both = false;
+				}
+			}
+		}
+		if (minD < DBL_MAX)
+			break;
+	}
+	closeP.set(closestP.xyz);
+	if (minD > 1e38)
+		return 0;
+	if (both)  // coincident surface so point always inside
+		return 1;
+	return inside ? 1 : -1;
 }
 
 bool vnBccTetCutter_omp::closestPatchPoint(const Vec3f& P, const std::vector<int>& tris, Vec3f &closeP, float &distanceSq) {
@@ -745,65 +949,99 @@ void vnBccTetCutter_omp::getConnectedComponents(tetTriangles& tt, std::vector<ne
 			trVec = &patches.back().lv;
 		}
 	}
+
+	if (patches.size() < 2) {  // only one tet. no inter patch contention to resolve
+
+	}
+
+	if (tt.tc[0] == 52 && tt.tc[1] == 26 && tt.tc[2] == 19)
+		int junk = 0;
+
 	// find interior nodes for each component, joining patches as appropriate
 	short gl[4][3];
 	_vbt->centroidToNodeLoci(tt.tc, gl);
 	for (int i = 0; i < 4; ++i) {
 		std::array<short, 3> loc = { gl[i][0], gl[i][1], gl[i][2] };
 		auto iit = _interiorNodes.find(loc);
-		Vec3f node(loc[0], loc[1], loc[2]);
-		std::list<std::list<patch>::iterator> outside, inside;
-		for (auto pit = patches.begin(); pit != patches.end(); ++pit) {
-			bool connected = nearestPatchPoint(gl, i, pit->lv, pit->insideP, pit->dsq);
-			if (connected)
-				inside.push_back(pit);
+
+
+		if (patches.size() < 2) {  // only one tet.  No inter patch contention to resolve
+			if (iit == _interiorNodes.end())
+				patches.front().tetNodes[i] = -1;
 			else
-				outside.push_back(pit);
+				patches.front().tetNodes[i] = iit->second;
 		}
-		if (inside.empty()) {  // No patch bound to an interior node. ? nuke
-//			if (iit != _interiorNodes.end())
-//				throw(std::logic_error("An existing tet with an interior node has no patches attached to it in getConnectedComponents()\n"));
-		}
-		else if (!outside.empty()) {
-			for (auto ip = inside.begin(); ip != inside.end(); ) {
-				auto oMerge = outside.end();
-				for (auto op = outside.begin(); op != outside.end(); ++op) {
-					int connected = nearestRayPatchHit((*ip)->insideP, node, (*op)->lv, (*op)->dsq);  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
-					if (connected < 0 && (*op)->dsq > 1e-5f) {  // rule out possible coincident surfaces
-						if (oMerge == outside.end() || (*op)->dsq < (*oMerge)->dsq) {
-							oMerge = op;
+		else {  // put patch dissection block inside when tools are solid
+
+
+			Vec3f node(loc[0], loc[1], loc[2]);  // COURT switch routine to Vec3d
+			std::list<std::list<patch>::iterator> outside, inside;
+
+			if (i == 0 && tt.tc[0] == 64 && tt.tc[1] == 9 && tt.tc[2] == 14)
+				int junk = 0;
+
+			for (auto pit = patches.begin(); pit != patches.end(); ++pit) {
+				bool connected;
+				int npep = nearestPatchEdgePoint(gl, i, pit->lv, pit->insideP, pit->dsq);  // fast and, even with coincident surfaces, never gets inside assignment wrong
+				if (npep > 0)
+					connected = true;
+				else if (npep < 0)
+					connected = false;
+				else
+					connected = nearestPatchPoint(gl, i, pit->lv, pit->insideP, pit->dsq);
+				if (connected)
+					inside.push_back(pit);
+				else
+					outside.push_back(pit);
+			}
+			if (inside.empty()) {  // No patch bound to an interior node. ? nuke
+				if (iit != _interiorNodes.end())
+					int junk = 0;
+				//				throw(std::logic_error("An existing tet with an interior node has no patches attached to it in getConnectedComponents()\n"));
+			}
+			else if (!outside.empty()) {
+				for (auto ip = inside.begin(); ip != inside.end(); ) {
+					auto oMerge = outside.end();
+					for (auto op = outside.begin(); op != outside.end(); ++op) {
+						int connected = nearestRayPatchHit((*ip)->insideP, node, (*op)->lv, (*op)->dsq);  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
+						if (connected < 0 && (*op)->dsq > 1e-5f) {  // rule out possible coincident surfaces
+							if (oMerge == outside.end() || (*op)->dsq < (*oMerge)->dsq) {
+								oMerge = op;
+							}
 						}
 					}
+					if (oMerge != outside.end()) {
+						(*oMerge)->lv.insert((*oMerge)->lv.end(), (*ip)->lv.begin(), (*ip)->lv.end());
+						patches.erase(*ip);
+						ip = inside.erase(ip);
+					}
+					else
+						++ip;
 				}
-				if (oMerge != outside.end()) {
-					(*oMerge)->lv.insert((*oMerge)->lv.end(), (*ip)->lv.begin(), (*ip)->lv.end());
+			}
+			// any remaining inside patches should be merged along with any interior nodes
+			if (inside.size() > 1) {
+				if (iit == _interiorNodes.end())
+					int junk = 0;;
+				auto ip0 = inside.begin();
+				auto ip = ip0;
+				++ip;
+				while (ip != inside.end()) {
+					(*ip0)->lv.insert((*ip0)->lv.end(), (*ip)->lv.begin(), (*ip)->lv.end());
 					patches.erase(*ip);
 					ip = inside.erase(ip);
 				}
+			}
+			if (iit != _interiorNodes.end()) {
+				if (inside.empty())
+					int junk = 0;
+				//				throw(std::logic_error("gCC() not working in cutter.\n"));
 				else
-					++ip;
+					inside.front()->tetNodes[i] = iit->second;
 			}
-		}
-		// any remaining inside patches should be merged along with any interior nodes
-		if (inside.size() > 1) {
-//			assert(iit != _interiorNodes.end());
-			auto ip0 = inside.begin();
-			auto ip = ip0;
-			++ip;
-			while (ip != inside.end()) {
-				(*ip0)->lv.insert((*ip0)->lv.end(), (*ip)->lv.begin(), (*ip)->lv.end());
-				patches.erase(*ip);
-				ip = inside.erase(ip);
-			}
-		}
-		if (iit != _interiorNodes.end()) {
-			if (inside.empty())
-				;
-//				throw(std::logic_error("gCC() not working in cutter.\n"));
-			else
-				inside.front()->tetNodes[i] = iit->second;
 		}
 	}
+
 	for (auto& cTet : patches) {
 		nt_vec.push_back(newTet());
 		nt_vec.back().tetIdx = _nSurfaceTets.fetch_add(1);
@@ -872,7 +1110,7 @@ bool vnBccTetCutter_omp::setupBccIntersectionStructures(int maximumGridDimension
 	_vbt->_barycentricWeights.clear();
 	_vbt->_barycentricWeights.assign(_mt->numberOfVertices(), Vec3f());
 	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i){
-		_vbt->gridLocusToTetCentroid(_vMatCoords[i], _vertexTetCentroids[i]);
+		_vbt->gridLocusToLowestTetCentroid(_vMatCoords[i], _vertexTetCentroids[i]);
 		// set barycentric coordinate within that tet
 		auto& bw = _vbt->_barycentricWeights[i];
 		_vbt->gridLocusToBarycentricWeight(_vMatCoords[i], _vertexTetCentroids[i], bw);

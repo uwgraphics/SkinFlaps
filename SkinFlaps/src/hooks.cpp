@@ -110,7 +110,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 
 
 	// COURT temporary fix for multires tets
-	int* tr = tri->triangleVertices(triangle), tetIdx;
+/*	int* tr = tri->triangleVertices(triangle), tetIdx;
 	if (uv[0] > 0.5f) {
 		uv[0] = 1.0f;
 		uv[1] = 0.0f;
@@ -122,7 +122,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	else {
 		uv[0] = 0.0f;
 		uv[1] = 0.0f;
-	}
+	} */
 
 
 	hpr.first->second.uv[0] = uv[0];
@@ -147,7 +147,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	translateMatrix4x4(om,xyz[0],xyz[1],xyz[2]);
 	Vec3f gridLocus, bw;
 	if (_deepCut->getMaterialTriangles() != nullptr && _ptp->solverInitialized()) {  // COURT - won't need second condition
-		int tetIdx = _deepCut->parametricMTtriangleTet(triangle, uv, gridLocus);
+		int tetIdx = _vnt->parametricTriangleTet(_vnt->getMaterialTriangles()->triangleVertices(triangle), uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;
 			deleteHook(_hookNow);
@@ -180,7 +180,8 @@ bool hooks::updateHookPhysics(){
 			continue;
 		}
 		Vec3f gridLocus, bw;
-		int tetIdx = _deepCut->parametricMTtriangleTet(hit->second.triangle, hit->second.uv, gridLocus);
+//		int tetIdx = _deepCut->parametricMTtriangleTet(hit->second.triangle, hit->second.uv, gridLocus);
+		int tetIdx = _vnt->parametricTriangleTet(_vnt->getMaterialTriangles()->triangleVertices(hit->second.triangle), hit->second.uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;
 			deleteHook(_hookNow);

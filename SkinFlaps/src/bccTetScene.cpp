@@ -271,10 +271,10 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 
 	// COURT - put back in after cutter debug!
 	createNewPhysicsLattice(maxDimSubdivs);  // now creating operable lattice on load
-//	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
-//	if (!_surgAct->getDeepCutPtr()->setDeepBed(_mt, deepBedFilepath.c_str(), &_vnTets)){
-//		_surgAct->sendUserMessage("Undermine layer .bed file could not be found-", "Error Message");
-//	}
+	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
+	if (!_surgAct->getDeepCutPtr()->setDeepBed(_mt, deepBedFilepath.c_str(), &_vnTets)){
+		_surgAct->sendUserMessage("Undermine layer .bed file could not be found-", "Error Message");
+	}
 	if (!tetSubsets.empty()) {
 //		for (auto& ts : tetSubsets)
 //			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
@@ -287,23 +287,80 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 
 void bccTetScene::updateOldPhysicsLattice()
 {  // at present regenerate.  May do incrementally later.
-/*	try {
-		remapTetPhysics rtp;
-		rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions
-		if(!_tc.remakeVnTets(_mt))
+
+//	createNewPhysicsLattice(90);
+//	return;
+
+	try {
+//		remapTetPhysics rtp;
+//		rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions
+		if (!_tc.remakeVnTets(_mt))
 			throw(std::logic_error("New recut of tet lattice failed.\n"));
-		rtp.remapNewPhysicsNodePositions(&_vnTets);
+//		rtp.remapNewPhysicsNodePositions(&_vnTets);
 
 #ifdef NO_PHYSICS
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
 		_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
 #else
-		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
+//		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
+//		_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
+#endif
+//		rtp.restoreOldNodePositions(&_vnTets);
+
+
+		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
+		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
+
+		_vnTets.decimate(2, 6, false);
+
+#ifdef NO_PHYSICS
+		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
+		_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
+#else
+//		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
+
+		std::vector<uint8_t> tetSizeMult;
+		tetSizeMult.reserve(_vnTets.tetNumber());
+		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
+			uint8_t sizeBit = 1;
+			auto& c = _vnTets.tetCentroid(i);
+			while (true) {
+				if (c[0] & sizeBit || c[1] & sizeBit || c[2] & sizeBit)
+					break;
+				sizeBit <<= 1;
+			}
+			tetSizeMult.push_back(sizeBit);
+		}
+		std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
 		_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
 #endif
-		rtp.restoreOldNodePositions(&_vnTets);
-		_tetCol.initSoftCollisions(_mt, &_vnTets);  // after every topo change
-		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
+
+		_vnTets.materialCoordsToNodeSpatialVector();
+
+		std::vector<int> subNodes;
+		std::vector<std::vector<int> > faceNodes;
+		std::vector<std::vector<float> > faceBarys;
+		size_t snSize = _vnTets.decNodeConstraints.size();
+		subNodes.reserve(snSize);
+		faceNodes.reserve(snSize);
+		faceBarys.reserve(snSize);
+		for (auto& dn : _vnTets.decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
+			subNodes.push_back(dn.first);
+			faceNodes.push_back(dn.second.faceNodes);
+			faceBarys.push_back(dn.second.faceParams);
+		}
+		_ptp.addInterNodeConstraints(subNodes, faceNodes, faceBarys, _lowTetWeight);
+
+		//			end = std::chrono::system_clock::now();
+		//			std::chrono::duration<double> elapsed_seconds = end - start;
+		//			std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+		//			std::string message("Physics initial creation took ");
+		//			message += std::to_string(elapsed_seconds.count());
+		//			message += " seconds for ";
+		//			message += std::to_string(_vnTets.tetNumber());
+		//			message += " tets.";
+		//			_surgAct->sendUserMessage(message.c_str(), "Timer");
+
 		if (_forcesApplied) {  // _tetsModified not necessary as implied by calling this routine
 			initPdPhysics();
 			_tetsModified = true;
@@ -312,7 +369,7 @@ void bccTetScene::updateOldPhysicsLattice()
 	}  // end try block
 	catch (char *e) {
 		_surgAct->sendUserMessage(e, "Exception thrown:", false);
-	} */
+	}
 }
 
 void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
@@ -324,9 +381,9 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_tetsModified = false;
 
 #ifdef _DEBUG
-		maximumDimensionSubdivisions = 90; //17;
+		maximumDimensionSubdivisions = 37; //17;
 #else
-			maximumDimensionSubdivisions = 90;  // 90
+//			maximumDimensionSubdivisions = 90;  // 90
 #endif
 
 		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
@@ -334,7 +391,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-		_vnTets.decimate(4, 6, false);
+//		_vnTets.decimate(2, 6, false);
 
 		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
 

@@ -9,6 +9,7 @@
 #include <tuple>
 #include <assert.h>
 #include <algorithm>
+#include <iterator>
 #include <set>
 #include <array>
 #include <functional>
@@ -123,7 +124,7 @@ void vnBccTetrahedra::centroidToNodeLocus(const bccTetCentroid& centroid, const 
 		return tc.xyz;
 	} */
 
-void vnBccTetrahedra::gridLocusToTetCentroid(const Vec3f &gridLocus, bccTetCentroid &tetCentroid)
+void vnBccTetrahedra::gridLocusToLowestTetCentroid(const Vec3f &gridLocus, bccTetCentroid &tetCentroid)
 {
 	short tc[3]; //  vMin, vNow;
 	float dxyz[3];
@@ -249,8 +250,7 @@ void vnBccTetrahedra::gridLocusToTetCentroid(const Vec3f &gridLocus, bccTetCentr
 	}
 	newC *= 2.0001f;
 	tetCentroid = { (unsigned short)newC[0], (unsigned short)newC[1], (unsigned short)newC[2] };
-
-	// veracity test
+//  veracity test
 //	if (newC != found) {
 //		assert(dxyz[0] == dxyz[1] || dxyz[0] == dxyz[2] || dxyz[1] == dxyz[2]);
 //		bccTetCentroid at, tn = { (unsigned short)newC[0], (unsigned short)newC[1], (unsigned short)newC[2] };
@@ -301,12 +301,25 @@ void vnBccTetrahedra::vertexMaterialCoordinate(const int vertex, std::array<floa
 }
 
 void vnBccTetrahedra::gridLocusToBarycentricWeight(const Vec3f &gridLocus, const bccTetCentroid &tetCentroid, Vec3f &barycentricWeight)
-{  // COURT fix me for multires
+{  // fixed for multires
 	Vec3f B(gridLocus);
 	// set barycentric coordinate within that tet
+	int hc, baryInv, size;
+	centroidHalfAxisSize(tetCentroid, hc, size);
+	if (size > 1) {  // sizes > 1 are guaranteed to be present and unique.
+		auto pr = _tetHash.equal_range(tetCentroid);
+		assert(std::distance(pr.first, pr.second) == 1);
+		auto& tn = _tetNodes[pr.first->second];
+		Vec3f tV[4];
+		for (int i = 0; i < 4; ++i)
+			tV[i].set((short(&)[3]) * _nodeGridLoci[tn[i]].data());
+		Mat3x3f M(tV[1] - tV[0], tV[2] - tV[0], tV[3] - tV[0]);
+		barycentricWeight = M.Robust_Solve_Linear_System(gridLocus - tV[0]);
+		return;
+	}
 	std::array<short, 3> xyz;
-	int hc, baryInv;
-	centroidToXyzHalfAxis(tetCentroid, xyz, hc);
+	for (int i = 0; i < 3; ++i)
+		xyz[i] = tetCentroid[i] >> 1;
 	if ((xyz[hc] + xyz[(hc + 1) % 3]) & 1) {  // main axis below secondary
 		if (hc < 1)
 			baryInv = 0;
@@ -1026,8 +1039,20 @@ int vnBccTetrahedra::parametricEdgeTet(const int vertex0, const int vertex1, con
 	vertexGridLocus(vertex0, tV[0]);
 	vertexGridLocus(vertex1, tV[1]);
 	gridLocus = tV[0] * (1.0f - param) + tV[1] * param;
+
 	bccTetCentroid tC;
-	gridLocusToTetCentroid(gridLocus, tC);  // new version only return a valid tc from current mesh
+	gridLocusToLowestTetCentroid(gridLocus, tC);  // new version only return a valid tc from current mesh
+	// if this lowest level centroid not found, promote til found.
+	int level = 1;
+	assert(!_tetHash.empty());
+	auto pr = _tetHash.equal_range(tC);
+	while (pr.first == pr.second) {  // not found.  Move up centroid hierarchy if possible.
+		tC = centroidUpOneLevel(tC);
+		++level;
+		if (level > 16)  // nobody would decimate this much
+			throw(std::logic_error("Surface point chosen not embedded in an existing tetrahedron.\n"));
+		pr = _tetHash.equal_range(tC);
+	}
 	int tetOut = getVertexTetrahedron(vertex0);
 	if (tC == _tetCentroids[tetOut])
 		return tetOut;
@@ -1035,20 +1060,22 @@ int vnBccTetrahedra::parametricEdgeTet(const int vertex0, const int vertex1, con
 	if (tC == _tetCentroids[tetOut])
 		return tetOut;
 	// find candidate cubes
-	auto pr = _tetHash.equal_range(tC);  // possibly wrong due to multires
 	int nTets = std::distance(pr.first, pr.second);
 	if (nTets < 1) {
 		assert(false);
 		return -1;
 	}
-	else if(nTets < 2)
+	else if (nTets < 2)
 		return pr.first->second;
 	std::list<int> tetPath;
 	for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
-		if (decreasingCentroidPath(tcit->second, _vertexTets[vertex0], tetPath))
-			return tcit->second;
-		if (decreasingCentroidPath(tcit->second, _vertexTets[vertex1], tetPath))
-			return tcit->second;
+		for (int i = 0; i < 3; ++i) {
+
+			assert(false);  // COURT debug me
+
+//			if (decreasingCentroidPath(tcit->second, _vertexTets[vertices[i]], tetPath))  // possibly wrong due to multires
+//				return tcit->second;
+		}
 	}
 	assert(false);
 	return -1;
@@ -1061,14 +1088,24 @@ int vnBccTetrahedra::parametricTriangleTet(const int *vertices, const float (&uv
 		vertexGridLocus(vertices[i], tV[i]);
 	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
 	bccTetCentroid tC;
-	gridLocusToTetCentroid(gridLocus, tC);  // new version only return a valid tc from current mesh
+	gridLocusToLowestTetCentroid(gridLocus, tC);  // new version only return a valid tc from current mesh
+	// if this lowest level centroid not found, promote til found.
+	int level = 1;
+	assert(!_tetHash.empty());
+	auto pr = _tetHash.equal_range(tC);
+	while (pr.first == pr.second) {  // not found.  Move up centroid hierarchy if possible.
+		tC = centroidUpOneLevel(tC);
+		++level;
+		if (level > 16)  // nobody would decimate this much
+			throw(std::logic_error("Surface point chosen not embedded in an existing tetrahedron.\n"));
+		pr = _tetHash.equal_range(tC);
+	}
 	for (int i = 0; i < 3; ++i) {
 		int tetOut = _vertexTets[vertices[i]];
 		if (tC == _tetCentroids[tetOut])
 			return tetOut;
 	}
 	// find candidate cubes
-	auto pr = _tetHash.equal_range(tC);  // possibly wrong due to multires
 	int nTets = std::distance(pr.first, pr.second);
 	if (nTets < 1) {
 		assert(false);
@@ -1079,12 +1116,66 @@ int vnBccTetrahedra::parametricTriangleTet(const int *vertices, const float (&uv
 	std::list<int> tetPath;
 	for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
 		for (int i = 0; i < 3; ++i) {
-			if (decreasingCentroidPath(tcit->second, _vertexTets[vertices[i]], tetPath))
+
+			assert(false);  // COURT debug me
+
+			if (decreasingCentroidPath(tcit->second, _vertexTets[vertices[i]], tetPath))  // possibly wrong due to multires
 				return tcit->second;
 		}
 	}
 	assert(false);
 	return -1;
+}
+
+const bccTetCentroid vnBccTetrahedra::centroidUpOneLevel(const bccTetCentroid& tcIn) {
+	bccTetCentroid tcUp;
+
+	int levelBit = 1, levelX2, levelX4, level = getResolutionLevel(tcIn);
+	for (int i = 1; i < level; ++i)
+		levelBit <<= 1;
+	levelX2 = levelBit << 1;
+	levelX4 = levelX2 << 1;
+	int hc = -1;
+	for (int i = 0; i < 3; ++i)
+		if (tcIn[i] & levelBit) {
+			hc = i;
+			break;
+		}
+	int c1 = (hc + 1) % 3, c2 = (hc + 2) % 3;
+	tcUp = tcIn;
+	assert((tcUp[c1] & levelX2) != (tcUp[c2] & levelX2));
+	// none of the 4 core subtets have the same hc as the supertet
+	// if making tc[hc] a multiple of 4 with a one unit move creates a valid level up tet, is a center core subtet
+	tcUp[hc] += (tcUp[hc] & levelX2) ? levelBit : -levelBit;
+	if (tcUp[c1] & levelX2) {
+		if ((tcUp[hc] & levelX4) != (tcUp[c2] & levelX4))  // valid level 2
+			return tcUp;
+	}
+	if (tcUp[c2] & levelX2) {
+		if ((tcUp[hc] & levelX4) != (tcUp[c1] & levelX4))  // valid level 2
+			return tcUp;
+	}
+	// is corner subtet and not core so will have same hc axis in level 2
+	tcUp[hc] = tcIn[hc];
+	tcUp[hc] += tcUp[hc] & levelX2 ? -levelBit : levelBit;
+	if (tcUp[c1] & levelX2) {
+		if (tcUp[c2] & levelX4) {
+			tcUp[c1] += tcUp[c1] & levelX4 ? levelX2 : -levelX2;
+		}
+		else {
+			tcUp[c1] += tcUp[c1] & levelX4 ? -levelX2 : levelX2;
+		}
+	}
+	else {
+		assert(tcUp[c2] & levelX2);
+		if (tcUp[c1] & levelX4) {
+			tcUp[c2] += tcUp[c2] & levelX4 ? levelX2 : -levelX2;
+		}
+		else {
+			tcUp[c2] += tcUp[c2] & levelX4 ? -levelX2 : levelX2;
+		}
+	}
+	return tcUp;
 }
 
 vnBccTetrahedra::vnBccTetrahedra() : _nodeSpatialCoords(nullptr), _firstInteriorTet(-1)

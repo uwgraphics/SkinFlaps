@@ -168,6 +168,7 @@
     <ClCompile Include="..\..\SkinFlaps\src\hooks.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\json.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\main.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\remapTetPhysics.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\skinCutUndermineTets.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\surgicalActions.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\sutures.cpp" />
@@ -184,6 +185,7 @@
     <ClInclude Include="..\..\SkinFlaps\src\hooks.h" />
     <ClInclude Include="..\..\SkinFlaps\src\json.h" />
     <ClInclude Include="..\..\SkinFlaps\src\prettyPrintJSON.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\remapTetPhysics.h" />
     <ClInclude Include="..\..\SkinFlaps\src\skinCutUndermineTets.h" />
     <ClInclude Include="..\..\SkinFlaps\src\surgicalActions.h" />
     <ClInclude Include="..\..\SkinFlaps\src\sutures.h" />

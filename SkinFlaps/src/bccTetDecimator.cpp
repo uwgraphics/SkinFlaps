@@ -44,6 +44,9 @@ void bccTetDecimator::createMacroTets(vnBccTetCutter* vbtc, int nLevels) {
 void bccTetDecimator::decimate(int level, int nSubtetsRequired, bool onlyInteriorTets) {
 	if (level < 2)
 		throw(std::logic_error("Tet decimation below level 2 is requested.\n"));
+	decNodeConstraints.clear();
+	_uniqueCornerNodes.clear();
+	_decimatedNodes.clear();
 	// next section generates all the super tet centroids generated at the requested level.
 	// Later these could be loaded as part of the scene file or computed once at object load.
 	// make level Cartesian spacing
@@ -120,6 +123,9 @@ void bccTetDecimator::decimate(int level, int nSubtetsRequired, bool onlyInterio
 	_tetNodes.resize(offset);
 	_tetCentroids.resize(offset);
 	_tetHash.clear();
+	_tetHash.reserve(offset);
+	for (int i = 0; i < offset; ++i)
+		_tetHash.insert(std::make_pair(_tetCentroids[i], i));
 	offset = 0;
 	for (int n = nodeMap.size(), i = 0; i < n; ++i) {
 		if (nodeMap[i] > -1) {

@@ -2,8 +2,11 @@
 // File: vnBccTetrahedra.h
 // Author: Court Cutting
 // Date: 3/1/2019
+// Modified: 4/2/2023
 // Purpose: Basic virtual noded bcc tet class where tets in space are not unique, but may be duplicated by the use of virtual nodes.
 //     Full description of this concept is given in original work by Molino N,  Bao Z, and Fedkiw R: http://physbam.stanford.edu/~fedkiw/papers/stanford2004-01.pdf
+//     Latest major modification handles multi resolution tets with sizes that increase by binary steps.  Lowest bit of centroid reveals tet size. 
+//     New centroid code left shifts x, y, and z up one bit so half coordinate stored in a short.
 ////////////////////////////////////////////////////////////////////////////
 
 #ifndef __VN_BCC_TETS__
@@ -60,7 +63,7 @@ public:
 
 	// next set of routines do transformations from one coordinate system to another
 	inline void spatialToGridCoords(const Vec3f &spatialCoords, Vec3f &gridCoords){ gridCoords = spatialCoords - _minCorner; gridCoords *= (float)_unitSpacingInv; }  // only for MATERIAL spatial coord input
-	void gridLocusToTetCentroid(const Vec3f &gridLocus, bccTetCentroid &tetCentroid);
+	void gridLocusToLowestTetCentroid(const Vec3f &gridLocus, bccTetCentroid &tetCentroid);
 	void gridLocusToBarycentricWeight(const Vec3f &gridLocus, const bccTetCentroid &tetCentroid, Vec3f &barycentricWeight);
 	void barycentricWeightToGridLocus(const int tet, const Vec3f& barycentricWeight, Vec3f& gridLocus);
 	void barycentricWeightToGridLocus(const bccTetCentroid &tetCentroid, const Vec3f &barycentricWeight, Vec3f &gridLocus);
@@ -84,11 +87,24 @@ public:
 		return tc;
 	}
 
-	inline void centroidToXyzHalfAxis(const bccTetCentroid cntd, std::array<short, 3>& xyz, int &halfAxis) {
-		for (int i = 0; i < 3; ++i) {  // no error check for speed
-			if (cntd[i] & 1)
-				halfAxis = i;
-			xyz[i] = cntd[i] >> 1;
+	inline void centroidHalfAxisSize(const bccTetCentroid &tc, int &halfAxis, int &size) {
+		size = 1;
+		halfAxis = -1;
+		while (true) {
+			int i;
+			for (i = 0; i < 3; ++i) {
+				if (tc[i] & size) {
+					halfAxis = i;
+					break;
+				}
+			}
+			if (i < 3)
+				break;
+			else {
+				if (size > 128)
+					throw(std::logic_error("Centroid size greater than 128.\n"));
+				size <<= 1;
+			}
 		}
 	}
 
@@ -162,6 +178,20 @@ public:
 	bool insideTet(const bccTetCentroid& tc, const std::array<short, 3>& nodeLocus);  // material coords, not spatial
 	bool insideTet(const bccTetCentroid& tc, const Vec3f& gridLocus);
 
+	// multi resolution tet utility routines
+	const bccTetCentroid centroidUpOneLevel(const bccTetCentroid& tcIn);
+	inline int getResolutionLevel(const bccTetCentroid& tc) {
+		int bitNow = 1, ored = tc[0] | tc[1] | tc[2];
+		for (int i = 1; i < 32; ++i) {
+			if (ored & bitNow)
+				return i;
+			bitNow <<= 1;
+		}
+		return -1;  // never happens
+	}
+
+
+
 	vnBccTetrahedra(const vnBccTetrahedra&) = delete;
 	vnBccTetrahedra& operator=(const vnBccTetrahedra&) = delete;
 	vnBccTetrahedra();
@@ -201,6 +231,7 @@ protected:
 
 	friend class vnBccTetCutter;
 	friend class vnBccTetCutter_omp;
+	friend class remapTetPhysics;
 	friend class skinCutUndermineTets;
 	friend class deepCut;
 };

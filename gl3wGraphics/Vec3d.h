@@ -220,6 +220,20 @@ class Vec3d
             return( norm );
         }
 
+        inline void q_normalize() {  // does very fast, very approximate normalization (Quake algorithm).  Court added.  Better done in assembly code.
+            float l2 = length2();
+            union {
+                float    f;
+                uint32_t i;
+            } conv;
+            conv.f = l2;
+            conv.i = 0x5f3759df - (conv.i >> 1);
+            conv.f *= 1.5F - (l2 * 0.5F * conv.f * conv.f);
+            X *= conv.f;
+            Y *= conv.f;
+            Z *= conv.f;
+        }
+
 		inline const Vec3d floor() const
 		{
 			return Vec3d(std::floor(X), std::floor(Y), std::floor(Z));
