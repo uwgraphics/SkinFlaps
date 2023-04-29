@@ -34,10 +34,6 @@ namespace PhysBAM {
             m_gradientMatrix.push_back(gradientMatrix);
             m_elementRestVolume.push_back(elementRestVolume);
         }
-#if 0
-        dumper::writeElementsByte<4>(m_elements);
-        dumper::writePositionsByte(m_X);
-#endif
     }
 
 	template<class dataType, int dim>
@@ -46,14 +42,7 @@ namespace PhysBAM {
 		 // dumper::writeElements(m_elements);
 		 // dumper::writePositions(m_X);
 
-			// remove element that has inactive nodes
-		for (int e = 0; e < m_elements.size(); ++e) {
-			for (const auto& v : m_elements[e])
-				if (m_nodeType[v] == NodeType::Inactive) {
-					m_elementFlags[e] = ElementFlag::inActive;
-					break;
-				}
-		}
+	
 
 		int uncollisionSize = 0;
 		int collisionSize = 0;
@@ -368,7 +357,7 @@ namespace PhysBAM {
     }
 
 	template<class dataType, int dim>
-	void GridDeformerTet<std::vector<VECTOR<dataType, dim>>>::initializeCollisionElements()
+	void GridDeformerTet<std::vector<VECTOR<dataType, dim>>>::initializeElementFlags()
 	{
 		for (int i = 0; i < m_elements.size(); i++) {
 			const auto& e = DiscretizationType::getElementIndex(m_elements[i]);
@@ -380,6 +369,15 @@ namespace PhysBAM {
 				}
 			if (isR2)
 				m_elementFlags[i] = ElementFlag::CollisionEl;
+		}
+
+		// remove element that has inactive nodes
+		for (int e = 0; e < m_elements.size(); ++e) {
+			for (const auto& v : m_elements[e])
+				if (m_nodeType[v] == NodeType::Inactive) {
+					m_elementFlags[e] = ElementFlag::inActive;
+					break;
+				}
 		}
 	}
 

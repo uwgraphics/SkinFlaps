@@ -160,7 +160,7 @@ namespace PhysBAM {
         }
 
         void deallocateAuxiliaryStructures();
-        void initializeCollisionElements();
+        void initializeElementFlags();
     };
 
 } // namespace PhysBAM

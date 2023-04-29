@@ -65,7 +65,7 @@ void PDTetSolver<T, d>::initializeSolver()
 {
 	using IteratorType = typename DeformerType::IteratorType;
 	m_gridDeformer.deallocateAuxiliaryStructures();
-	m_gridDeformer.initializeCollisionElements();
+	m_gridDeformer.initializeElementFlags();
 	m_gridDeformer.initializeAuxiliaryStructures();
 	if (m_gridDeformer.m_collisionConstraints.size()||m_gridDeformer.m_collisionSutures.size()) {
 		hasCollision = true;
