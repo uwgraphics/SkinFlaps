@@ -41,6 +41,206 @@ void bccTetDecimator::createMacroTets(vnBccTetCutter* vbtc, int nLevels) {
 
 }
 
+void bccTetDecimator::decimate2(int level) {
+	if (level < 2)
+		throw(std::logic_error("Tet decimation below level 2 is requested.\n"));
+	_decimatedNodes.clear();
+	decNodeConstraints.clear();
+	int seed = 0, levelEnd = _tetNodes.size(), levelNow = 1;
+	while (levelNow < level) {
+		// to mark a tet for deletion its _tetNode[0] set -1 and its _tetCentroids[0] set USHRT_MAX.  Also is removed from _tetHash.
+		while (seed < levelEnd) {
+			if (_tetNodes[seed][0] > -1 && getLevel(_tetCentroids[seed]) == levelNow) {  // decimation candidate.  Do I need second test?
+				bccTetCentroid subtets[8], macroTet = centroidUpOneLevel(_tetCentroids[seed]);
+				subtetCentroids(macroTet, subtets);
+				THIT stIt[8];
+				int i;
+				for (i = 0; i < 8; ++i) {
+					if (subtets[i][0] == USHRT_MAX)
+						break;
+					auto pr = _tetHash.equal_range(subtets[i]);
+					if (std::distance(pr.first, pr.second) != 1)  // must exist and not be virtual noded
+						break;
+					stIt[i] = pr.first;
+				}
+				if (i > 7) {  // macrotet found.  Decimate
+					int hc, macroLevelUp;
+					centroidHalfAxisSize(macroTet, hc, macroLevelUp);
+					macroLevelUp <<= 1;
+					//				bool up = (macroTet[hc] & macroLevelUp) == (macroTet[(hc + 2) % 3] & macroLevelUp) ? true : false;
+
+					std::array<int, 4> nodes;
+					nodes[0] = _tetNodes[stIt[0]->second][0];
+					nodes[1] = _tetNodes[stIt[1]->second][1];
+					nodes[2] = _tetNodes[stIt[2]->second][2];
+					nodes[3] = _tetNodes[stIt[3]->second][3];
+
+					short gl[4][3];  // debug
+					centroidToNodeLoci(macroTet, gl);
+					for (int j = 0; j < 4; ++j) {
+						auto nl = _nodeGridLoci[nodes[j]];
+						assert(nl[0] == gl[j][0] && nl[1] == gl[j][1] && nl[2] == gl[j][2]);
+					}
+
+					// now enter possibly decimated edge nodes
+					_decimatedNodes.insert(std::make_pair(_tetNodes[stIt[0]->second][1], std::make_pair(nodes[0], nodes[1])));
+					_decimatedNodes.insert(std::make_pair(_tetNodes[stIt[0]->second][2], std::make_pair(nodes[0], nodes[2])));
+					_decimatedNodes.insert(std::make_pair(_tetNodes[stIt[0]->second][3], std::make_pair(nodes[0], nodes[3])));
+					_decimatedNodes.insert(std::make_pair(_tetNodes[stIt[1]->second][2], std::make_pair(nodes[1], nodes[2])));
+					_decimatedNodes.insert(std::make_pair(_tetNodes[stIt[1]->second][3], std::make_pair(nodes[1], nodes[3])));
+					_decimatedNodes.insert(std::make_pair(_tetNodes[stIt[2]->second][3], std::make_pair(nodes[2], nodes[3])));
+
+					// debug
+					for (auto& dn : _decimatedNodes) {
+						Vec3f n((short(&)[3]) * _nodeGridLoci[dn.first].data()), mean((short(&)[3]) * _nodeGridLoci[dn.second.first].data());
+						mean += Vec3f((short(&)[3]) * _nodeGridLoci[dn.second.second].data());
+						mean *= 0.5f;
+						assert(n == mean);
+					}
+
+					// mark subtets deleted and add macroTet
+					for (i = 0; i < 8; ++i) {
+						_tetNodes[stIt[i]->second][0] = -1;
+				//	Still need this for vertex tet assignment	_tetCentroids[stIt[i]->second][0] = USHRT_MAX;
+						_tetHash.erase(stIt[i]->first);
+					}
+					_tetHash.insert(std::make_pair(macroTet, (int)_tetNodes.size()));
+					_tetNodes.push_back(nodes);
+					_tetCentroids.push_back(macroTet);
+				}
+			}
+			++seed;
+		}
+		assert(seed == levelEnd);
+		levelEnd = _tetNodes.size();
+		++levelNow;
+	}
+	// reassign vertex tet and baryweight if original tet decimated
+	for (int n = _vertexTets.size(), j, i = 0; i < n; ++i) {
+		if (_tetNodes[_vertexTets[i]][0] < 0) {  // its tet was decimated, so could only have been a unique tet for its locus
+			bccTetCentroid tc = _tetCentroids[_vertexTets[i]];
+			Vec3f gridLocus;
+			barycentricWeightToGridLocus(tc, _barycentricWeights[i], gridLocus);
+			for (j = 0; j < 16; ++j) {  // will never get 16 levels high
+				tc = centroidUpOneLevel(tc);
+				auto tet = _tetHash.find(tc);
+				if (tet != _tetHash.end()) {
+					_vertexTets[i] = tet->second;
+					break;
+				}
+			}
+			if (j > 15)
+				throw(std::logic_error("Program error in creating decimated tet heirarchy.\n"));
+			gridLocusToBarycentricWeightLevel(gridLocus, tc, _barycentricWeights[i]);
+		}
+	}
+	// pack decimated tets amd nodes
+	std::vector<int> nodeMap, tetMap;
+	nodeMap.assign(_nodeGridLoci.size(), -1);
+	tetMap.assign(_tetNodes.size(), -1);
+	int offset = 0;
+	for (int n = _tetNodes.size(), i = 0; i < n; ++i) {
+		auto& tn = _tetNodes[i];
+		if (tn[0] > -1) {
+			for (int j = 0; j < 4; ++j)
+				nodeMap[tn[j]] = 1;
+			_tetNodes[offset] = _tetNodes[i];
+			_tetCentroids[offset] = _tetCentroids[i];
+			tetMap[i] = offset;
+			++offset;
+		}
+	}
+	for (int n = _vertexTets.size(), i = 0; i < n; ++i)
+		_vertexTets[i] = tetMap[_vertexTets[i]];
+	tetMap.clear();
+	_tetNodes.resize(offset);
+	_tetCentroids.resize(offset);
+	_tetHash.clear();
+	_tetHash.reserve(offset);
+	for (int i = 0; i < offset; ++i)
+		_tetHash.insert(std::make_pair(_tetCentroids[i], i));
+	offset = 0;
+	for (int n = nodeMap.size(), i = 0; i < n; ++i) {
+		if (nodeMap[i] > -1) {
+			nodeMap[i] = offset;
+			_nodeGridLoci[offset] = _nodeGridLoci[i];
+			++offset;
+		}
+	}
+	_nodeGridLoci.resize(offset);
+	for (int n = _tetNodes.size(), i = 0; i < n; ++i) {
+		auto& tn = _tetNodes[i];
+		for (int j = 0; j < 4; ++j)
+			tn[j] = nodeMap[tn[j]];
+	}
+	// binary tree structure for decimated nodes follows.  Only need leaves at the end.
+	struct bNode {
+		int node;
+		DNIT nit;
+		float depth;
+	};
+	std::list<bNode> parents, leaves;
+	auto processFirstParent = [&]() {
+		auto pn = parents.begin();
+		bNode child;
+		child.depth = pn->depth * 0.5f;
+		child.node = pn->nit->second.first;
+		child.nit = _decimatedNodes.find(child.node);
+		if (child.nit == _decimatedNodes.end())
+			leaves.push_back(child);
+		else
+			parents.push_back(child);
+		child.node = pn->nit->second.second;
+		child.nit = _decimatedNodes.find(child.node);
+		if (child.nit == _decimatedNodes.end())
+			leaves.push_back(child);
+		else
+			parents.push_back(child);
+		parents.erase(pn);
+	};
+	for (auto dn = _decimatedNodes.begin(); dn != _decimatedNodes.end(); ++dn) {
+		if (dn->first < 0)
+			continue;
+		int dNode = nodeMap[dn->first];
+		if (dNode > -1) {  // used
+			parents.clear();
+			leaves.clear();
+			// collect leaves of binary tree of decimated nodes
+			bNode root;
+			root.depth = 1.0f;
+			root.nit = dn;
+			root.node = dn->first;
+			parents.push_back(root);
+			while (!parents.empty())
+				processFirstParent();
+			auto dnc = decNodeConstraints.insert(std::make_pair(dNode, decimatedFaceNode()));
+			auto& fn = dnc.first->second.faceNodes;
+			auto& fp = dnc.first->second.faceParams;
+			if (leaves.size() < 3) {
+				fn.reserve(2);
+				fn.push_back(nodeMap[leaves.front().node]);
+				fn.push_back(nodeMap[leaves.back().node]);
+				fp.assign(2, 0.5f);
+			}
+			else {
+				std::map<int, float> dnVerts;
+				for (auto& l : leaves) {
+					auto pr = dnVerts.insert(std::make_pair(l.node, l.depth));
+					if (!pr.second)
+						pr.first->second += l.depth;
+				}
+				fn.reserve(dnVerts.size());
+				fp.reserve(dnVerts.size());
+				for (auto& dnv : dnVerts) {
+					fn.push_back(nodeMap[dnv.first]);
+					fp.push_back(dnv.second);
+				}
+			}
+		}
+	}
+	_decimatedNodes.clear();
+}
+
 void bccTetDecimator::decimate(int level, int nSubtetsRequired, bool onlyInteriorTets) {
 	if (level < 2)
 		throw(std::logic_error("Tet decimation below level 2 is requested.\n"));
@@ -288,6 +488,10 @@ void bccTetDecimator::centroidPromoteOneLevel(const bccTetCentroid& tcLevelIn, b
 }
 
 int bccTetDecimator::recurseSubtets(const bccTetCentroid &tc, const int &nNeeded, int firstInteriorTet) {
+
+	if (tc[0] == 32 && tc[1] == 72 && tc[2] == 28)
+		int junk = 0;
+
 	int level, hc, c1, c2;
 	for (level = 2; level < INT_MAX; level <<= 1) {
 		if (tc[0] & level) {
@@ -312,6 +516,13 @@ int bccTetDecimator::recurseSubtets(const bccTetCentroid &tc, const int &nNeeded
 	bccTetCentroid c, ic;
 	int subtets[8] = {-1,-1,-1,-1,-1,-1,-1,-1};  // none found. First 4 are corners 0-3. Last 4 are central cores
 	auto findTet1 = [&]() ->int {  // processes level 1 tets
+
+
+		if (c[0] == 32 && c[1] == 74 && c[2] == 31)
+			int junk = 0;
+
+
+
 		auto pr = _tetHash.equal_range(c);
 		int d = (int)std::distance(pr.first, pr.second);
 		if (d < 1)

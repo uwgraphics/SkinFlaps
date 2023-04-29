@@ -62,8 +62,8 @@ private:
 	};
 	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> _interiorNodes;
 
-	std::unordered_map<bccTetCentroid, int, bccTetCentroidHasher> _centroidIndices;
-	std::vector<tetTriangles> _tetTris;
+	static std::unordered_map<bccTetCentroid, int, bccTetCentroidHasher> _centroidIndices;
+	static std::vector<tetTriangles> _tetTris;
 
 	std::atomic<int> _nSurfaceTets;
 	struct newTet{

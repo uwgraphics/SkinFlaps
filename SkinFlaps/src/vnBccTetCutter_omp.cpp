@@ -13,9 +13,15 @@
 
 #include <chrono>  // for openMP timing
 #include <ctime>  
+#include <iostream>
 #include <fstream>
+#include <omp.h>
 
 #include "vnBccTetCutter_omp.h"
+
+std::vector<vnBccTetCutter_omp::tetTriangles> vnBccTetCutter_omp::_tetTris;
+std::unordered_map<bccTetCentroid, int, vnBccTetCutter_omp::bccTetCentroidHasher> vnBccTetCutter_omp::_centroidIndices;
+
 
 bool vnBccTetCutter_omp::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra *vbt, int maximumGridDimension)
 {  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
@@ -131,42 +137,68 @@ bool vnBccTetCutter_omp::tetCutCore() {  // same cut core for first cut and recu
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
 
-	int nOmpRange = _mt->numberOfTriangles();
-#pragma omp parallel
+	int it, nOmpRange = _mt->numberOfTriangles();
+	// private variables
+	std::unordered_map<bccTetCentroid, std::vector<int>, bccTetCentroidHasher> centTris_local;
+	std::vector<std::pair<bccTetCentroid, std::vector<int> > > cT_global;
+	std::vector<zIntrsct> zInt_local;
+	// COURT note the nowait.  Also #pragma statements cannot have a curly brace immediately after them, but must be on a new line.
+
+//	_centroidIndices, , oddXy, evenXy, , _tetTris
+
+// #pragma omp parallel shared(nOmpRange, cT_global) private(it, centTris_local, zInt_local)
 	{
-		// private variables
-		std::unordered_map<bccTetCentroid, std::vector<int>, bccTetCentroidHasher> centTris_local;
-		std::vector<zIntrsct> zInt_local;
-#pragma omp for schedule(dynamic) nowait
-		// COURT note the nowait.  Also #pragma statements cannot have a curly brace immediately after them, but must be on a new line.
-		for (int i = 0; i < nOmpRange; ++i) {
-			inputTriangle(i, centTris_local, zInt_local);
+		centTris_local.clear();
+		zInt_local.clear();
+// #pragma omp for schedule(static, 1)
+		for (it = 0; it < nOmpRange; ++it)
+			inputTriangle(it, centTris_local, zInt_local);
+// #pragma omp critical (centTris_local)
+		for (auto ctl : centTris_local) {
+
+//			cT_global.push_back(std::move(ctl));  // std::make_pair(ctl.first, std::move(ctl.second)));
+
+			auto pr = _centroidIndices.insert(std::make_pair(ctl.first, -1));
+			if (pr.second) {
+				tetTriangles tt;
+				tt.tc = ctl.first;
+				tt.tetindx = -1;
+				tt.tris = std::move(ctl.second);
+				pr.first->second = _tetTris.size();
+				_tetTris.push_back(tt);
+			}
+			else {
+				auto& ttr = _tetTris[pr.first->second].tris;
+				ttr.insert(ttr.end(), ctl.second.begin(), ctl.second.end());
+			}
 		}
-#pragma omp critical
-		{
-			for (auto& ctl : centTris_local) {
-				auto pr = _centroidIndices.insert(std::make_pair(ctl.first, -1));
-				if (pr.second) {
-					tetTriangles tt;
-					tt.tc = ctl.first;
-					tt.tetindx = -1;
-					tt.tris = std::move(ctl.second);
-					pr.first->second = _tetTris.size();
-					_tetTris.push_back(tt);
-				}
-				else {
-					auto& ttr = _tetTris[pr.first->second].tris;
-					ttr.insert(ttr.end(), ctl.second.begin(), ctl.second.end());
-				}
-			}
-			for (auto& zi : zInt_local) {
-				if (zi.odd)
-					oddXy[zi.x][zi.y].insert(std::make_pair(zi.zInt, zi.solidBegin));
-				else
-					evenXy[zi.x][zi.y].insert(std::make_pair(zi.zInt, zi.solidBegin));
-			}
+		std::cout << "centTris_local.size = " << centTris_local.size() << " for thread id: " << omp_get_thread_num() << "\n";
+// #pragma omp critical (zInt_local)
+		for (auto& zi : zInt_local) {
+			if (zi.odd)
+				oddXy[zi.x][zi.y].insert(std::make_pair(zi.zInt, zi.solidBegin));
+			else
+				evenXy[zi.x][zi.y].insert(std::make_pair(zi.zInt, zi.solidBegin));
 		}
 	}
+
+/*	for (auto& ctl : cT_global) {
+		auto pr = _centroidIndices.insert(std::make_pair(ctl.first, -1));
+		if (pr.second) {
+			tetTriangles tt;
+			tt.tc = ctl.first;
+			tt.tetindx = -1;
+			tt.tris = std::move(ctl.second);
+			pr.first->second = _tetTris.size();
+			_tetTris.push_back(tt);
+		}
+		else {
+			auto& ttr = _tetTris[pr.first->second].tris;
+			ttr.insert(ttr.end(), ctl.second.begin(), ctl.second.end());
+		}
+	} */
+
+	std::cout << "After inputTriangles() _centroidIndices size is " << _centroidIndices.size() << " and _tetTris.size is " << _tetTris.size() << "\n";
 
 	end = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end - start;
@@ -965,13 +997,13 @@ void vnBccTetCutter_omp::getConnectedComponents(tetTriangles& tt, std::vector<ne
 		auto iit = _interiorNodes.find(loc);
 
 
-		if (patches.size() < 2) {  // only one tet.  No inter patch contention to resolve
-			if (iit == _interiorNodes.end())
-				patches.front().tetNodes[i] = -1;
-			else
-				patches.front().tetNodes[i] = iit->second;
-		}
-		else {  // put patch dissection block inside when tools are solid
+//		if (patches.size() < 2) {  // only one tet.  No inter patch contention to resolve
+//			if (iit == _interiorNodes.end())
+//				patches.front().tetNodes[i] = -1;
+//			else
+//				patches.front().tetNodes[i] = iit->second;
+//		}
+//		else {  // put patch dissection block inside when tools are solid
 
 
 			Vec3f node(loc[0], loc[1], loc[2]);  // COURT switch routine to Vec3d
@@ -1040,7 +1072,7 @@ void vnBccTetCutter_omp::getConnectedComponents(tetTriangles& tt, std::vector<ne
 					inside.front()->tetNodes[i] = iit->second;
 			}
 		}
-	}
+//	}
 
 	for (auto& cTet : patches) {
 		nt_vec.push_back(newTet());
@@ -1236,7 +1268,6 @@ void vnBccTetCutter_omp::inputTriangle(int tri, std::unordered_map<bccTetCentroi
 					zi.solidBegin = solidBegin;
 					zi_loc.push_back(zi);
 				}
-//					oddXy[(i - 1) >> 1][(j - 1) >> 1].insert(std::make_pair(z, solidBegin));
 			}
 			else {
 				if (triIntersectZ(i, j, zi.zInt)){
@@ -1246,7 +1277,6 @@ void vnBccTetCutter_omp::inputTriangle(int tri, std::unordered_map<bccTetCentroi
 					zi.solidBegin = solidBegin;
 					zi_loc.push_back(zi);
 				}
-//					evenXy[(i - 2) >> 1][(j - 2) >> 1].insert(std::make_pair(z, solidBegin));  // 0th in i and j always empty since object always inside box
 			}
 		}
 	}

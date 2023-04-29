@@ -383,7 +383,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 #ifdef _DEBUG
 		maximumDimensionSubdivisions = 37; //17;
 #else
-//			maximumDimensionSubdivisions = 90;  // 90
+			maximumDimensionSubdivisions = 70;  // 90
 #endif
 
 		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
@@ -391,7 +391,23 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-//		_vnTets.decimate(2, 6, false);
+//		_vnTets.decimate(3, 6, false);
+		_vnTets.decimate2(3);
+
+
+		// COURT nuke this debug
+/*		int i = 1;
+		bccTetCentroid tc = { 32, 74, 31 };
+		while (i < 64) {
+			tc = _vnTets.centroidUpOneLevel(tc);
+			std::list<int> tl;
+			_vnTets.centroidTets(tc, tl);
+			if (!tl.empty())
+				break;
+			++i;
+		} */
+
+
 
 		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
 

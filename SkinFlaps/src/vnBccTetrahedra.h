@@ -180,6 +180,7 @@ public:
 
 	// multi resolution tet utility routines
 	const bccTetCentroid centroidUpOneLevel(const bccTetCentroid& tcIn);
+	void subtetCentroids(const bccTetCentroid& macroCentroid, bccTetCentroid(&subCentroids)[8]);  // invalid subtet outside positive octant labelled as all USHRT_MAX
 	inline int getResolutionLevel(const bccTetCentroid& tc) {
 		int bitNow = 1, ored = tc[0] | tc[1] | tc[2];
 		for (int i = 1; i < 32; ++i) {
@@ -219,6 +220,7 @@ protected:
 		}
 	};
 	std::unordered_multimap<bccTetCentroid, int, bccTetCentroidHasher> _tetHash;  // bccTetCenter and index into _tetNodes
+	typedef std::unordered_multimap<bccTetCentroid, int, bccTetCentroidHasher>::iterator THIT;
 	materialTriangles *_mt;  // embedded surface
 	std::vector<int> _vertexTets;
 	std::vector<Vec3f> _barycentricWeights;

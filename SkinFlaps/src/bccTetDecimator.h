@@ -24,6 +24,7 @@ public:
 	void createMacroTets(vnBccTetCutter* vbtc, int nLevels);
 //	void subdivideMacroTets(std::vector<int>& macroTets);
 	void decimate(int level, int nSubtetsRequired, bool onlyInteriorTets = false);
+	void decimate2(int level);
 	void centroidToNodeLociLevels(const bccTetCentroid& centroid, short(&gridLoci)[4][3]);
 	void barycentricWeightToGridLocusLevels(const bccTetCentroid& tetCentroid, const Vec3f& barycentricWeight, Vec3f& gridLocus);
 

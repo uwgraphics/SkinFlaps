@@ -41,30 +41,40 @@ void vnBccTetrahedra::clear()
 }
 
 void vnBccTetrahedra::centroidToNodeLoci(const bccTetCentroid& centroid, short (&gridLoci)[4][3]) {
-	int c1, c2, hc = centroid[0] & 1 ? 0 : (centroid[1] & 1 ? 1 : 2);
+	// fixed for multires
+	int c1, c2, hc, size, levelUpBit;
+	centroidHalfAxisSize(centroid, hc, size);
+	levelUpBit = (size << 1);
 	c1 = hc < 2 ? hc + 1 : 0;
 	c2 = hc > 0 ? hc - 1 : 2;
-	auto tc = centroid;
-	for (int i = 0; i < 3; ++i) {
-		tc[i] >>= 1;
-		for (int j = 0; j < 4; ++j)
-			gridLoci[j][i] = tc[i];
+	for (int j = 0; j < 4; ++j) {
+		gridLoci[j][0] = centroid[0];
+		gridLoci[j][1] = centroid[1];
+		gridLoci[j][2] = centroid[2];
 	}
-	bool below01 = (tc[hc] + tc[c2]) & 1;
-	if (below01) {
-		++gridLoci[0][hc];
-		++gridLoci[1][hc];
-		--gridLoci[2][c2];
-		++gridLoci[3][c2];
+	if ((centroid[hc] & levelUpBit) == (centroid[c2] & levelUpBit)) {  // 0-1 Cartesian axis below 2-3 
+		gridLoci[0][hc] -= size;
+		gridLoci[1][hc] -= size;
+		gridLoci[2][hc] += size;
+		gridLoci[3][hc] += size;
+		gridLoci[2][c2] += levelUpBit;
+		gridLoci[3][c2] -= levelUpBit;
 	}
 	else {
-		++gridLoci[2][hc];
-		++gridLoci[3][hc];
-		++gridLoci[2][c2];
-		--gridLoci[3][c2];
+		gridLoci[0][hc] += size;
+		gridLoci[1][hc] += size;
+		gridLoci[2][hc] -= size;
+		gridLoci[3][hc] -= size;
+		gridLoci[2][c2] -= levelUpBit;
+		gridLoci[3][c2] += levelUpBit;
 	}
-	--gridLoci[0][c1];
-	++gridLoci[1][c1];
+	gridLoci[0][c1] -= levelUpBit;
+	gridLoci[1][c1] += levelUpBit;
+	for (int j = 0; j < 4; ++j) {  // don't bit shift as possibly negative
+		gridLoci[j][0] *= 0.5f;
+		gridLoci[j][1] *= 0.5f;
+		gridLoci[j][2] *= 0.5f;
+	}
 }
 
 void vnBccTetrahedra::centroidToNodeLocus(const bccTetCentroid& centroid, const int nodeIndex, short (&gridLocus)[3]) {
@@ -1127,20 +1137,78 @@ int vnBccTetrahedra::parametricTriangleTet(const int *vertices, const float (&uv
 	return -1;
 }
 
+void vnBccTetrahedra::subtetCentroids(const bccTetCentroid& macroCentroid, bccTetCentroid(&subCentroids)[8]) {
+	int hc, level;
+	centroidHalfAxisSize(macroCentroid, hc, level);
+	if (level < 2)
+		throw(std::logic_error("Trying to get subtets from a level 1 centroid.\n"));
+	int levelUp = level << 1, levelDown = level >> 1;
+	int c1 = (hc + 1) % 3, c2 = (hc + 2) % 3;
+
+	bool up = (macroCentroid[hc] & levelUp) == (macroCentroid[c2] & levelUp) ? true : false;
+
+	for (int i = 0; i < 8; ++i)
+		subCentroids[i] = macroCentroid;
+	auto markInvalid = [&](bccTetCentroid& tc) {
+		for (int j = 0; j < 3; ++j)
+			tc[j] = USHRT_MAX;
+	};
+	// 4 corners have same hc.  List corner tets in same order as nodes to ease later processing.
+	if (up) {
+		subCentroids[0][hc] -= levelDown;
+		subCentroids[1][hc] -= levelDown;
+		subCentroids[2][hc] += levelDown;
+		subCentroids[3][hc] += levelDown;
+	}
+	else {
+		subCentroids[0][hc] += levelDown;
+		subCentroids[1][hc] += levelDown;
+		subCentroids[2][hc] -= levelDown;
+		subCentroids[3][hc] -= levelDown;
+	}
+	if (subCentroids[0][c1] < level)
+		markInvalid(subCentroids[0]);
+	else
+		subCentroids[0][c1] -= level;
+	subCentroids[1][c1] += level;
+	if(subCentroids[up ? 3 : 2][c2] < level)
+		markInvalid(subCentroids[up ? 3 : 2]);
+	else
+		subCentroids[up ? 3 : 2][c2] -= level;
+	subCentroids[up ? 2 : 3][c2] += level;
+	// 4 core tets ring around hc axis
+	if(subCentroids[4][c1] < levelDown)
+		markInvalid(subCentroids[4]);
+	else
+		subCentroids[4][c1] -= levelDown;
+	subCentroids[5][c1] += levelDown;
+	if (subCentroids[6][c2] < levelDown)
+		markInvalid(subCentroids[6]);
+	else
+		subCentroids[6][c2] -= levelDown;
+	subCentroids[7][c2] += levelDown;
+	for (int i = 0; i < 8; ++i) {
+		if (subCentroids[i][0] == USHRT_MAX)  // || subCentroids[i][1] == USHRT_MAX || subCentroids[i][2] == USHRT_MAX)
+			continue;
+		assert(centroidUpOneLevel(subCentroids[i]) == macroCentroid);
+	}
+
+}
+
 const bccTetCentroid vnBccTetrahedra::centroidUpOneLevel(const bccTetCentroid& tcIn) {
 	bccTetCentroid tcUp;
-
-	int levelBit = 1, levelX2, levelX4, level = getResolutionLevel(tcIn);
-	for (int i = 1; i < level; ++i)
-		levelBit <<= 1;
+	int levelBit, levelX2, levelX4, hc;  // levelBit = 1, level = getResolutionLevel(tcIn);
+	centroidHalfAxisSize(tcIn, hc, levelBit);
+//	for (int i = 1; i < level; ++i)
+//		levelBit <<= 1;
 	levelX2 = levelBit << 1;
 	levelX4 = levelX2 << 1;
-	int hc = -1;
-	for (int i = 0; i < 3; ++i)
-		if (tcIn[i] & levelBit) {
-			hc = i;
-			break;
-		}
+//	int hc = -1;
+//	for (int i = 0; i < 3; ++i)
+//		if (tcIn[i] & levelBit) {
+//			hc = i;
+//			break;
+//		}
 	int c1 = (hc + 1) % 3, c2 = (hc + 2) % 3;
 	tcUp = tcIn;
 	assert((tcUp[c1] & levelX2) != (tcUp[c2] & levelX2));
