@@ -94,7 +94,7 @@ public:
 		return reinterpret_cast<std::array<T, d>(*)>(m_solver.getPositionPtr());
 	}
 
-	// Next routine for inputing nodes on the face separating a large tet from possible multiple smaller ones. The subnodes input are present on a smaller tet, but not on the larger one.
+	// Next routine for inputting nodes on the face separating a large tet from possible multiple smaller ones. The subnodes input are present on a smaller tet, but not on the larger one.
 	// These are constrained by internodeWeight to be barycentrically located on the larger face by faceNodes.  With multiple levels of physics resolution faceNodes and their
 	// corresponding barycentric multipliers can number more than three for a single subtet.
 	void addInterNodeConstraints(const std::vector<int>& subNodes, const std::vector<std::vector<int> >& faceNodes, const std::vector<std::vector<float> >& faceBarycentrics, const float internodeWeight) {
@@ -103,16 +103,13 @@ public:
 		for (int i = 0; i < sns; i++) {
 			if (faceNodes[i].size() > 3) {
 				// std::cout << i << "th internode needs " << faceNodes[i].size() << " macro nodes" << std::endl;
-				m_solver.addInterNodeConstraint(subNodes[i], faceNodes[i].size(), &faceNodes[i][0], &faceBarycentrics[i][0], 0);
+				m_solver.addInterNodeConstraint(subNodes[i], faceNodes[i].size(), &faceNodes[i][0], &faceBarycentrics[i][0], 0);  // QISI - currently not processing these?
 			} else {
 				int l = faceNodes[i].size() < 3 ? faceNodes[i].size() : 3;
 				int fN[3]{}; for (int v = 0; v < l; ++v) fN[v] = faceNodes[i][v];
 				float bC[3]{}; for (int v = 0; v < l; ++v) bC[v] = faceBarycentrics[i][v];
 				int handle = m_solver.addInterNodeConstraint(subNodes[i], fN, bC, internodeWeight);
-				int junk = handle;
-
 			}
-//			fixedTetConstraints.push_back(handle);
 		}
 	}
 

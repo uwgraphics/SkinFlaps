@@ -338,18 +338,10 @@ void bccTetScene::updateOldPhysicsLattice()
 		_vnTets.materialCoordsToNodeSpatialVector();
 
 		std::vector<int> subNodes;
-		std::vector<std::vector<int> > faceNodes;
-		std::vector<std::vector<float> > faceBarys;
-		size_t snSize = _vnTets.decNodeConstraints.size();
-		subNodes.reserve(snSize);
-		faceNodes.reserve(snSize);
-		faceBarys.reserve(snSize);
-		for (auto& dn : _vnTets.decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
-			subNodes.push_back(dn.first);
-			faceNodes.push_back(dn.second.faceNodes);
-			faceBarys.push_back(dn.second.faceParams);
-		}
-		_ptp.addInterNodeConstraints(subNodes, faceNodes, faceBarys, _lowTetWeight);
+		std::vector<std::vector<int> > macroNodes;
+		std::vector<std::vector<float> > macroBarys;
+		_vnTets.getInterNodeConstraints(subNodes, macroNodes, macroBarys);
+		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
 
 		//			end = std::chrono::system_clock::now();
 		//			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -382,8 +374,8 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 
 #ifdef _DEBUG
 		maximumDimensionSubdivisions = 37; //17;
-#else
-			maximumDimensionSubdivisions = 70;  // 90
+//#else
+//			maximumDimensionSubdivisions = 70;  // 90
 #endif
 
 		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
@@ -391,8 +383,8 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-//		_vnTets.decimate(3, 6, false);
-		_vnTets.decimate2(3);
+//		_vnTets.decimate(4, 8, false);
+		_vnTets.decimate2(4);
 
 
 		// COURT nuke this debug
@@ -445,22 +437,10 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_vnTets.materialCoordsToNodeSpatialVector();
 
 		std::vector<int> subNodes;
-		std::vector<std::vector<int> > faceNodes;
-		std::vector<std::vector<float> > faceBarys;
-		size_t snSize = _vnTets.decNodeConstraints.size();
-		subNodes.reserve(snSize);
-		faceNodes.reserve(snSize);
-		faceBarys.reserve(snSize);
-		for (auto& dn : _vnTets.decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
-			subNodes.push_back(dn.first);
-
-			if (dn.second.faceNodes.size() != 3)
-				int junk = 0;
-
-			faceNodes.push_back(dn.second.faceNodes);
-			faceBarys.push_back(dn.second.faceParams);
-		}
-		_ptp.addInterNodeConstraints(subNodes, faceNodes, faceBarys, _lowTetWeight);
+		std::vector<std::vector<int> > macroNodes;
+		std::vector<std::vector<float> > macroBarys;
+		_vnTets.getInterNodeConstraints(subNodes, macroNodes, macroBarys);
+		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
 
 //			end = std::chrono::system_clock::now();
 //			std::chrono::duration<double> elapsed_seconds = end - start;
