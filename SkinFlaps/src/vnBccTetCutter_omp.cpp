@@ -997,13 +997,13 @@ void vnBccTetCutter_omp::getConnectedComponents(tetTriangles& tt, std::vector<ne
 		auto iit = _interiorNodes.find(loc);
 
 
-//		if (patches.size() < 2) {  // only one tet.  No inter patch contention to resolve
-//			if (iit == _interiorNodes.end())
-//				patches.front().tetNodes[i] = -1;
-//			else
-//				patches.front().tetNodes[i] = iit->second;
-//		}
-//		else {  // put patch dissection block inside when tools are solid
+		if (patches.size() < 2) {  // only one tet.  No inter patch contention to resolve
+			if (iit == _interiorNodes.end())
+				patches.front().tetNodes[i] = -1;
+			else
+				patches.front().tetNodes[i] = iit->second;
+		}
+		else {  // put patch dissection block inside when tools are solid
 
 
 			Vec3f node(loc[0], loc[1], loc[2]);  // COURT switch routine to Vec3d
@@ -1072,7 +1072,7 @@ void vnBccTetCutter_omp::getConnectedComponents(tetTriangles& tt, std::vector<ne
 					inside.front()->tetNodes[i] = iit->second;
 			}
 		}
-//	}
+	}
 
 	for (auto& cTet : patches) {
 		nt_vec.push_back(newTet());

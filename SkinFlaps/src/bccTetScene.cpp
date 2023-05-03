@@ -386,29 +386,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 //		_vnTets.decimate(4, 8, false);
 		_vnTets.decimate2(4);
 
-
-		// COURT nuke this debug
-/*		int i = 1;
-		bccTetCentroid tc = { 32, 74, 31 };
-		while (i < 64) {
-			tc = _vnTets.centroidUpOneLevel(tc);
-			std::list<int> tl;
-			_vnTets.centroidTets(tc, tl);
-			if (!tl.empty())
-				break;
-			++i;
-		} */
-
-
-
 		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
-
-		// COURT - could redo this only using nodes that are outside of boundary.  Revisit after periosteal undermining done.
-		// get fixed scene boundary nodes
-	//	for (int i = 0; i < (int)_fixedRegions.size(); ++i)
-	//		setFixedRegion(_fixedRegions[i].corners);
-	//	for (int i = 0; i < (int)_fixedMeshes.size(); ++i)
-	//		setFixedMesh(&_fixedMeshes[i]);
 
 #ifdef NO_PHYSICS
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
@@ -417,8 +395,6 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 //		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
 
 		std::vector<uint8_t> tetSizeMult;
-
-
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
 			uint8_t sizeBit = 1;
