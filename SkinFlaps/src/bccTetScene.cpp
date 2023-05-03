@@ -373,7 +373,7 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_tetsModified = false;
 
 #ifdef _DEBUG
-		maximumDimensionSubdivisions = 37; //17;
+		maximumDimensionSubdivisions = 222; //37;
 //#else
 //			maximumDimensionSubdivisions = 70;  // 90
 #endif
