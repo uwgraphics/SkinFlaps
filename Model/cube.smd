@@ -27,7 +27,7 @@
         "hookWeight" : 65.0,
         "sutureWeight" : 1200.0,
         "autoSutureSpacing" : 0.02,
-        "maxDimSubdivisions" : 180
+        "maxDimSubdivisions" : 70
     }
     "incisionWidth" : 0.01
 }

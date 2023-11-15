@@ -25,6 +25,7 @@ public:
 //	void subdivideMacroTets(std::vector<int>& macroTets);
 	void decimate(int level, int nSubtetsRequired, bool onlyInteriorTets = false);
 	void decimate2(int level);
+	void getInterNodeConstraints(std::vector<int>& subNodes, std::vector<std::vector<int> >& macroNodes, std::vector<std::vector<float> >& macroBarycentrics);
 	void centroidToNodeLociLevels(const bccTetCentroid& centroid, short(&gridLoci)[4][3]);
 	void barycentricWeightToGridLocusLevels(const bccTetCentroid& tetCentroid, const Vec3f& barycentricWeight, Vec3f& gridLocus);
 
@@ -37,12 +38,6 @@ public:
 		}
 		return -1;  // never happens
 	}
-
-	struct decimatedFaceNode {
-		std::vector<int> faceNodes;
-		std::vector<float> faceParams;
-	};
-	std::unordered_map<int, decimatedFaceNode> decNodeConstraints;  // first is decimated node, second its parametric location on a super tet face.
 
 private:
 	vnBccTetCutter* _vbtc;
@@ -61,6 +56,11 @@ private:
 	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> _uniqueCornerNodes;
 	std::unordered_map<int, std::pair<int, int> > _decimatedNodes;  // first is id of node decimated, second are the two nodes of the edge first node splits.
 	typedef std::unordered_map<int, std::pair<int, int> >::iterator DNIT;
+	struct decimatedFaceNode {
+		std::vector<int> faceNodes;
+		std::vector<float> faceBarys;
+	};
+	std::unordered_map<int, decimatedFaceNode> _decNodeConstraints;  // first is decimated node, second its parametric location on a super tet face.
 
 	void gridLocusToBarycentricWeightLevel(const Vec3f& gridLocus, const bccTetCentroid& tc, Vec3f& barycentricWeight);
 	void centroidPromoteOneLevel(const bccTetCentroid& tcLevelIn, bccTetCentroid& tc);

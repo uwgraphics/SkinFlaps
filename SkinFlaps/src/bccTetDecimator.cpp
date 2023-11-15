@@ -4,6 +4,7 @@
 #include <map>
 #include <algorithm>
 #include <unordered_set>
+#include "Mat2x2f.h"
 #include "vnBccTetCutter.h"
 #include "materialTriangles.h"
 
@@ -45,7 +46,7 @@ void bccTetDecimator::decimate2(int level) {
 	if (level < 2)
 		throw(std::logic_error("Tet decimation below level 2 is requested.\n"));
 	_decimatedNodes.clear();
-	decNodeConstraints.clear();
+	_decNodeConstraints.clear();
 	int seed = 0, levelEnd = _tetNodes.size(), levelNow = 1;
 	while (levelNow < level) {
 		// to mark a tet for deletion its _tetNode[0] set -1 and its _tetCentroids[0] set USHRT_MAX.  Also is removed from _tetHash.
@@ -173,62 +174,81 @@ void bccTetDecimator::decimate2(int level) {
 		for (int j = 0; j < 4; ++j)
 			tn[j] = nodeMap[tn[j]];
 	}
-	// binary tree structure for decimated nodes follows.  Only need leaves at the end.
-	struct bNode {
-		int node;
-		DNIT nit;
+	// binary tree structure for decimated nodes follows.  Only need closest parents.
+	struct leafNode {
+		int child;
+		int parent0;
+		int parent1;
 		float depth;
 	};
-	std::list<bNode> parents, leaves;
-	auto processFirstParent = [&]() {
-		auto pn = parents.begin();
-		bNode child;
-		child.depth = pn->depth * 0.5f;
-		child.node = pn->nit->second.first;
-		child.nit = _decimatedNodes.find(child.node);
-		if (child.nit == _decimatedNodes.end())
-			leaves.push_back(child);
-		else
-			parents.push_back(child);
-		child.node = pn->nit->second.second;
-		child.nit = _decimatedNodes.find(child.node);
-		if (child.nit == _decimatedNodes.end())
-			leaves.push_back(child);
-		else
-			parents.push_back(child);
-		parents.erase(pn);
+	std::list<leafNode> parents, leaves;
+	auto processLeaf = [&]() {
+		auto ln = leaves.begin();
+		leafNode parent;
+		parent.depth = ln->depth * 0.5f;
+		parent.child = ln->parent0;
+		if (nodeMap[parent.child] > -1)
+			parents.push_back(parent);
+		else {
+			DNIT nit = _decimatedNodes.find(parent.child);
+			parent.parent0 = nit->second.first;
+			parent.parent1 = nit->second.second;
+			leaves.push_back(parent);
+		}
+		parent.child = ln->parent1;
+		if (nodeMap[parent.child] > -1)
+			parents.push_back(parent);
+		else {
+			DNIT nit = _decimatedNodes.find(parent.child);
+			parent.parent0 = nit->second.first;
+			parent.parent1 = nit->second.second;
+			leaves.push_back(parent);
+		}
+		leaves.erase(ln);
 	};
+
+	int ic2 = 0, ic3 = 0, ic4 = 0;
+
 	for (auto dn = _decimatedNodes.begin(); dn != _decimatedNodes.end(); ++dn) {
 		if (dn->first < 0)
 			continue;
 		int dNode = nodeMap[dn->first];
-		if (dNode > -1) {  // used
+		if (dNode > -1) {  // used. A T-junction exists here
 			parents.clear();
 			leaves.clear();
 			// collect leaves of binary tree of decimated nodes
-			bNode root;
-			root.depth = 1.0f;
-			root.nit = dn;
-			root.node = dn->first;
-			parents.push_back(root);
-			while (!parents.empty())
-				processFirstParent();
-			auto dnc = decNodeConstraints.insert(std::make_pair(dNode, decimatedFaceNode()));
+			leafNode bud;
+			bud.depth = 1.0f;
+			bud.child = dn->first;
+			bud.parent0 = dn->second.first;
+			bud.parent1 = dn->second.second;
+			leaves.push_back(bud);
+			while (!leaves.empty())
+				processLeaf();
+			auto dnc = _decNodeConstraints.insert(std::make_pair(dNode, decimatedFaceNode()));
 			auto& fn = dnc.first->second.faceNodes;
-			auto& fp = dnc.first->second.faceParams;
-			if (leaves.size() < 3) {
+			auto& fp = dnc.first->second.faceBarys;
+			if (parents.size() < 3) {
 				fn.reserve(2);
-				fn.push_back(nodeMap[leaves.front().node]);
-				fn.push_back(nodeMap[leaves.back().node]);
+				fn.push_back(nodeMap[parents.front().child]);
+				fn.push_back(nodeMap[parents.back().child]);
 				fp.assign(2, 0.5f);
 			}
 			else {
 				std::map<int, float> dnVerts;
-				for (auto& l : leaves) {
-					auto pr = dnVerts.insert(std::make_pair(l.node, l.depth));
+				for (auto& p : parents) {
+					auto pr = dnVerts.insert(std::make_pair(p.child, p.depth));
 					if (!pr.second)
-						pr.first->second += l.depth;
+						pr.first->second += p.depth;
 				}
+
+				if (dnVerts.size() == 2)
+					++ic2;
+				if (dnVerts.size() == 3)
+					++ic3;
+				if (dnVerts.size() > 3)
+					++ic4;
+
 				fn.reserve(dnVerts.size());
 				fp.reserve(dnVerts.size());
 				for (auto& dnv : dnVerts) {
@@ -238,13 +258,16 @@ void bccTetDecimator::decimate2(int level) {
 			}
 		}
 	}
+
+	std::cout << "Model has " << ic2 << " two macroNode, " << ic3 << " three macroNode, and " << ic4 << " four or greater macronode internode constraints.\n";
+
 	_decimatedNodes.clear();
 }
 
 void bccTetDecimator::decimate(int level, int nSubtetsRequired, bool onlyInteriorTets) {
 	if (level < 2)
 		throw(std::logic_error("Tet decimation below level 2 is requested.\n"));
-	decNodeConstraints.clear();
+	_decNodeConstraints.clear();
 	_uniqueCornerNodes.clear();
 	_decimatedNodes.clear();
 	// next section generates all the super tet centroids generated at the requested level.
@@ -382,9 +405,9 @@ void bccTetDecimator::decimate(int level, int nSubtetsRequired, bool onlyInterio
 			parents.push_back(root);
 			while (!parents.empty())
 				processFirstParent();
-			auto dnc = decNodeConstraints.insert(std::make_pair(dNode, decimatedFaceNode()));
+			auto dnc = _decNodeConstraints.insert(std::make_pair(dNode, decimatedFaceNode()));
 			auto& fn = dnc.first->second.faceNodes;
-			auto& fp = dnc.first->second.faceParams;
+			auto& fp = dnc.first->second.faceBarys;
 			if (leaves.size() < 3) {
 				fn.reserve(2);
 				fn.push_back(nodeMap[leaves.front().node]);
@@ -408,6 +431,24 @@ void bccTetDecimator::decimate(int level, int nSubtetsRequired, bool onlyInterio
 		}
 	}
 	_decimatedNodes.clear();
+}
+
+void bccTetDecimator::getInterNodeConstraints(std::vector<int> &subNodes, std::vector<std::vector<int> > &macroNodes, std::vector<std::vector<float> > &macroBarycentrics) {
+	size_t snSize = _decNodeConstraints.size();
+	if (snSize < 1)
+		throw(std::logic_error("Trying to collect an empty internode constraint container.\n"));
+	subNodes.clear();
+	macroNodes.clear();
+	macroBarycentrics.clear();
+	subNodes.reserve(snSize);
+	macroNodes.reserve(snSize);
+	macroBarycentrics.reserve(snSize);
+	for (auto& dn : _decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
+		subNodes.push_back(dn.first);
+		macroNodes.push_back(std::move(dn.second.faceNodes));
+		macroBarycentrics.push_back(std::move(dn.second.faceBarys));
+	}
+	_decNodeConstraints.clear();
 }
 
 void bccTetDecimator::gridLocusToBarycentricWeightLevel(const Vec3f& gridLocus, const bccTetCentroid& tc, Vec3f& barycentricWeight)

@@ -409,7 +409,7 @@ void vnBccTetCutter_omp::createInteriorNodes() {
 			++mNext;
 			if (mNext == mm.end())
 				break;
-			while (mNext->first - mit->first < 1e-4f) {
+			while (mNext != mm.end() && mNext->first - mit->first < 1e-4f) {
 				if (mit->second == mNext->second) {  // surface edge or vertex hit
 					mm.erase(mNext);
 					mNext = mit;
@@ -427,16 +427,16 @@ void vnBccTetCutter_omp::createInteriorNodes() {
 			++mit;
 		}
 
-#ifdef _DEBUG
-		if (mm.size() & 1)
-			int junk = 0;
-		bool inside = true;
-		for (auto mit = mm.begin(); mit != mm.end(); ++mit) {
-			if (mit->second != inside)
-				int junk2 = 0;
-			inside = !inside;
-		}
-#endif
+//#ifdef _DEBUG
+//		if (mm.size() & 1)
+//			throw(std::logic_error("Program error in cutter in createInteriorNodes()\n");
+//		bool inside = true;
+//		for (auto mit = mm.begin(); mit != mm.end(); ++mit) {
+//			if (mit->second != inside)
+//				throw(std::logic_error("Program error in cutter in createInteriorNodes()\n");
+//			inside = !inside;
+//		}
+// #endif
 
 	};
 	auto runInteriorNodes = [&](std::multimap<double, bool>& mm, bool evenLine) {
@@ -483,10 +483,6 @@ void vnBccTetCutter_omp::createInteriorNodes() {
 		for (short yi = 0; yi < oddXy[xi].size(); ++yi) {
 			if (oddXy[xi][yi].empty())
 				continue;
-
-//			if (xi == 31 && yi == 7)
-//				int junk = 0;
-
 			s3[0] = xi * 2 + 1;
 			s3[1] = yi * 2 + 1;
 			solidFilter(oddXy[xi][yi]);
@@ -497,10 +493,6 @@ void vnBccTetCutter_omp::createInteriorNodes() {
 		for (short yi = 0; yi < evenXy[xi].size(); ++yi) {
 			if (evenXy[xi][yi].empty())
 				continue;
-
-//			if (xi == 32 && yi == 7)
-//				solidFilter(evenXy[xi][yi]);;
-
 			s3[0] = (xi + 1) * 2;
 			s3[1] = (yi + 1) * 2;
 			solidFilter(evenXy[xi][yi]);
@@ -997,13 +989,13 @@ void vnBccTetCutter_omp::getConnectedComponents(tetTriangles& tt, std::vector<ne
 		auto iit = _interiorNodes.find(loc);
 
 
-//		if (patches.size() < 2) {  // only one tet.  No inter patch contention to resolve
-//			if (iit == _interiorNodes.end())
-//				patches.front().tetNodes[i] = -1;
-//			else
-//				patches.front().tetNodes[i] = iit->second;
-//		}
-//		else {  // put patch dissection block inside when tools are solid
+		if (patches.size() < 2) {  // only one tet.  No inter patch contention to resolve
+			if (iit == _interiorNodes.end())
+				patches.front().tetNodes[i] = -1;
+			else
+				patches.front().tetNodes[i] = iit->second;
+		}
+		else {  // put patch dissection block inside when tools are solid
 
 
 			Vec3f node(loc[0], loc[1], loc[2]);  // COURT switch routine to Vec3d
@@ -1072,7 +1064,7 @@ void vnBccTetCutter_omp::getConnectedComponents(tetTriangles& tt, std::vector<ne
 					inside.front()->tetNodes[i] = iit->second;
 			}
 		}
-//	}
+	}
 
 	for (auto& cTet : patches) {
 		nt_vec.push_back(newTet());

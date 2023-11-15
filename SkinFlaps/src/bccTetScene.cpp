@@ -338,18 +338,10 @@ void bccTetScene::updateOldPhysicsLattice()
 		_vnTets.materialCoordsToNodeSpatialVector();
 
 		std::vector<int> subNodes;
-		std::vector<std::vector<int> > faceNodes;
-		std::vector<std::vector<float> > faceBarys;
-		size_t snSize = _vnTets.decNodeConstraints.size();
-		subNodes.reserve(snSize);
-		faceNodes.reserve(snSize);
-		faceBarys.reserve(snSize);
-		for (auto& dn : _vnTets.decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
-			subNodes.push_back(dn.first);
-			faceNodes.push_back(dn.second.faceNodes);
-			faceBarys.push_back(dn.second.faceParams);
-		}
-		_ptp.addInterNodeConstraints(subNodes, faceNodes, faceBarys, _lowTetWeight);
+		std::vector<std::vector<int> > macroNodes;
+		std::vector<std::vector<float> > macroBarys;
+		_vnTets.getInterNodeConstraints(subNodes, macroNodes, macroBarys);
+		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
 
 		//			end = std::chrono::system_clock::now();
 		//			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -381,9 +373,9 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_tetsModified = false;
 
 #ifdef _DEBUG
-		maximumDimensionSubdivisions = 37; //17;
-#else
-			maximumDimensionSubdivisions = 70;  // 90
+		maximumDimensionSubdivisions = 222; //37;
+//#else
+//			maximumDimensionSubdivisions = 70;  // 90
 #endif
 
 		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
@@ -391,32 +383,10 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-//		_vnTets.decimate(3, 6, false);
-		_vnTets.decimate2(3);
-
-
-		// COURT nuke this debug
-/*		int i = 1;
-		bccTetCentroid tc = { 32, 74, 31 };
-		while (i < 64) {
-			tc = _vnTets.centroidUpOneLevel(tc);
-			std::list<int> tl;
-			_vnTets.centroidTets(tc, tl);
-			if (!tl.empty())
-				break;
-			++i;
-		} */
-
-
+//		_vnTets.decimate(4, 8, false);
+		_vnTets.decimate2(4);
 
 		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
-
-		// COURT - could redo this only using nodes that are outside of boundary.  Revisit after periosteal undermining done.
-		// get fixed scene boundary nodes
-	//	for (int i = 0; i < (int)_fixedRegions.size(); ++i)
-	//		setFixedRegion(_fixedRegions[i].corners);
-	//	for (int i = 0; i < (int)_fixedMeshes.size(); ++i)
-	//		setFixedMesh(&_fixedMeshes[i]);
 
 #ifdef NO_PHYSICS
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
@@ -425,8 +395,6 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 //		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
 
 		std::vector<uint8_t> tetSizeMult;
-
-
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
 			uint8_t sizeBit = 1;
@@ -445,22 +413,10 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		_vnTets.materialCoordsToNodeSpatialVector();
 
 		std::vector<int> subNodes;
-		std::vector<std::vector<int> > faceNodes;
-		std::vector<std::vector<float> > faceBarys;
-		size_t snSize = _vnTets.decNodeConstraints.size();
-		subNodes.reserve(snSize);
-		faceNodes.reserve(snSize);
-		faceBarys.reserve(snSize);
-		for (auto& dn : _vnTets.decNodeConstraints) {  //.begin(); dn != _vnTets.decNodeConstraints.end(); ++dn)
-			subNodes.push_back(dn.first);
-
-			if (dn.second.faceNodes.size() != 3)
-				int junk = 0;
-
-			faceNodes.push_back(dn.second.faceNodes);
-			faceBarys.push_back(dn.second.faceParams);
-		}
-		_ptp.addInterNodeConstraints(subNodes, faceNodes, faceBarys, _lowTetWeight);
+		std::vector<std::vector<int> > macroNodes;
+		std::vector<std::vector<float> > macroBarys;
+		_vnTets.getInterNodeConstraints(subNodes, macroNodes, macroBarys);
+		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
 
 //			end = std::chrono::system_clock::now();
 //			std::chrono::duration<double> elapsed_seconds = end - start;
