@@ -122,17 +122,18 @@
     <ClCompile>
       <WarningLevel>Level1</WarningLevel>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>USE_CUDA;_DEBUG;WIN32;NOMINMAX;ENABLE_AVX_INSTRUCTION_SET;IMGUI_IMPL_OPENGL_LOADER_GL3W;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;WIN32;NOMINMAX;ENABLE_AVX_INSTRUCTION_SET;IMGUI_IMPL_OPENGL_LOADER_GL3W;_CRT_SECURE_NO_WARNINGS;WIN64;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\SkinFlaps\src\CDT\include;$(INTEL_LIB)\tbb\2021.5.0\include;$(INTEL_LIB)\mkl\2022.0.0\include;..\..\PDTetPhysics\include;..\..\simd-numeric-kernels-new;$(Cuda_Path)\include;..\..\PhysBAM_subset\Public_Library;..\..\PhysBAM_subset\Common_Libraries\Common_Tools;..\..\PhysBAM_subset\Common_Libraries;..\..\PDTetPhysics\PDDeformer\include;..\..\gl3wGraphics;..\..\imgui_glfw_nfd_lib\extLibs\nfd\include;..\..\imgui_glfw_nfd_lib\extLibs\glfw\include;..\..\imgui_glfw_nfd_lib\extLibs\gl3w;..\..\imgui_glfw_nfd_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SkinFlaps\src\CDT\include;$(INTEL_LIB)\tbb\2021.5.0\include;$(INTEL_LIB)\mkl\2022.0.0\include;..\..\PDTetPhysics\include;..\..\simd-numeric-kernels-new;$(Cuda_Path)\include;..\..\PhysBAM_subset\Public_Library;..\..\PhysBAM_subset\Common_Libraries\Common_Tools;..\..\PhysBAM_subset\Common_Libraries;..\..\PDTetPhysics\PDDeformer\include;..\..\gl3wGraphics;..\..\imgui_glfw_nfd_lib\extLibs\glfw\include;..\..\imgui_glfw_nfd_lib\extLibs\gl3w;..\..\imgui_glfw_nfd_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Intel\oneAPI\tbb\2021.5.0\lib\intel64\vc_mt;C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\lib\intel64;$(Cuda_Path)\lib\x64;..\..\PhysBAM_subset\x64\Debug;.\x64\Debug;..\..\imgui_glfw_nfd_lib\extLibs\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics.lib;cusparse.lib;cusolver.lib;cudart.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
+      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics_noCuda.lib;cusparse.lib;cusolver.lib;cudart.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>MSVCRT;LIBCMT</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -141,9 +142,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>USE_CUDA;WIN32;NDEBUG;NOMINMAX;ENABLE_AVX_INSTRUCTION_SET;IMGUI_IMPL_OPENGL_LOADER_GL3W;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;NOMINMAX;ENABLE_AVX_INSTRUCTION_SET;IMGUI_IMPL_OPENGL_LOADER_GL3W;_CRT_SECURE_NO_WARNINGS;WIN64;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\SkinFlaps\src\CDT\include;$(INTEL_LIB)\tbb\2021.5.0\include;$(INTEL_LIB)\mkl\2022.0.0\include;..\..\PDTetPhysics\include;..\..\simd-numeric-kernels-new;$(Cuda_Path)\include;..\..\PhysBAM_subset\Public_Library;..\..\PhysBAM_subset\Common_Libraries\Common_Tools;..\..\PhysBAM_subset\Common_Libraries;..\..\PDTetPhysics\PDDeformer\include;..\..\gl3wGraphics;..\..\imgui_glfw_nfd_lib\extLibs\nfd\include;..\..\imgui_glfw_nfd_lib\extLibs\glfw\include;..\..\imgui_glfw_nfd_lib\extLibs\gl3w;..\..\imgui_glfw_nfd_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SkinFlaps\src\CDT\include;$(INTEL_LIB)\tbb\2021.5.0\include;$(INTEL_LIB)\mkl\2022.0.0\include;..\..\PDTetPhysics\include;..\..\simd-numeric-kernels-new;$(Cuda_Path)\include;..\..\PhysBAM_subset\Public_Library;..\..\PhysBAM_subset\Common_Libraries\Common_Tools;..\..\PhysBAM_subset\Common_Libraries;..\..\PDTetPhysics\PDDeformer\include;..\..\gl3wGraphics;..\..\imgui_glfw_nfd_lib\extLibs\glfw\include;..\..\imgui_glfw_nfd_lib\extLibs\gl3w;..\..\imgui_glfw_nfd_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -153,44 +154,38 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Intel\oneAPI\tbb\2021.5.0\lib\intel64\vc_mt;C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\lib\intel64;$(Cuda_Path)\lib\x64;..\..\PhysBAM_subset\x64\Release;.\x64\Release;..\..\imgui_glfw_nfd_lib\extLibs\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>mkl_rt.lib;PDTetPhysics.lib;cusparse.lib;cusolver.lib;cudart.lib;PhysBAM_subset.lib;glfw3.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Intel\oneAPI\tbb\2021.5.0\lib\intel64\vc_mt;C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\lib\intel64;..\..\PhysBAM_subset\x64\Release;.\x64\Release;..\..\imgui_glfw_nfd_lib\extLibs\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mkl_intel_ilp64.lib;mkl_intel_thread.lib;mkl_core.lib;libiomp5md.lib;PDTetPhysics_noCuda.lib;PhysBAM_subset.lib;glfw3_mt.lib;gl3wGraphics.lib;opengl32.lib;imgui_glfw_nfd_lib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>MSVCRT</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\SkinFlaps\src\bccTetDecimator.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\bccTetScene.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\deepCut.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\FacialFlapsGui.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\fence.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\hooks.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\json.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\main.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\remapTetPhysics.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\skinCutUndermineTets.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\surgicalActions.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\sutures.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\tetCollisions.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\tetSubset.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutterTbb.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutter.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\vnBccTetrahedra.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\SkinFlaps\src\bccTetDecimator.h" />
     <ClInclude Include="..\..\SkinFlaps\src\bccTetScene.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\deepCut.h" />
     <ClInclude Include="..\..\SkinFlaps\src\delaunator.hpp" />
     <ClInclude Include="..\..\SkinFlaps\src\FacialFlapsGui.h" />
     <ClInclude Include="..\..\SkinFlaps\src\fence.h" />
     <ClInclude Include="..\..\SkinFlaps\src\hooks.h" />
     <ClInclude Include="..\..\SkinFlaps\src\json.h" />
     <ClInclude Include="..\..\SkinFlaps\src\prettyPrintJSON.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\remapTetPhysics.h" />
     <ClInclude Include="..\..\SkinFlaps\src\skinCutUndermineTets.h" />
     <ClInclude Include="..\..\SkinFlaps\src\surgicalActions.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\sutures.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\tetCollisions.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\tetSubset.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutterTbb.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\triTriIntersect_Shen.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\tri_tri_intersect_Guigue.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutter.h" />
     <ClInclude Include="..\..\SkinFlaps\src\vnBccTetrahedra.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

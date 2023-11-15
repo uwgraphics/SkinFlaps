@@ -107,10 +107,10 @@ int skinCutUndermineTets::parametricMTedgeTet(const int triangle, const int edge
 	if (cc.size() < 2)
 		return cc.front();
 	for (auto c : cc){
-		if (_vbt->decreasingCentroidPath(c, _vbt->_vertexTets[tr[edge]], tp))
-			return c;
-		if (_vbt->decreasingCentroidPath(c, _vbt->_vertexTets[tr[(edge + 1) % 3]], tp))
-			return c;
+//		if (_vbt->decreasingCentroidPath(c, _vbt->_vertexTets[tr[edge]], tp))
+//			return c;
+//		if (_vbt->decreasingCentroidPath(c, _vbt->_vertexTets[tr[(edge + 1) % 3]], tp))
+//			return c;
 	}
 	assert(false);
 	return -1;
@@ -147,8 +147,8 @@ int skinCutUndermineTets::parametricMTtriangleTet(const int mtTriangle, const fl
 		return cc.front();
 	for (auto c : cc){
 		for (int i = 0; i < 3; ++i){
-			if (_vbt->decreasingCentroidPath(c, _vbt->_vertexTets[tr[i]], tp))
-				return c;
+//			if (_vbt->decreasingCentroidPath(c, _vbt->_vertexTets[tr[i]], tp))
+//				return c;
 		}
 	}
 	assert(false);
@@ -347,7 +347,7 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 		return;
 	}
 	// New vertex to be created in mid triangle
-	int tet = _vbt->parametricTriangleTet(_mt->triangleVertices(topTriangle), uv, dp.gridLocus);
+	int tet = _vbt->parametricTriangleTet(topTriangle, uv, dp.gridLocus);
 	topVertex = _mt->addNewVertexInMidTriangle(topTriangle, uv);
 	int topTexture = _mt->numberOfTextures() - 1;  // texture of this new vertex
 	assert(topVertex == _vbt->_vertexTets.size());
@@ -1077,8 +1077,8 @@ int skinCutUndermineTets::deepPointTetWeight(const std::unordered_map<int, deepP
 	else {
 		for (auto tet : lt) {
 			assert(false);  // COURT debug me for multires
-			if (_vbt->decreasingCentroidPath(_vbt->getVertexTetrahedron(dit->first), tetOut, tp))
-				break;
+//			if (_vbt->decreasingCentroidPath(_vbt->getVertexTetrahedron(dit->first), tetOut, tp))
+//				break;
 		}
 	}
 	_vbt->gridLocusToBarycentricWeight(dit->second.gridLocus, tc, baryWeight);

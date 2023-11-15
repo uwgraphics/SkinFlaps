@@ -1,6 +1,6 @@
 {
     "dynamicObjects" : {
-        "book.obj" : {
+        "tightSleeve.obj" : {
             "textureMaps": [
                 1,
                 2,
@@ -10,8 +10,8 @@
         }
     },
     "textureFiles" : {
-        "CleftTexture.jpg" : 1,
-        "CleftNormal.jpg" : 2,
+        "deepBedTexture.jpg" : 1,
+        "deepBedNormal.jpg" : 2,
         "cleftDeepBed.jpg" : 3,
         "cleftDeepBed_Nrm.jpg" : 4
     },
@@ -27,7 +27,7 @@
         "hookWeight" : 65.0,
         "sutureWeight" : 1200.0,
         "autoSutureSpacing" : 0.02,
-        "maxDimSubdivisions" : 80
+        "maxDimSubdivisions" : 70
     }
     "incisionWidth" : 0.01
 }

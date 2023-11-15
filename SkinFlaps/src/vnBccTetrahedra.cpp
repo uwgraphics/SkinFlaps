@@ -18,8 +18,8 @@
 #include "materialTriangles.h"
 #include "vnBccTetrahedra.h"
 
-	// set up inverses for quick barycentric coord computation for the 6 material coord orientations.  Could also be used to compute deformation gradients if start orientation needed.
-	// Usually need only one if svd makes the starting orientation irrelevant since all tets have exactly the same shape and size.
+// set up inverses for quick barycentric coord computation for the 6 material coord orientations.  Could also be used to compute deformation gradients if start orientation needed.
+// Usually need only one if svd makes the starting orientation irrelevant since all tets have exactly the same shape and size.
 
 Mat3x3f vnBccTetrahedra::_barycentricInverses[6] = {
 	{-0.5f, 0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 0.5f, -0.5f},
@@ -31,7 +31,6 @@ Mat3x3f vnBccTetrahedra::_barycentricInverses[6] = {
 
 void vnBccTetrahedra::clear()
 {
-//	_fixedNodes.clear();
 	_nodeGridLoci.clear();
 	_tetNodes.clear();
 	_tetCentroids.clear();
@@ -76,63 +75,6 @@ void vnBccTetrahedra::centroidToNodeLoci(const bccTetCentroid& centroid, short (
 		gridLoci[j][2] *= 0.5f;
 	}
 }
-
-void vnBccTetrahedra::centroidToNodeLocus(const bccTetCentroid& centroid, const int nodeIndex, short (&gridLocus)[3]) {
-	assert(nodeIndex > -1 && nodeIndex < 4);
-	int c1, c2, hc = centroid[0] & 1 ? 0 : (centroid[1] & 1 ? 1 : 2);
-	c1 = hc < 2 ? hc + 1 : 0;
-	c2 = hc > 0 ? hc - 1 : 2;
-	auto tc = centroid;
-	for (int i = 0; i < 3; ++i) {
-		tc[i] >>= 1;
-		gridLocus[i] = tc[i];
-	}
-	bool below01 = (tc[hc] + tc[c2]) & 1;
-	if (below01) {
-		if (nodeIndex < 1) {
-			++gridLocus[hc];
-			--gridLocus[c1];
-		}
-		else if (nodeIndex < 2) {
-			++gridLocus[c1];
-			++gridLocus[hc];
-		}
-		else if (nodeIndex < 3)
-			--gridLocus[c2];
-		else
-			++gridLocus[c2];
-	}
-	else {
-		if (nodeIndex < 1)
-			--gridLocus[c1];
-		else if (nodeIndex < 2)
-			++gridLocus[c1];
-		else if (nodeIndex < 3) {
-			++gridLocus[hc];
-			++gridLocus[c2];
-		}
-		else {
-			++gridLocus[hc];
-			--gridLocus[c2];
-		}
-	}
-}
-
-/*	inline const  std::array<short, 3> nodeGridLocation(const bccTetCentroid& tetCentroid, const int nodeIndex)
-	{	// given a bccTetCentroid and its nodeIndex (0-3) return material coord location of node
-		bccTetCentroid tc;
-		tc = tetCentroid;
-		bool below01 = (tc.xyz[tc.halfCoordAxis] + tc.xyz[(tc.halfCoordAxis + 2) % 3]) & 1;
-		if (nodeIndex < 2){
-			if (below01) ++tc.xyz[tc.halfCoordAxis];
-			nodeIndex & 1 ? ++tc.xyz[(tc.halfCoordAxis + 1) % 3] : --tc.xyz[(tc.halfCoordAxis + 1) % 3];
-		}
-		else{
-			if (!below01) ++tc.xyz[tc.halfCoordAxis];
-			below01 == (nodeIndex < 3) ? --tc.xyz[(tc.halfCoordAxis + 2) % 3] : ++tc.xyz[(tc.halfCoordAxis + 2) % 3];
-		}
-		return tc.xyz;
-	} */
 
 void vnBccTetrahedra::gridLocusToLowestTetCentroid(const Vec3f &gridLocus, bccTetCentroid &tetCentroid)
 {
@@ -355,129 +297,60 @@ void vnBccTetrahedra::gridLocusToBarycentricWeight(const Vec3f &gridLocus, const
 	barycentricWeight = _barycentricInverses[baryInv] * B;
 }
 
-int vnBccTetrahedra::faceAdjacentTet(const bccTetCentroid tc, const int face, bccTetCentroid&tcAdj)
+int vnBccTetrahedra::faceAdjacentMicrotet(const bccTetCentroid tc, const int face, bccTetCentroid&tcAdj)
 {  // fundamental code for all topological path routines
 	// triangle faces are listed cyclic from the 4 tet nodes. Face 0 and 2 are CW, 1 & 3 CCW.
 	// Returns face # of the adjacent tet.  If adjacent centroid would be outside positive octant (illegal centroid), face return is -1.
+#ifdef _DEBUG
+	if ((tc[0] & 1) == 0 && (tc[1] & 1) == 0 && (tc[2] & 1) == 0)
+		throw(std::logic_error("vnBccTetrahedra::faceAdjacentMicrotet() called with a macrotet argument."));
+#endif
 	int adjFace;
 	tcAdj = tc;
-//	std::array<short, 3> xyz;
 	int aha, ha = tc[0] & 1 ? 0 : (tc[1] & 1 ? 1 : 2);
-//	centroidToXyzHalfAxis(tc, xyz, ha);
-	--tcAdj[ha];
-	if (face < 1 || face >2){
-		aha = (ha + 2) % 3;
-		++tcAdj[aha];
-		if (((tc[ha] + tc[aha])>>1) & 1){  // down tet
-			tcAdj[ha] += 2;
-			adjFace = 2;
-			if (face < 1) {
-				if (tcAdj[aha] < 2)
-					return -1;
-				tcAdj[aha] -= 2;
-			}
-		}
-		else{
+	aha = (ha + 1) % 3;
+	if (((tc[ha] + tc[aha]) >> 1) & 1) {  // up tet
+		if (face < 1 || face > 2) {
 			adjFace = 1;
-			if (face > 2) {
-				if (tcAdj[aha] < 2)
-					return -1;
-				tcAdj[aha] -= 2;
-			}
+			if (tcAdj[ha] < 1)
+				return -1;  // next line would be below bounds tet
+			--tcAdj[ha];
+			aha = (ha + 2) % 3;
+			if (face > 2 && tcAdj[aha] < 1)
+				return -1;  // next line would be below bounds tet
+			tcAdj[aha] += face < 1 ? 1 : -1;
+		}
+		else {
+			adjFace = face < 2 ? 3 : 0;
+			++tcAdj[ha];
+			if (face > 1 && tcAdj[aha] < 1)
+				return -1;  // next line would be below bounds tet
+			tcAdj[aha] += face < 2 ? 1 : -1;
 		}
 	}
-	else{
-		aha = (ha + 1) % 3;
-		++tcAdj[aha];
-		if (face > 1) {
-			if (tcAdj[aha] < 2)
-				return -1;
-			tcAdj[aha] -= 2;
-		}
-		if (((tc[ha] + tc[aha]) >> 1) & 1){  // up tet
-			tcAdj[ha] += 2;
-			adjFace = face > 1 ? 0 : 3;
-		}
-		else
-			adjFace = face > 1 ? 3 : 0;
-	}
-	return adjFace;
-}
-
-int vnBccTetrahedra::faceAdjacentTetNodeIndices(const bccTetCentroid tc, const int face, bccTetCentroid& tcAdj, int (&adjNodeIndices)[3])
-{  // fundamental code for all topological path routines
-	// triangle faces are listed cyclic from the 4 tet nodes. Face 0 and 2 are CW, 1 & 3 CCW.
-	// Returns face # of the adjacent tet.  If adjacent centroid would be outside positive octant (illegal centroid), face return is -1.
-	int adjFace;
-	tcAdj = tc;
-	//	std::array<short, 3> xyz;
-	int aha, ha = tc[0] & 1 ? 0 : (tc[1] & 1 ? 1 : 2);
-	//	centroidToXyzHalfAxis(tc, xyz, ha);
-	--tcAdj[ha];
-	if (face < 1 || face >2) {
-		aha = (ha + 2) % 3;
-		++tcAdj[aha];
-		if (((tc[ha] + tc[aha]) >> 1) & 1) {  // down tet
-			tcAdj[ha] += 2;
+	else {  // down tet
+		if (face < 1 || face > 2) {
 			adjFace = 2;
-			if (face < 1) {
-				if (tcAdj[aha] < 2)
-					return -1;
-				tcAdj[aha] -= 2;
-			}
+			++tcAdj[ha];
+			aha = (ha + 2) % 3;
+			if (face < 1 && tcAdj[aha] < 1)
+				return -1;  // next line would be below bounds tet
+			tcAdj[aha] += face < 1 ? -1 : 1;
 		}
 		else {
-			adjFace = 1;
-			if (face > 2) {
-				if (tcAdj[aha] < 2)
-					return -1;
-				tcAdj[aha] -= 2;
-			}
-		}
-	}
-	else {
-		aha = (ha + 1) % 3;
-		++tcAdj[aha];
-		if (face > 1) {
-			if (tcAdj[aha] < 2)
-				return -1;
-			tcAdj[aha] -= 2;
-		}
-		if (((tc[ha] + tc[aha]) >> 1) & 1) {  // up tet
-			tcAdj[ha] += 2;
-			adjFace = face > 1 ? 0 : 3;
-		}
-		else
-			adjFace = face > 1 ? 3 : 0;
-	}
-	if ((face & 1) != (adjFace & 1)) {
-		if (face & 1) {
-			adjNodeIndices[0] = (adjFace + 2) & 3;
-			adjNodeIndices[1] = adjFace;
-			adjNodeIndices[2] = (adjFace + 1) & 3;
-		}
-		else {
-			adjNodeIndices[0] = (adjFace + 1) & 3;
-			adjNodeIndices[1] = (adjFace + 2) & 3;
-			adjNodeIndices[2] = adjFace;
-		}
-	}
-	else {
-		if (face & 1) {
-			adjNodeIndices[0] = adjFace;
-			adjNodeIndices[1] = (adjFace + 2) & 3;
-			adjNodeIndices[2] = (adjFace + 1) & 3;
-		}
-		else {
-			adjNodeIndices[0] = (adjFace + 1) & 3;
-			adjNodeIndices[1] = adjFace;
-			adjNodeIndices[2] = (adjFace + 2) & 3;
+			adjFace = face < 2 ? 0 : 3;
+			if (tcAdj[ha] < 1)
+				return -1;  // next line would be below bounds tet
+			--tcAdj[ha];
+			if (face > 1 && tcAdj[aha] < 1)
+				return -1;  // next line would be below bounds tet
+			tcAdj[aha] += face < 2 ? 1 : -1;
 		}
 	}
 	return adjFace;
 }
 
-void vnBccTetrahedra::nodeCentroids(std::array<short, 3>& node, bccTetCentroid cntrd[24]) {
+void vnBccTetrahedra::nodeMicroCentroids(std::array<short, 3>& node, bccTetCentroid cntrd[24]) {
 	int count = 0;
 	for (int dim = 0; dim < 3; ++dim) {
 		for (int pos = -1; pos < 2; pos += 2) {
@@ -543,55 +416,11 @@ void vnBccTetrahedra::unitCubeCentroids(const short(&minimumCorner)[3], Vec3f(&c
 	}
 }
 
-void vnBccTetrahedra::CartesianEdgeCentroids(const short(&edgeMidpoint)[3], bccTetCentroid(&cntrd)[4]) {
-	bccTetCentroid ce = { (unsigned short)edgeMidpoint[0], (unsigned short)edgeMidpoint[1], (unsigned short)edgeMidpoint[2]};
-	int c1, c2;
-	if ((ce[0] & 1) == (ce[1] & 1)) { // hc = 2 
-		c1 = 0; c2 = 1;
-	}
-	else if ((ce[0] & 1) == (ce[2] & 1)) { // hc = 1
-		c1 = 2; c2 = 0;
-	}
-	else {  // hc = 0
-		assert((ce[1] & 1) == (ce[2] & 1));  // ?throw or find program error in debug
-		c1 = 1; c2 = 2;
-	}
-	for (int i = 0; i < 3; ++i)
-		ce[i] <<= 1;
-	for (int i = 0; i < 4; ++i)
-		cntrd[i] = ce;
-	++cntrd[0][c1];
-	++cntrd[1][c2];
-	--cntrd[2][c1];
-	--cntrd[3][c2];
-}
-
-void vnBccTetrahedra::CartesianEdgeCentroids(const short (&edgeMidpoint)[3], Vec3f(&centroidLoci)[4]) {
-		int c1, c2;
-		if ((edgeMidpoint[0] & 1) == (edgeMidpoint[1] & 1)) {  // hc = 2
-			c1 = 0; c2 = 1;
-		}
-		else if ((edgeMidpoint[0] & 1) == (edgeMidpoint[2] & 1)) {  // hc = 1
-			c1 = 2; c2 = 0;
-		}
-		else {  // hc = 0
-			assert((edgeMidpoint[1] & 1) == (edgeMidpoint[2] & 1));  // could also throw as program error
-			c1 = 1; c2 = 2;
-		}
-		for (int i = 0; i < 4; ++i)
-			centroidLoci[i] = Vec3f(edgeMidpoint);
-		centroidLoci[0][c1] += 0.5f;
-		centroidLoci[1][c2] += 0.5f;
-		centroidLoci[2][c1] -= 0.5f;
-		centroidLoci[3][c2] -= 0.5f;
-}
-
-
-int vnBccTetrahedra::faceAdjacentTets(const int tet, const int face, std::list<int> &adjTets)
+int vnBccTetrahedra::faceAdjacentMicrotets(const int tet, const int face, std::list<int> &adjTets)
 {  // returns adjacent face index 0-3
 	adjTets.clear();
 	bccTetCentroid tcAdj;
-	int adjFace = faceAdjacentTet(_tetCentroids[tet], face, tcAdj);
+	int adjFace = faceAdjacentMicrotet(_tetCentroids[tet], face, tcAdj);
 	const int *tn = tetNodes(tet);
 	std::set<int> faceNodes;
 	for (int i = 0; i < 3; ++i)
@@ -628,9 +457,9 @@ void vnBccTetrahedra::edgeNodes(const int tet, const int edge, int &n0, int &n1)
 	}
 }
 
-void vnBccTetrahedra::edgeAdjacentTets(const int tet, const int edge, std::list<int> &adjTets)
+void vnBccTetrahedra::edgeAdjacentMicrotets(const int tet, const int edge, std::list<int> &adjTets)
 { // input one of six edges in permutation order 0-123, 1-23, and 2-3
-	assert(false);  // rewrite
+	throw(std::logic_error("Rewrite edgeAdjacentMicrotets()."));  // rewrite
 
 /*	adjTets.clear();
 	int n0, n1, *tn = _tetNodes[tet].data();
@@ -827,19 +656,141 @@ void vnBccTetrahedra::edgeAdjacentTets(const int tet, const int edge, std::list<
 	} */
 }
 
-bool vnBccTetrahedra::decreasingCentroidPath(const int startTet, const int targetTet, std::list<int> &tetPath)
-{  // true if constantly decreasing distance centroid path exists.
-	assert(false);
+/* int vnBccTetrahedra::vertexConnectedToGridLocus(const int vertex, const Vec3f& locus)  // returns tet number at connected locus, -1 if no connection
+{  // true if a straight line solid path between vertex and locus exists.
 
-/*	Vec3f loc, target;
-	bccTetCentroid *tc = &_tetCentroids[targetTet];
-	target.set((float)tc->xyz[0], (float)tc->xyz[1], (float)tc->xyz[2]);
-	target[tc->halfCoordAxis] += 0.5f;
+	throw(std::logic_error("Write vnBccTetrahedra::vertexConnectedToGridLocus()"));
+
+	int vtet = _vertexTets[vertex];
+	bccTetCentroid itc, vtc = _tetCentroids[vtet];
+	gridLocusToLowestTetCentroid(locus, itc);
+	Vec3f dv, vloc, iloc = locus *2.0f;
+	vertexGridLocus(vertex, vloc);
+	vloc *= 2.0f;
+	// work in tc (x2) space
+
+	assert(false);  // COURT finish writing me
+
+	dv = iloc - vloc;
+	float t, minT = FLT_MAX;
+	for (int i = 0; i < 3; ++i) {
+		t = (vtc[i] - vloc[i])/dv[i];
+		if (t < minT)
+			minT = t;
+	}
+	return false;
+} */
+
+int vnBccTetrahedra::vertexSolidLinePath(const int vertex, const Vec3f materialTarget) {  // if linear path through solid found, returns tet id containing materialTarget.
+	//  Else if no path, return -1. VN y junction hit making search impossible returns -2.
+	// remember that only microtets can virtual node and be duplicated.  This facilitates search through tets whose level is above 1.
+	bccTetCentroid tc;
+	gridLocusToLowestTetCentroid(materialTarget, tc);
+	auto targetTets = _tetHash.equal_range(tc);
+	int targetSize = 1;
+	while (targetTets.first == targetTets.second) {
+		tc = centroidUpOneLevel(tc);
+		++targetSize;
+		if (targetSize > _tetSubdivisionLevels)
+			throw(std::logic_error("Algorithm error in vnBccTetrahedra::vertexSolidLinePath()\n"));
+	}
+	if (std::distance(targetTets.first, targetTets.second) == 1)
+		return targetTets.first->second;
+	// targetTets must be of size 1, multiple with same centroid. Unfortunately could be at virtual noded tet split sharing common nodes.
+	assert(targetSize == 1);
+	Vec3f vLoc, N;
+	vertexGridLocus(vertex, vLoc);
+	N = materialTarget - vLoc;
+	int sizeNow, tetNow = _vertexTets[vertex];
+	float p = 0.0f;
+	auto& tn = _tetNodes[tetNow];
+	int face, adjFace;
+	std::set<int> nodeSet(tn.begin(), tn.end());
+	auto tetIntersect = [&](const int &tet, int &tetSize, int& tetFace, float& lineParam) ->bool {
+		short gl[4][3];
+		centroidToNodeLoci(_tetCentroids[tet], gl);
+		for (int i = 0; i < 3; ++i)
+			if (gl[0][i] != gl[1][i]) {
+				tetSize = ((gl[1][i] - gl[0][i]) >> 1);
+				break;
+			}
+		for (tetFace = 0; tetFace < 4; ++tetFace) {
+			Vec3f V0(gl[tetFace]), V1(gl[(tetFace + 1) & 3]), V2(gl[(tetFace + 2) & 3]);
+			V1 -= V0;
+			V2 -= V0;
+			Mat3x3f M(N, V1, V2);
+			Vec3f R = M.Robust_Solve_Linear_System(vLoc - V0);
+			if (R[0] > p && R[1] >= 0.0f && R[1] <= 1.0f && R[2] >= 0.0f && R[2] <= 1.0f && R[1] + R[2] <= 1.0f) {
+				lineParam = R[0];
+				return true;
+			}
+		}
+		return false;
+	};
+	if (!tetIntersect(tetNow, sizeNow, face, p))  // this is an error in the cutter upstream, not here.
+		return -1;
+	while(p < 1.0f){
+		bccTetCentroid tcAdj;
+		adjFace = faceAdjacentCentroid(_tetCentroids[tetNow], face, tcAdj);
+		auto pr = _tetHash.equal_range(tcAdj);
+		if (pr.first == pr.second) {
+			bccTetCentroid tc = tcAdj;
+			int count = 1;
+			auto tit = _tetHash.end();
+			do {
+				tc = centroidUpOneLevel(tc);
+				tit = _tetHash.find(tc);  // looking up will only find unique tets 
+				++count;
+			} while (count <= _tetSubdivisionLevels && tit == _tetHash.end());
+			if (tit != _tetHash.end())
+				tetNow = tit->second;
+			else {
+				// Now look down
+				bccTetCentroid subC8[8];
+				subtetCentroids(tcAdj, subC8);
+				// center core hidden by corner tets, so only need first 4
+			}
+		}
+		if (std::distance(pr.first, pr.second) == 1) {
+			tetNow = pr.first->second;
+		}
+		while (pr.first != pr.second) {  // this must be a vrtual noded multi tet of size 1.
+			auto& tn2 = _tetNodes[pr.first->second];
+			if (sizeNow > 3)  // COURT this is oversimplified.  If preceeding neighbor is a large macrotet may need to use T junctions to find node connection if this simple test fails.
+				assert(false);  // COURT write me
+			int i;
+			for (i = 0; i < 4; ++i) {  
+				if (nodeSet.find(tn2[i]) != nodeSet.end()) {
+					break;
+				}
+			}
+			if (i < 4)
+				break;
+			++pr.first;
+		}
+		if (pr.first == pr.second)
+			return -1;
+		tetNow = pr.first->second;
+		if (!tetIntersect(tetNow, sizeNow, face, p))  // this is an error in the cutter upstream, not here.
+			return -1;
+	}
+	if (p > 1.0f)
+		return tetNow;
+	return -1;
+}
+
+/* bool vnBccTetrahedra::decreasingCentroidPath(const int startTet, const int targetTet, std::list<int>& tetPath)
+{  // true if constantly decreasing distance centroid path exists. Rewritten for multires.
+	Vec3f loc, target, dir;
+	bccTetCentroid &tc = _tetCentroids[targetTet];
+	target.set((float)tc[0], (float)tc[1], (float)tc[2]);
+	target *= 0.5f;
 	int tetNow = startTet;
-	tc = &_tetCentroids[startTet];
-	loc.set((float)tc->xyz[0], (float)tc->xyz[1], (float)tc->xyz[2]);
-	loc[tc->halfCoordAxis] += 0.5f;
-	float d2, d2min = (loc - target).length2();
+	tc = _tetCentroids[startTet];
+	loc.set((float)tc[0], (float)tc[1], (float)tc[2]);
+	loc *= 0.5f;
+	dir = target - loc;
+	float d2, d2min = dir.length2();
 	bool moved;
 	tetPath.clear();
 	struct branch{
@@ -852,12 +803,25 @@ bool vnBccTetrahedra::decreasingCentroidPath(const int startTet, const int targe
 		std::list<int> adjTets, bestAdjTets;
 		moved = false;
 		for (int i = 0; i < 4; ++i){
-			int adjFace = faceAdjacentTets(tetNow, i, adjTets);
+			bccTetCentroid tcAdj;
+			faceAdjacentCentroid(_tetCentroids[tetNow],i, tcAdj);
+			Vec3f Vadj((const unsigned short (&)[3])*tcAdj.data());
+			Vadj *= 0.5f;
+			if ((Vadj - loc) * dir < 0.0f)
+				continue;
+			auto pr = _tetHash.equal_range(tcAdj);
+			if (pr.first != pr.second) {
+
+			}
+
+
+
+			int adjFace = faceAdjacentMicrotets(tetNow, i, adjTets);
 			if (i == bestAdjFace || adjTets.empty())
 				continue;
-			tc = &_tetCentroids[adjTets.front()];
-			loc.set((float)tc->xyz[0], (float)tc->xyz[1], (float)tc->xyz[2]);
-			loc[tc->halfCoordAxis] += 0.5f;
+			tc = _tetCentroids[adjTets.front()];
+			loc.set((float)tc[0], (float)tc[1], (float)tc[2]);
+			loc *= 0.5f;
 			if ((d2 = (loc - target).length2()) < d2min){
 				if (d2 == 0.0f) {
 					for (auto at : adjTets) {
@@ -894,9 +858,9 @@ bool vnBccTetrahedra::decreasingCentroidPath(const int startTet, const int targe
 			if (branches.back().alternateTets.empty())
 				branches.pop_back();
 		}
-	} */
+	}
 	return true;
-}
+} */
 
 void vnBccTetrahedra::materialCoordsToNodeSpatialVector()
 {
@@ -1063,6 +1027,10 @@ int vnBccTetrahedra::parametricEdgeTet(const int vertex0, const int vertex1, con
 			throw(std::logic_error("Surface point chosen not embedded in an existing tetrahedron.\n"));
 		pr = _tetHash.equal_range(tC);
 	}
+	if (level > 1) {  // upper level tets guaranteed not to virtual node so are unique
+		assert(std::distance(pr.first, pr.second) == 1);
+		return pr.first->second;
+	}
 	int tetOut = getVertexTetrahedron(vertex0);
 	if (tC == _tetCentroids[tetOut])
 		return tetOut;
@@ -1077,25 +1045,28 @@ int vnBccTetrahedra::parametricEdgeTet(const int vertex0, const int vertex1, con
 	}
 	else if (nTets < 2)
 		return pr.first->second;
-	std::list<int> tetPath;
-	for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
-		for (int i = 0; i < 3; ++i) {
+	else {
+		std::list<int> tetPath;
+		for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
+			for (int i = 0; i < 3; ++i) {
 
-			assert(false);  // COURT debug me
+				assert(false);  // COURT debug me
 
-//			if (decreasingCentroidPath(tcit->second, _vertexTets[vertices[i]], tetPath))  // possibly wrong due to multires
-//				return tcit->second;
+				//			if (decreasingCentroidPath(tcit->second, _vertexTets[vertices[i]], tetPath))  // possibly wrong due to multires
+				//				return tcit->second;
+			}
 		}
 	}
 	assert(false);
 	return -1;
 }
 
-int vnBccTetrahedra::parametricTriangleTet(const int *vertices, const float (&uv)[2], Vec3f& gridLocus)
+int vnBccTetrahedra::parametricTriangleTet(const int triangle, const float (&uv)[2], Vec3f& gridLocus)
 {  // new multi resolution version
 	Vec3f tV[3];
+	const int* tr = _mt->triangleVertices(triangle);
 	for (int i = 0; i < 3; ++i)
-		vertexGridLocus(vertices[i], tV[i]);
+		vertexGridLocus(tr[i], tV[i]);
 	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
 	bccTetCentroid tC;
 	gridLocusToLowestTetCentroid(gridLocus, tC);  // new version only return a valid tc from current mesh
@@ -1110,8 +1081,12 @@ int vnBccTetrahedra::parametricTriangleTet(const int *vertices, const float (&uv
 			throw(std::logic_error("Surface point chosen not embedded in an existing tetrahedron.\n"));
 		pr = _tetHash.equal_range(tC);
 	}
+	if (level > 1) {  // upper level tets guaranteed not to virtual node so are unique
+		assert(std::distance(pr.first, pr.second) == 1);
+		return pr.first->second;
+	}
 	for (int i = 0; i < 3; ++i) {
-		int tetOut = _vertexTets[vertices[i]];
+		int tetOut = _vertexTets[tr[i]];
 		if (tC == _tetCentroids[tetOut])
 			return tetOut;
 	}
@@ -1123,17 +1098,26 @@ int vnBccTetrahedra::parametricTriangleTet(const int *vertices, const float (&uv
 	}
 	else if (nTets < 2)
 		return pr.first->second;
-	std::list<int> tetPath;
-	for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
-		for (int i = 0; i < 3; ++i) {
-
-			assert(false);  // COURT debug me
-
-			if (decreasingCentroidPath(tcit->second, _vertexTets[vertices[i]], tetPath))  // possibly wrong due to multires
-				return tcit->second;
+	else {
+		// look for shared neighbor node first
+		for (auto tcit = pr.first; tcit != pr.second; ++tcit) {
+			std::set<int> lnodes(_tetNodes[tcit->second].begin(), _tetNodes[tcit->second].end());
+			for (int j, i = 0; i < 3; ++i) {
+				auto& vt = _tetNodes[_vertexTets[tr[i]]];
+				for (j = 0; j < 4; ++j) {
+					if (lnodes.find(vt[j]) != lnodes.end())
+						break;
+				}
+				if (j < 4)
+					return tcit->second;
+			}
+		}
+		for (int j, i = 0; i < 3; ++i) {
+			int tet = vertexSolidLinePath(tr[i], gridLocus);
+			if (tet > -1)
+				return tet;
 		}
 	}
-	assert(false);
 	return -1;
 }
 
@@ -1187,12 +1171,13 @@ void vnBccTetrahedra::subtetCentroids(const bccTetCentroid& macroCentroid, bccTe
 	else
 		subCentroids[6][c2] -= levelDown;
 	subCentroids[7][c2] += levelDown;
+#ifdef _DEBUG
 	for (int i = 0; i < 8; ++i) {
 		if (subCentroids[i][0] == USHRT_MAX)  // || subCentroids[i][1] == USHRT_MAX || subCentroids[i][2] == USHRT_MAX)
 			continue;
 		assert(centroidUpOneLevel(subCentroids[i]) == macroCentroid);
 	}
-
+#endif
 }
 
 const bccTetCentroid vnBccTetrahedra::centroidUpOneLevel(const bccTetCentroid& tcIn) {
@@ -1244,6 +1229,53 @@ const bccTetCentroid vnBccTetrahedra::centroidUpOneLevel(const bccTetCentroid& t
 		}
 	}
 	return tcUp;
+}
+
+int vnBccTetrahedra::faceAdjacentCentroid(const bccTetCentroid& tc, const int face, bccTetCentroid& tcAdj)
+{	// triangle faces are listed cyclic from the 4 tet nodes. Face 0 and 2 are CW, 1 & 3 CCW.
+	// Returns face # of the adjacent macrotet.  If adjacent centroid would be outside positive octant (illegal centroid), face return is -1.
+	int adjFace;
+	tcAdj = tc;
+	int ha, aha, size;
+	centroidHalfAxisSize(tc, ha, size);
+	tcAdj[ha] -= size;
+	if (face < 1 || face >2) {
+		aha = (ha + 2) % 3;
+		tcAdj[aha] += size;
+		if (((tc[ha] + tc[aha]) >> 1) & size) {  // down tet
+			tcAdj[ha] += 2 * size;
+			adjFace = 2;
+			if (face < size) {
+				if (tcAdj[aha] < 2 * size)
+					return -1;
+				tcAdj[aha] -= 2 * size;
+			}
+		}
+		else {
+			adjFace = 1;
+			if (face > 2) {
+				if (tcAdj[aha] < 2 * size)
+					return -1;
+				tcAdj[aha] -= 2 * size;
+			}
+		}
+	}
+	else {
+		aha = (ha + 1) % 3;
+		tcAdj[aha] += size;
+		if (face > 1) {
+			if (tcAdj[aha] < 2 * size)
+				return -1;
+			tcAdj[aha] -= 2 * size;
+		}
+		if (((tc[ha] + tc[aha]) >> 1) & size) {  // up tet
+			tcAdj[ha] += 2 * size;
+			adjFace = face > 1 ? 0 : 3;
+		}
+		else
+			adjFace = face > 1 ? 3 : 0;
+	}
+	return adjFace;
 }
 
 vnBccTetrahedra::vnBccTetrahedra() : _nodeSpatialCoords(nullptr), _firstInteriorTet(-1)
