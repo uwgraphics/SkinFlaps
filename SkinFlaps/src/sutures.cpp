@@ -496,7 +496,7 @@ void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &
 	// Once closest material coords edge found, do edge neighbor search in spatial coords for correction.
 	materialTriangles *mt = _vbt->getMaterialTriangles();
 	Vec3f gridLocus, startLocus;
-	int *tr = mt->triangleVertices(triangle);
+	const int *tr = mt->triangleVertices(triangle);
 	_vbt->vertexGridLocus(tr[0], gridLocus);
 	startLocus = gridLocus * (1.0f - triUv[0] - triUv[1]);
 	for(int i = 0; i < 2; ++i) {
@@ -511,7 +511,7 @@ void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &
 		unsigned int adj = mt->triAdjs(i)[0];
 		if (mt->triangleMaterial(adj >> 2) != 2)
 			continue;
-		int *tr = mt->triangleVertices(i);
+		const int *tr = mt->triangleVertices(i);
 		Vec3f v0, v1;
 		_vbt->vertexGridLocus(tr[0], v0);
 		_vbt->vertexGridLocus(tr[1], v1);
@@ -546,7 +546,7 @@ void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &
 
 
 int sutures::parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f& baryWeight) {  // COURT - temporary hack for multires tets
-	materialTriangles *mt = _vbt->getMaterialTriangles();
+	const materialTriangles *mt = _vbt->getMaterialTriangles();
 	int v = mt->triangleVertices(triangle)[param < 0.5f ? edge : (edge + 1) % 3];
 	baryWeight = *_vbt->getVertexWeight(v);
 	return _vbt->getVertexTetrahedron(v);

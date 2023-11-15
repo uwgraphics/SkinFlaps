@@ -46,7 +46,7 @@ public:
 	inline int vertexNumber() { return (int)_vertexTets.size(); }
 	inline const int* tetNodes(int tetIndex){ return _tetNodes[tetIndex].data(); }
 	const std::vector<std::array<int, 4> >& getTetNodeArray() { return _tetNodes; }
-	const std::vector<std::array<unsigned short, 3> >& getTetCentroidArray() { return _tetCentroids; }  // remember actual material coord centroids are half of each value to enable integer packing.
+	const std::vector<bccTetCentroid>& getTetCentroidArray() { return _tetCentroids; }  // remember actual material coord centroids are half of each value to enable integer packing.
 	inline void centroidTets(const bccTetCentroid &tc, std::list<int> &tets){ auto pr = _tetHash.equal_range(tc); tets.clear(); while (pr.first != pr.second){ tets.push_back(pr.first->second); ++pr.first; } }
 	inline const int getVertexTetrahedron(const int vertex) const {return _vertexTets[vertex];}
 	inline void setVertexTetrahedron(const int vertex, const int newTetIndex){ _vertexTets[vertex] = newTetIndex; }
@@ -127,13 +127,10 @@ public:
 
 	void setNodeSpatialCoordinatePointer(std::array<float, 3> *spatialCoordPtr) { _nodeSpatialCoords = reinterpret_cast<Vec3f*>(spatialCoordPtr); }  // assumes vector of coords created elsewhere
 	void setNodeSpatialCoordinatePointer(Vec3f *spatialCoordPtr) { _nodeSpatialCoords = spatialCoordPtr; }  // assumes vector of coords created elsewhere
-	const Vec3f* getNodeSpatialCoordPointer() { if (_nodeSpatialCoords == nullptr) throw(std::logic_error("Trying to access nodeSpatialCoordinate vector before it has been allocated andassigned")); return _nodeSpatialCoords; }
+	const Vec3f* getNodeSpatialCoordPointer() { if (_nodeSpatialCoords == nullptr) throw(std::logic_error("Trying to access nodeSpatialCoordinate vector before it has been allocated and assigned")); return _nodeSpatialCoords; }
 	// next set of routines traverse topological paths through the bcc data
-	int faceAdjacentTet(const bccTetCentroid tc, const int face, bccTetCentroid& tcAdj);  // fundamental code for all topological path routines.
-	// Above returns adjacent face # and adjacent tet centroid. a -1 return signals an illegal centroid.
-	int faceAdjacentTetNodeIndices(const bccTetCentroid tc, const int face, bccTetCentroid& tcAdj, int(&adjNodeIndices)[3]);  // adds node indices of adjTet if you need them
-
-	int faceAdjacentTets(const int tet, const int face, std::list<int> &adjTets);  // return adjacent face index 0-3
+	int faceAdjacentMicrotet(const bccTetCentroid tc, const int face, bccTetCentroid& tcAdj);  // fundamental code for all topological path routines. Returns adjacent face index and adjacent tet centroid. a -1 return signals an illegal centroid.
+	int faceAdjacentMicrotets(const int tet, const int face, std::list<int> &adjTets);  // return adjacent face index 0-3 and all existing adjacent tet indices.
 	
 	inline void faceNodes(const int tet, const int face, int(&nodes)[3])
 	{
@@ -142,7 +139,7 @@ public:
 			nodes[i] = (tn[(face + i) & 3]);
 	}
 
-	inline bool adjacentCentroids(const bccTetCentroid &tc0, const bccTetCentroid &tc1){
+	inline bool adjacentMicrotetCentroids(const bccTetCentroid &tc0, const bccTetCentroid &tc1){
 		int d, n = 0;
 		for (int i = 0; i < 3; ++i) {
 			d = abs(tc0[i] - tc1[i]);
@@ -156,22 +153,18 @@ public:
 		return n == 2;
 	}
 
-	void edgeAdjacentTets(const int tet, const int edge, std::list<int> &adjTets);  // input one of six edges in permutation order 0-123, 1-23, and 2-3
+	int faceAdjacentCentroid(const bccTetCentroid& tc, const int face, bccTetCentroid& tcAdj);  // returns face adjacent centroid at same tet size as source.
+	void edgeAdjacentMicrotets(const int tet, const int edge, std::list<int> &adjTets);  // input one of six edges in permutation order 0-123, 1-23, and 2-3
 	void edgeNodes(const int tet, const int edge, int &n0, int &n1);  // same edge numbering as above
-	bool decreasingCentroidPath(int startTet, const int targetTet, std::list<int> &tetPath);  // true if constantly decreasing distance centroid path exists.
-	int parametricTriangleTet(const int* vertices, const float(&uv)[2], Vec3f& gridLocus);  // returns grid locus and tetrahedron at parametric location uv in input triangle
+//	int vertexConnectedToGridLocus(const int vertex, const Vec3f& locus);  // returns tet number at connected locus, -1 if no connection ?nuke
+//	bool decreasingCentroidPath(int startTet, const int targetTet, std::list<int> &tetPath);  // true if constantly decreasing distance centroid path exists. COURT nuke in favor of routine above
+	int parametricTriangleTet(const int triangle, const float(&uv)[2], Vec3f& gridLocus);  // returns grid locus and tetrahedron at parametric location uv in input triangle
 	int parametricEdgeTet(const int vertex0, const int vertex1, const float param, Vec3f& gridLocus);
 
-//	inline void setNodeFixationState(const int node, bool fixed){ if (fixed) _fixedNodes.insert(node);  else  _fixedNodes.erase(node); }
-//	inline bool nodeFixed(const int node){ return _fixedNodes.find(node) != _fixedNodes.end(); }
-//	inline const short* nodeGridLocation(const int tetNode){ return _nodeGridLoci[tetNode].data(); }
 	inline const std::array<short, 3>& nodeGridLocation(const int tetNode) { return _nodeGridLoci[tetNode]; }
 	void centroidToNodeLoci(const bccTetCentroid& centroid, short (&gridLoci)[4][3]);
-	void centroidToNodeLocus(const bccTetCentroid& centroid, const int nodeIndex, short(&gridLocus)[3]);
 
-	void nodeCentroids(std::array<short, 3>& node, bccTetCentroid cntrd[24]);  // for these routines a coordinate greater than 65533 indicates a centroid out of positive grid bounds
-	void CartesianEdgeCentroids(const short(&edgeMidpoint)[3], bccTetCentroid(&centroidLoci)[4]);  // centroids surrounding a Cartesian edge
-	void CartesianEdgeCentroids(const short(&edgeMidpoint)[3], Vec3f(&centroidLoci)[4]); 
+	void nodeMicroCentroids(std::array<short, 3>& node, bccTetCentroid cntrd[24]);  // for these routines a coordinate greater than 65533 indicates a centroid out of positive grid bounds
 	void unitCubeCentroids(const short(&minimumCorner)[3], bccTetCentroid(&cntrd)[6]);  // centroids whose tet is part of a unit cube
 	void unitCubeCentroids(const short(&minimumCorner)[3], Vec3f(&centroidLoci)[6]);
 	inline int firstInteriorTetrahedron() { return _firstInteriorTet;  }
@@ -207,16 +200,23 @@ protected:
 	// The bcc tet centroid specifies its four 3-short integer node locations implicitly. See centroidToNodeLoci().
 	std::vector<std::array<int, 4> > _tetNodes;
 	std::vector<bccTetCentroid> _tetCentroids;
+
+	struct unsigned3 {
+		std::array<unsigned short, 3> tc;
+		unsigned short pad;
+	};
+	union btHash {
+		uint64_t ll;
+		unsigned3 us3;
+	};
 	struct bccTetCentroidHasher {
-		std::size_t operator()(const bccTetCentroid& k) const
+		std::size_t operator()(const std::array<unsigned short, 3>& k) const
 		{  // hash function
-			long long ll = k[0];
-			ll <<= 16;
-			ll += k[1];
-			ll <<= 16;
-			ll += k[2];
+			btHash bh;
+			bh.us3.tc = k;
+			bh.us3.pad = 0;
 			std::hash<long long> hash_funct;
-			return hash_funct(ll);
+			return hash_funct(bh.ll);
 		}
 	};
 	std::unordered_multimap<bccTetCentroid, int, bccTetCentroidHasher> _tetHash;  // bccTetCenter and index into _tetNodes
@@ -224,6 +224,7 @@ protected:
 	materialTriangles *_mt;  // embedded surface
 	std::vector<int> _vertexTets;
 	std::vector<Vec3f> _barycentricWeights;
+	int _tetSubdivisionLevels;  // if not doing multiresolution, this will be 1.  If using multiresolution, this will be the highest level of subdivision.
 	Vec3f *_nodeSpatialCoords;
 	Vec3f _minCorner, _maxCorner;
 	double _unitSpacing, _unitSpacingInv;
@@ -231,8 +232,10 @@ protected:
 	int _firstInteriorTet;  // first tet of all unique interior tets. Goes to end of list.
 	static Mat3x3f _barycentricInverses[6];
 
+	int vertexSolidLinePath(const int vertex, const Vec3f materialTarget);  // if solid path found, returns tet id containing materialTarget. Else if no path, return -1;
+
 	friend class vnBccTetCutter;
-	friend class vnBccTetCutter_omp;
+	friend class vnBccTetCutter_tbb;
 	friend class remapTetPhysics;
 	friend class skinCutUndermineTets;
 	friend class deepCut;

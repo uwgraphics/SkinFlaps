@@ -403,7 +403,7 @@ int tri_fixedTri_intersect(float U0[3], float U1[3], float U2[3])
 
 // below is the original code by Hao Shen, Pheng Ann Heng and Zesheng Tang from which the above two routines
 // have been slightly adapted to permit one of the triangles to be fixed.
-/* int tri_tri_intersect(float V0[3], float V1[3], float V2[3],
+int tri_tri_intersect(float V0[3], float V1[3], float V2[3],
                       float U0[3],float U1[3],float U2[3])
 {
 
@@ -612,7 +612,7 @@ int tri_fixedTri_intersect(float U0[3], float U1[3], float U2[3])
   }
 
   return 1;
-} */
+}
 
 #ifdef __cplusplus
 }

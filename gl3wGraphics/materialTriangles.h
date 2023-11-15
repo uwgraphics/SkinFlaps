@@ -103,7 +103,7 @@ public:
 //	int linePick(const float *lineStart, const float *lineDirection, std::vector<float> &rayParams, std::vector<int> &triangles, std::vector<Vec2f> &triangleParams);
 	int splitTriangleEdge(int triangle, int edge, const float parameter);
 	int addNewVertexInMidTriangle(int triangle, const float (&uvParameters)[2]);
-//	int isManifoldConsistent();  // return -1 if inconsistent and # of topological handles if consistent
+//	int isValidClosedManifold();  // return -1 if inconsistent and # of topological handles if consistent
 	bool deleteEdge(int triangle, int edge);  // always leaves triangle vertex[edge] behind and deletes vertex[edge+1] as well as the 2 triangles on either side of edge
 	void closestPoint(const float(&xyz)[3], int& triangle, float(&uv)[2], int onlyMaterial = -1);
 

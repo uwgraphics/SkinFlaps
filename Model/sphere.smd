@@ -1,6 +1,6 @@
 {
     "dynamicObjects" : {
-        "book.obj" : {
+        "sphere.obj" : {
             "textureMaps": [
                 1,
                 2,
@@ -27,7 +27,7 @@
         "hookWeight" : 65.0,
         "sutureWeight" : 1200.0,
         "autoSutureSpacing" : 0.02,
-        "maxDimSubdivisions" : 80
+        "maxDimSubdivisions" : 180
     }
     "incisionWidth" : 0.01
 }

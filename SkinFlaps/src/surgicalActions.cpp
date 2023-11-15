@@ -138,12 +138,12 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook
 				_ffg->physicsDrag = true;
 				_bts.setForcesAppliedFlag();
-//				physicsDone = false;
-//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+				physicsDone = false;
+				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 					_bts.updatePhysics();
 					physicsDone = true;
-//					}
-//				);
+					}
+				);
 			}
 
 //			_sutures.selectSuture(-1);
@@ -1803,13 +1803,13 @@ void surgicalActions::nextHistoryAction()
 			{
 				if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook. Done once.
 					_bts.setForcesAppliedFlag();
-//					physicsDone = false;
+					physicsDone = false;
 					_ffg->physicsDrag = true;
-//					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 						_bts.updatePhysics();
 						physicsDone = true;
-//						}
-//					);
+						}
+					);
 				}
 //				_sutures.selectSuture(-1);
 				_hooks.selectHook(hookNum);

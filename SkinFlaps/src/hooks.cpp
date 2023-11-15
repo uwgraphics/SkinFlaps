@@ -147,7 +147,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	translateMatrix4x4(om,xyz[0],xyz[1],xyz[2]);
 	Vec3f gridLocus, bw;
 	if (_deepCut->getMaterialTriangles() != nullptr && _ptp->solverInitialized()) {  // COURT - won't need second condition
-		int tetIdx = _vnt->parametricTriangleTet(_vnt->getMaterialTriangles()->triangleVertices(triangle), uv, gridLocus);
+		int tetIdx = _vnt->parametricTriangleTet(triangle, uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;
 			deleteHook(_hookNow);
@@ -155,18 +155,13 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 		}
 		_vnt->gridLocusToBarycentricWeight(gridLocus, _vnt->tetCentroid(tetIdx), bw);
 #ifndef NO_PHYSICS
-		hpr.first->second._constraintId = _ptp->addHook(tetIdx, reinterpret_cast<const std::array<float, 3>&>(bw), reinterpret_cast<const std::array<float, 3>&>(xyz), tiny);
+		hpr.first->second._constraintId = _ptp->addHook(tetIdx, reinterpret_cast<const std::array<float, 3>&>(bw), reinterpret_cast<const std::array<float, 3>&>(xyz), tiny);  // COURT - slow. ?put in thread?
 #else
 		hpr.first->second._constraintId = -1;  // signal that this is a dummy hook that needs a constraint later
 #endif
 	}
 	else
 		hpr.first->second._constraintId = -1;  // signal that this is a dummy hook that needs a constraint later
-
-		// already done above
-//	tri->getBarycentricPosition(triangle, uv, xyz);
-//	hpr.first->second.xyz = (Vec3f)xyz;
-//	om[12] = xyz[0]; om[13] = xyz[1]; om[14] = xyz[2];
 	return _hookNow - 1;
 }
 
@@ -180,12 +175,12 @@ bool hooks::updateHookPhysics(){
 			continue;
 		}
 		Vec3f gridLocus, bw;
-//		int tetIdx = _deepCut->parametricMTtriangleTet(hit->second.triangle, hit->second.uv, gridLocus);
-		int tetIdx = _vnt->parametricTriangleTet(_vnt->getMaterialTriangles()->triangleVertices(hit->second.triangle), hit->second.uv, gridLocus);
+		int tetIdx = _vnt->parametricTriangleTet(hit->second.triangle, hit->second.uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;
+			++hit;
 			deleteHook(_hookNow);
-			return false;
+			continue;
 		}
 		_vnt->gridLocusToBarycentricWeight(gridLocus, _vnt->tetCentroid(tetIdx), bw);
 #ifndef NO_PHYSICS

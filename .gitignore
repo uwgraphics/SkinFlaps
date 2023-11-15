@@ -353,3 +353,6 @@ MigrationBackup/
 !/Model/*
 !/History/*
 /History/junk.hst
+/History/junk2.hst
+/SkinFlaps/src/vnBccTetCutter_old.cpp
+/SkinFlaps/src/vnBccTetCutter_old.h

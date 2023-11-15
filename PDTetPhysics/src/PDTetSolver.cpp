@@ -597,7 +597,7 @@ void PDTetSolver<T, d>::initializeDeformer_multires(const int(*elements)[d + 1],
 			for (int v = 0; v < d; v++)
 				for (int w = 0; w < d; w++)
 					m_gridDeformer.m_gradientMatrix[i](v + 1, w + 1) = ::bccDmInv[(size_t)w * d + v] / (T(gridSize) * sizeMult);
-			m_gridDeformer.m_elementRestVolume[i] = T(::vol) * gridSize * gridSize * gridSize; // *sizeMult* sizeMult* sizeMult;  // COURT same bug as Bouaziz?
+			m_gridDeformer.m_elementRestVolume[i] = T(::vol) * gridSize * gridSize * gridSize;  // *sizeMult* sizeMult* sizeMult;  // COURT Bouaziz bug?
 		}
 	}
 }

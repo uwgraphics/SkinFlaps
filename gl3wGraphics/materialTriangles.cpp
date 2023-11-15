@@ -1467,25 +1467,36 @@ void materialTriangles::cleanAndPack(std::vector<int> &newVertexMap, std::vector
 	_vertexFace.clear();
 } */
 
-/* int materialTriangles::isManifoldConsistent()
+/* int materialTriangles::isValidClosedManifold()
 {	// Closed manifold surface topology checker.  Returns # of topological handles or -1 if inconsistent
-	typedef std::set<edge,edgeTest> edgeSet;
+	int nLocs = (int)_xyz.size();
+	for (size_t i = 0; i < _triPos.size(); ++i) {
+		if (_triMat[i] < 0)  // ignore deleted triangles
+			continue;
+		std::set<int> vSet;
+		for (int j = 0; j < 3; ++j) {
+			if (!vSet.insert(_triPos[i][j]).second)
+				int junk = 0;
+		}
+	}
+
+	COURT needs rewrite
+
+	typedef std::set<edge, edgeTest> edgeSet;
 	edge E;
 	edgeSet M;
 	M.clear();
-	int tnow[3];
-	int i,j,numtris=(int)_tris.size();
-	std::vector<int> posVec;
-	posVec.assign(_xyz.size()/3,0);
+//	int tnow[3];
+	int i,j,numtris=(int)_triPos.size();
 	for(i=0; i<numtris; ++i)
 	{
-		if(_tris[i].material<0)	// signals a deleted triangle
+		if(_triMat[i] < 0)	// signals a deleted triangle
 			continue;
-		for(j=0; j<3; j++)
-			tnow[j] = _tris[i].v[j];
+//		for(j=0; j<3; j++)
+//			tnow[j] = _tris[i].v[j];
 		for(j=0; j<3; j++)
 		{
-			if (tnow[j] >= (int)posVec.size())
+			if (_triPos[j] >= (int)_xyz.size())
 				return -1;
 			else
 				posVec[tnow[j]] = 1;
@@ -1506,6 +1517,7 @@ void materialTriangles::cleanAndPack(std::vector<int> &newVertexMap, std::vector
 	if(handles2&0x0001)
 		return -1;
 	return handles2>>1;
+	return 0;
 } */
 
 void materialTriangles::getMeanVertexNormal(const int triangle, const int index,  float(&normal)[3], int onlyMaterial, bool normalize)

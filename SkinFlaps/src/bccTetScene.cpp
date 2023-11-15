@@ -311,7 +311,7 @@ void bccTetScene::updateOldPhysicsLattice()
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-		_vnTets.decimate(2, 6, false);
+		_vnTets.decimate(3);
 
 #ifdef NO_PHYSICS
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
@@ -366,27 +366,36 @@ void bccTetScene::updateOldPhysicsLattice()
 
 void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 {
-//	std::chrono::time_point<std::chrono::system_clock> start, end;
-//	start = std::chrono::system_clock::now();
-
 	try {
 		_tetsModified = false;
 
 #ifdef _DEBUG
-		maximumDimensionSubdivisions = 222; //37;
-//#else
-//			maximumDimensionSubdivisions = 70;  // 90
+		maximumDimensionSubdivisions = 88; //13;
+#else
+			maximumDimensionSubdivisions = 88;  // 90
 #endif
 
-		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
+//		std::chrono::time_point<std::chrono::system_clock> start, end;
+//		start = std::chrono::system_clock::now();
+
+
+		_tc.createFirstMacroTets(_mt, &_vnTets, 4, maximumDimensionSubdivisions >> 3);
+//		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
 
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 
-//		_vnTets.decimate(4, 8, false);
-		_vnTets.decimate2(4);
+//		std::chrono::time_point<std::chrono::system_clock> start, end;
+//		start = std::chrono::system_clock::now();
 
-		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions);
+//		_vnTets.decimate(4);
+
+/*		end = std::chrono::system_clock::now();
+		std::chrono::duration<double> elapsed_seconds = end - start;
+		std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+		std::cout << "Decimation took " << elapsed_seconds.count() << " seconds.\n"; */
+
+		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * maximumDimensionSubdivisions * maximumDimensionSubdivisions / (64.0f * 64.0f));  // COURT fix me after macrotet issue resolved
 
 #ifdef NO_PHYSICS
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
@@ -397,6 +406,18 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 		std::vector<uint8_t> tetSizeMult;
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
+			// COURT may do faster with just first 2 nodes
+/*			auto tn = _vnTets.tetNodes(i);  // 3 lookups vs one
+			auto v0 = _vnTets.nodeGridLocation(tn[0]);
+			auto v1 = _vnTets.nodeGridLocation(tn[1]);
+			uint8_t sizeBit1;
+			if (v0[0] != v1[0])
+				sizeBit1 = (v1[0] - v0[0])>>1;
+			else if (v0[1] != v1[1])
+				sizeBit1 = (v1[1] - v0[1]) >> 1;
+			else
+				sizeBit1 = (v1[2] - v0[2]) >> 1; */
+
 			uint8_t sizeBit = 1;
 			auto& c = _vnTets.tetCentroid(i);
 			while (true) {
@@ -404,6 +425,9 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 					break;
 				sizeBit <<= 1;
 			}
+
+//			assert(sizeBit == sizeBit1);
+
 			tetSizeMult.push_back(sizeBit);
 		}
 		std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
