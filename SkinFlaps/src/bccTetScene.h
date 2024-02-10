@@ -14,11 +14,10 @@
 #define __BCC_TET_SCENE__
 
 #include "surgGraphics.h"
-// #include "vnBccTetrahedra.h"
-#include "multiresBccTets.h"
+#include "vnBccTetrahedra.h"
 #include "vnBccTetCutter_tbb.h"
-// #include "tetCollisions.h"
-// #include "tetSubset.h"
+#include "tetCollisions.h"
+#include "tetSubset.h"
 #include "pdTetPhysics.h"
 
 // forward declarations
@@ -29,7 +28,7 @@ class bccTetScene
 {
 public:
 	bool loadScene(const char *dataDirectory, const char *sceneFileName);
-	void createNewPhysicsLattice(int maximumDimensionSubdivisions);
+	void createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSizeLevels);
 	void updateOldPhysicsLattice();
 	inline void nonTetPhysicsUpdate() {_ptp.initializePhysics();}
 	void updatePhysics();
@@ -57,9 +56,9 @@ private:
 	surgicalActions *_surgAct;
 	materialTriangles* _mt;  // pointer from surgGraphics.
 	//	vnBccTetrahedra _vnTets;
-	multiresBccTets _vnTets;
-//	tetCollisions _tetCol;
-//	tetSubset _tetSubsets;
+	vnBccTetrahedra _vnTets;
+	tetCollisions _tetCol;
+	tetSubset _tetSubsets;
 	vnBccTetCutter_tbb _tc;  // multithreaded version using Intel threaded building blocks.  Much faster, but indices of nodes and tets different each run as nondeterministic.
 	pdTetPhysics _ptp;
 	bool _forcesApplied, _tetsModified, _physicsPaused;

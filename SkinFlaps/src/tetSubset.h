@@ -22,8 +22,8 @@ class tetSubset
 {
 public:
 	bool createSubset(vnBccTetrahedra* vbt, const std::string objFile, float lowTetWeight, float highTetWeight, float strainMin, float strainMax);
-	bool createSubset(vnBccTetrahedra* vbt, const std::string name,	float lowTetWeight,	float highTetWeight,
-		float strainMin, float strainMax, const std::list<std::string> &objFiles);
+//	bool createSubset(vnBccTetrahedra* vbt, const std::string name,	float lowTetWeight,	float highTetWeight,
+//		float strainMin, float strainMax, const std::list<std::string> &objFiles);
 	void sendTetSubsets(vnBccTetrahedra* vbt, const materialTriangles* mt, pdTetPhysics* ptp);
 	tetSubset() { }
 	tetSubset(const tetSubset&) = delete;
@@ -37,7 +37,7 @@ private:
 		float highTetWeight;
 		float strainMin;
 		float strainMax;
-		std::vector<long long> subsetCentroids;
+		std::vector<bccTetCentroid> subsetCentroids;
 	};
 	std::list<tetSub> _tetSubs;
 };

@@ -156,6 +156,7 @@ private:
 	bool rayTriangleIntersection(const Vec3f &rayOrigin, const Vec3f &rayDirection, const int triangle, float &rayParam, float(&triParam)[2], Vec3f &intersect);
 	// be careful of next routine if you aren't expert. While local correction is faster, findAdjacentTriangles() is much less error prone.
 //	void correctLocalNeighborArrays(std::vector<int> &changedTriangles);  // does local patching of adjacency and vertexFace arrays for input changedTriangles and the triangles adjacent to them
+//	void addOneMaterialTextureSeamVertex(int vertex, int(&textures)[2]);
 	struct lineHit{
 		int triangle;
 		Vec2f uv;  // parametric position on triangle

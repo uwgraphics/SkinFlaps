@@ -19,23 +19,25 @@
 
 // #include <atomic>  // no MP yet
 #include "materialTriangles.h"
-#include "multiresBccTets.h"
+#include "vnBccTetrahedra.h"
 
 class vnBccTetCutter_tbb
 {
 public:
-	bool makeFirstVnTets(materialTriangles* mt, multiresBccTets* vbt, int maximumCubeGridDimension);  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
-	bool remakeVnTets(materialTriangles* mt);  // use above setup with new material coord incisions made in mt
-	void createFirstMacroTets(materialTriangles* mt, multiresBccTets* vbt, const int nLevels, const int maximumDimensionMacroSubdivs);  // creates initial macro tet environment
+	bool makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra* vbt, int maximumCubeGridDimension);  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
+	void createFirstMacroTets(materialTriangles* mt, vnBccTetrahedra* vbt, const int nLevels, const int maximumDimensionMacroSubdivs);  // creates initial macro tet environment
+	void addNewMultiresIncision();  // after have done createFirstMacroTets() and possibly made other incisions, this routine inputs new incision(s) and creates new tet structure.
 	vnBccTetCutter_tbb(void) {}
 	~vnBccTetCutter_tbb(void){}
 
 private:
 	materialTriangles* _mt;
-	multiresBccTets* _vbt;
+	vnBccTetrahedra* _vbt;
 	std::vector<Vec3f> _vMatCoords;
-//	int _tetSubdivisionLevels;  // if not doing multiresolution, this will be 1.  If using binary subdivision macrotets, this will be the highest level subdivision.
 
+	std::unordered_set<int> _vnTris;
+	std::vector<bccTetCentroid> _vnCentroids;
+	int _lastTriangleSize, _lastVertexSize;
 	struct unsigned3 {
 		std::array<unsigned short, 3> tc;
 		unsigned short pad;
@@ -77,7 +79,7 @@ private:
 	std::unordered_set<bccTetCentroid, bccTetCentroidHasher> _surfaceCentroids;
 
 	std::atomic<int> _nSurfaceTets;
-	int _megatetSize, _meganodeSize;  // size of the largest macrotets at the beginning of the tet arrays, and size of largest macro nodes at beginning of node arrays
+	int _meganodeSize;  // size of largest macro nodes at beginning of node arrays. _megatetSize size of the largest macrotets at the beginning of the tet arrays is now kept in _vbt.
 	int _firstNewExteriorNode;  // Index of first new exterior micronode to be created. This is _meganodeSize plus size of new interior micronodes.
 	struct newTet{
 		int tetIdx;
@@ -89,7 +91,9 @@ private:
 		int tetIdx;
 		std::vector<int> tris;
 	};
-	std::unordered_map<bccTetCentroid, std::list<tetTris>, bccTetCentroidHasher> _centroidTriangles;  // replace this with next 2
+	std::unordered_map<bccTetCentroid, std::list<tetTris>, bccTetCentroidHasher> _centroidTriangles;
+	std::unordered_map<bccTetCentroid, tetTris, bccTetCentroidHasher> _megatetTetTris;  // megatets don't virtual node and may or may not have triangles passing through them.
+	typedef std::unordered_map<bccTetCentroid, tetTris, bccTetCentroidHasher>::const_iterator MTTIT;
 
 	std::vector<bccTetCentroid> _vertexTetCentroids;
 	struct boundingNodeTris {
@@ -161,12 +165,12 @@ private:
 	NTS_HASH _ntsHash;
 	oneapi::tbb::concurrent_vector<newTet> _newTets;
 
+	void macrotetRecutCore();
 	void createInteriorNodes();
 	void createInteriorMicronodes();
 	bool setupBccIntersectionStructures(int maximumGridDimension);
 	void fillNonVnTetCenter();
 	void fillInteriorMicroTets(std::vector<bccTetCentroid>& recutMacrotets);
-	bool tetCutCore();
 	void assignExteriorTetNodes(std::array<short, 3>& locus, std::list<nodeTetSegment>& tetNodeIds, oneapi::tbb::concurrent_vector<extNode>& eNodes);
 	void getConnectedComponents(const tetTriangles& tt, oneapi::tbb::concurrent_vector<newTet>& nt_vec, NTS_HASH& local_nts);
 	bool isInsidePatch(const Vec3d& P, const std::vector<int>& tris, Vec3d& closestP);

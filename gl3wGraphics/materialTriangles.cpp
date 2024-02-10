@@ -1087,10 +1087,6 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 	// Creates 1 or 2 new triangles and one new vertex. Returns new vertex number of the input triangle split.
 	// Does fix adjacency array so getNeighbors() works and texture interpolated.
 	// Definitely should call getTriangleAdjacencies() ASAP.
-
-	if (triangle == 26395)
-		int junk = 0;
-
 	assert(0.0f<=parameter && 1.0f>=parameter);
 	int *trVerts = _triPos[triangle].data(), * trTex = _triTex[triangle].data();
 	if (_triMat[triangle]<0)
@@ -1141,12 +1137,6 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 		tx[0] += (1.0f - parameter) * txp[0]; tx[1] += (1.0f - parameter) * txp[1];
 		tx1 = addTexture();
 		setTexture(tx1, tx);
-		if (_triMat[triangle] == _triMat[ta]) {
-			int twoTx[2] = { tx0, tx1 };
-
-			assert(false);
-//			addOneMaterialTextureSeamVertex(newVert, twoTx);
-		}
 	}
 	v[1] = trVertsA[(ea + 1) % 3];
 	tex[1] = trTexA[(ea + 1) % 3];

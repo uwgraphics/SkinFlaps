@@ -168,11 +168,12 @@
     <ClCompile Include="..\..\SkinFlaps\src\hooks.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\json.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\main.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\multiresBccTets.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\remapTetPhysics.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\skinCutUndermineTets.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\surgicalActions.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\sutures.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\tetCollisions.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\tetSubset.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutter_tbb.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\vnBccTetrahedra.cpp" />
   </ItemGroup>
@@ -184,12 +185,13 @@
     <ClInclude Include="..\..\SkinFlaps\src\fence.h" />
     <ClInclude Include="..\..\SkinFlaps\src\hooks.h" />
     <ClInclude Include="..\..\SkinFlaps\src\json.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\multiresBccTets.h" />
     <ClInclude Include="..\..\SkinFlaps\src\prettyPrintJSON.h" />
     <ClInclude Include="..\..\SkinFlaps\src\remapTetPhysics.h" />
     <ClInclude Include="..\..\SkinFlaps\src\skinCutUndermineTets.h" />
     <ClInclude Include="..\..\SkinFlaps\src\surgicalActions.h" />
     <ClInclude Include="..\..\SkinFlaps\src\sutures.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\tetCollisions.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\tetSubset.h" />
     <ClInclude Include="..\..\SkinFlaps\src\triTriIntersect_Shen.h" />
     <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutter_tbb.h" />
     <ClInclude Include="..\..\SkinFlaps\src\vnBccTetrahedra.h" />

@@ -16,44 +16,47 @@ public:
 	typedef std::array<unsigned short, 3> bccTetCentroid;
 	void getOldPhysicsData(vnBccTetrahedra *oldVnbt);
 	void remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt);  // done before new physics library made
-	void restoreOldNodePositions(vnBccTetrahedra *newVnbt);  // done after new physics library made so new spatial position pointer set
 	remapTetPhysics();
 	~remapTetPhysics();
 	
 private:
-
-	std::unordered_map<long long, Vec3f> _oldNPos;
-	inline long long a3ToLl(const std::array<short, 3>& a3) {
-		long long ll = a3[0] + 1;  // allow for -1
-		ll <<= 16;
-		ll += a3[1] + 1;
-		ll <<= 16;
-		ll += a3[2] + 1;
-		return ll;
-	}
-
-//	std::vector<int> _oldFixedNodes;  // no longer using
-	std::vector<Vec3f> _oldNodePositions;
-	std::vector<std::array<int, 4> > _oldTets;
-	std::vector<bccTetCentroid> _oldCentroids;
-
+	struct unsigned3 {
+		std::array<unsigned short, 3> tc;
+		unsigned short pad;
+	};
+	struct signed3 {
+		std::array<short, 3> ss3;
+		short pad;
+	};
+	union btHash {
+		uint64_t ll;
+		unsigned3 us3;
+		signed3 ss3;
+	};
 	struct bccTetCentroidHasher {
-		std::size_t operator()(const bccTetCentroid& k) const
+		inline std::size_t operator()(const std::array<unsigned short, 3>& k) const
 		{  // hash function
-			long long ll = k[0];
-			ll <<= 16;
-			ll += k[1];
-			ll <<= 16;
-			ll += k[2];
+			btHash bh;
+			bh.us3.tc = k;
+			bh.us3.pad = 0;
 			std::hash<long long> hash_funct;
-			return hash_funct(ll);
+			return hash_funct(bh.ll);
 		}
 	};
 	std::unordered_multimap<bccTetCentroid, int, bccTetCentroidHasher> _oldTetHash;  // bccTetCenter and index into _tetNodes
-
-//	std::unordered_multimap<long long, int> _oldTetHash;
-	std::vector<int> _oldVertexTets;
-	std::vector<int> _newToOldNodes;
+	struct arrayShort3Hasher {
+		inline std::size_t operator()(const std::array<short, 3>& k) const
+		{  // hash function
+			btHash bh;
+			bh.ss3.ss3 = k;
+			bh.ss3.pad = 0;
+			std::hash<long long> hash_funct;
+			return hash_funct(bh.ll);
+		}
+	};
+	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> _oldNodeLocs;
+	std::vector<Vec3f> _oldNodePositions;
+	std::vector<std::array<int, 4> > _oldTets;
 };
 
 #endif  // __REMAP_TET_PHYSICS__

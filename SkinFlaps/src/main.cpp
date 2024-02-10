@@ -67,7 +67,7 @@ int main(int, char**)
 					sa->newTopology = false;
 				}
 				if (bts->forcesApplied()) {
-//					sa->getSutures()->updateSutureGraphics();
+					sa->getSutures()->updateSutureGraphics();
 					if (sa->getSurgGraphics()->getSceneNode()->visible)
 						bts->updateSurfaceDraw();
 					else {  // draw only tets without the surface

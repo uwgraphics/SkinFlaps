@@ -53,7 +53,7 @@ private:
 	};
 	std::list< fixedCollisionSet> _fixedCollisionSets;
 
-	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus, bccTetCentroid& tC);
+//	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus, bccTetCentroid& tC);
 	float rayDepth(const Vec3f& Vtx, const Vec3f& nrm);
 
 	double _minTime, _maxTime;
