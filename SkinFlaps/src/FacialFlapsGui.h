@@ -438,6 +438,16 @@ public:
 		user_message_flag = true;
 	}
 
+	static void handleThrow(const char* message) {
+		user_message = message;
+		std::string errHist = historyDirectory + "ERROR.hst";
+		igSurgAct.saveSurgicalHistory(errHist.c_str());
+		user_message.append("History to this point has been saved in ERROR.hst\n");
+		user_message_title = "Program exception thrown";
+		user_message_flag = true;
+		except_thrown_flag = true;
+	}
+
 	static void showHourglass() {
 		// from: https ://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples#Example-for-OpenGL-users
 		physicsDrag = true;
@@ -657,8 +667,11 @@ public:
 		{
 			ImGui::Begin(user_message_title.c_str(), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);   // &user_message_flag  Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
 			ImGui::Text(user_message.c_str());
-			if (ImGui::Button("  Close  "))
+			if (ImGui::Button("  Close  ")) {
 				user_message_flag = false;
+				if (except_thrown_flag)
+					glfwSetWindowShouldClose(FFwindow, 1);
+			}
 			ImGui::End();
 		}
 		if (ImGuiFileDialog::Instance()->Display("FileDialogKey", ImGuiWindowFlags_NoCollapse, minFileDlgSize))  // , maxSize))
@@ -753,7 +766,7 @@ public:
 //	static std::string loadDir, loadFile;
 
 private:
-	static bool powerHooks, showToolbox, viewPhysics, viewSurface, wheelZoom;
+	static bool powerHooks, showToolbox, viewPhysics, viewSurface, wheelZoom, except_thrown_flag;
 	static int csgToolstate;
 	static std::string historyDirectory, modelDirectory, objDirectory, modelFile, historyFile, user_message, user_message_title;
 	static unsigned char buttonsDown;

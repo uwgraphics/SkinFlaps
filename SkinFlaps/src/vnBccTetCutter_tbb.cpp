@@ -15,240 +15,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "remapTetPhysics.h"  // for high speed spatial coord remapping after topological changes
 #include "vnBccTetCutter_tbb.h"
-
-bool vnBccTetCutter_tbb::makeFirstVnTets(materialTriangles *mt, vnBccTetrahedra*vbt, int maximumGridDimension)
-{  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
-	if (maximumGridDimension > 0x8ffe)
-		throw(std::logic_error("Maximum grid dimension requested must be less than 32K."));
-	// WARNING - no complete tests are done to check for non-self-intersecting closed manifold triangulated surface input!!
-	// This is essential. findAdjacentTriangles() is the closest test this routine provides.  Test externally.
-	_mt = mt;
-	_vbt = vbt;
-	_vbt->_mt = mt;
-	_vbt->_barycentricWeights.clear();
-	_vbt->_barycentricWeights.assign(mt->numberOfVertices(), Vec3f());
-	_vbt->_tetHash.clear();
-	_vbt->_tetNodes.clear();
-	evenXy.clear();
-	oddXy.clear();
-	if(_mt->findAdjacentTriangles(true))	return false;
-	if (!setupBccIntersectionStructures(maximumGridDimension))
-		return false;
-	_vbt->_tetSubdivisionLevels = 1;  // Not creating multiresolution tets.
-	// COURT 4x faster than single thread using tbb hash container requiring no reduction. tbb version ~30% faster than omp before reduction and reduction using critical section. tbb hash container very helpful.
-#if defined( _DEBUG )
-	for (int i = 0; i<_mt->numberOfTriangles(); ++i) {
-#else
-	tbb::parallel_for(
-		tbb::blocked_range<size_t>(0, _mt->numberOfTriangles()),
-		[&](tbb::blocked_range<size_t> r) {
-			for (size_t i = r.begin(); i != r.end(); ++i) {
-#endif
-				if (_mt->triangleMaterial(i) < 0)
-					continue;
-				inputTriangleTetsTbb(i, _centTris);
-				Vec3d triVec[3];
-				int* tr = _mt->triangleVertices(i);
-				for (int j = 0; j < 3; ++j)
-					triVec[j] = _vMatCoords[tr[j]];
-				zIntersectTriangleTbb(triVec, true, _zIntr);
-			}
-#if !defined( _DEBUG )
-		});
-#endif
-	std::vector<tetTriangles> tetTriVec;
-	tetTriVec.assign(_centTris.size(), tetTriangles());
-	_surfaceCentroids.clear();
-	_surfaceCentroids.reserve(_centTris.size());
-	int count = 0;
-	for (auto ctit = _centTris.begin(); ctit != _centTris.end(); ++ctit) {
-		_surfaceCentroids.insert(ctit->first);
-		tetTriVec[count].tc = ctit->first;
-		tetTriVec[count++].tris = std::move(ctit->second);
-	}
-	_centTris.clear();
-	for (auto ziv : _zIntr) {
-		if (ziv.flags.odd)
-			oddXy[ziv.x][ziv.y].insert(std::make_pair(ziv.zInt, ziv.flags));
-		else
-			evenXy[ziv.x][ziv.y].insert(std::make_pair(ziv.zInt, ziv.flags));
-	}
-	_zIntr.clear();
-
-	/*	end = std::chrono::system_clock::now();
-		std::chrono::duration<double> elapsed_seconds = end - start;
-		std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-		std::string message("Inputting triangles took ");
-		message += std::to_string(elapsed_seconds.count());
-		message += " seconds for ";
-		message += std::to_string(_vbt->_tetNodes.size());
-		message += " tets.";
-		std::cout << message << "\n"; */
-
-		// create and hash all interior nodes.  Very fast (< 0.002 sec) so don't bother multithreading
-	createInteriorNodes();
-	//	evenXy.clear(); oddXy.clear();  // am reusing these structures for remakeVnTets()
-	_interiorNodes.clear();  // only nodes created thus far are interior nodes
-	_interiorNodes.reserve(_vbt->_nodeGridLoci.size());
-	for (int n = _vbt->_nodeGridLoci.size(), j = 0; j < n; ++j)
-		_interiorNodes.insert(std::make_pair(_vbt->_nodeGridLoci[j], j));
-	_vbt->_tetCentroids.clear();
-	_vbt->_tetCentroids.reserve(tetTriVec.size() >> 1);    // COURT perhaps assign() for multi threading
-
-	//	start = std::chrono::system_clock::now();
-
-	_centroidTriangles.clear();
-	_nSurfaceTets.store(_vbt->_tetNodes.size());  // this atomic must not step on any megatets that have already been created. Atomic used to multithread next section
-
-#if defined( _DEBUG )
-	for(int i=0; i< tetTriVec.size(); ++i){
-#else
-	tbb::parallel_for(
-		tbb::blocked_range<size_t>(0, tetTriVec.size()),
-		[&](tbb::blocked_range<size_t> r) {
-			for (size_t i = r.begin(); i != r.end(); ++i) {
-#endif
-				getConnectedComponents(tetTriVec[i], _newTets, _ntsHash);  // for this centroid split its triangles into solid connected components
-			}
-#if !defined( _DEBUG )
-		});
-#endif
-
-	/*	end = std::chrono::system_clock::now();
-		elapsed_seconds = end - start;
-		end_time = std::chrono::system_clock::to_time_t(end);
-		message.assign("Getting connected components took ");
-		message += std::to_string(elapsed_seconds.count());
-		message += " seconds for ";
-		message += std::to_string(_vbt->_tetNodes.size());
-		message += " tets.";
-		std::cout << message << "\n"; */
-
-	_vbt->_tetCentroids.assign(_nSurfaceTets, bccTetCentroid());
-	_vbt->_tetNodes.assign(_nSurfaceTets, std::array<int, 4>());
-	for (auto& nt : _newTets) {
-		_vbt->_tetCentroids[nt.tetIdx] = nt.tc;  // COURT don't hash them here
-		_vbt->_tetNodes[nt.tetIdx] = std::move(nt.tetNodes);
-		auto pr = _centroidTriangles.insert(std::make_pair(nt.tc, std::list<tetTris>()));
-		pr.first->second.push_back(tetTris());
-		pr.first->second.back().tetIdx = nt.tetIdx;
-		pr.first->second.back().tris = std::move(nt.tris);
-	}
-	_newTets.clear();
-	// _centroidTriangles will be used later for vertex tetId and multires version, so don't delete
-	int nNts = _ntsHash.size();
-	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> nts_global;
-	std::vector< std::list<nodeTetSegment> > nts_vec;
-	std::vector< std::array<short, 3> > nts_locs;
-	nts_global.reserve(nNts);
-	nts_vec.reserve(nNts);
-	nts_locs.reserve(nNts);
-	for (auto& ns : _ntsHash) {
-		auto pr = nts_global.insert(std::make_pair(ns.first, -1));
-		if (pr.second) {
-			pr.first->second = nts_vec.size();
-			nts_vec.push_back(std::move(ns.second));
-			nts_locs.push_back(pr.first->first);
-		}
-		else {
-			auto& vr = nts_vec[pr.first->second];
-			for (auto& nr : ns.second)
-				vr.push_back(std::move(nr));
-		}
-	}
-	_ntsHash.clear();
-	// get tets where vertices reside
-	_vbt->_vertexTets.clear();
-	_vbt->_vertexTets.assign(_mt->numberOfVertices(), -1);
-	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {
-		auto ci = _centroidTriangles.find(_vertexTetCentroids[i]);
-		if (ci == _centroidTriangles.end())
-			throw(std::logic_error("Couldn't find a tetrahedron containing a vertex.\n"));
-		else if (ci->second.size() < 2)
-			_vbt->_vertexTets[i] = ci->second.front().tetIdx;
-		else {
-			auto ltit = ci->second.begin();
-			while (ltit != ci->second.end()) {
-				auto tit = ltit->tris.begin();
-				while (tit != ltit->tris.end()) {
-					int* tr = _mt->triangleVertices(*tit);
-					int j;
-					for (j = 0; j < 3; ++j) {
-						if (tr[j] == i) {
-							_vbt->_vertexTets[i] = ltit->tetIdx;
-							break;
-						}
-					}
-					if (j < 3)
-						break;
-					++tit;
-				}
-				if (tit != ltit->tris.end())
-					break;
-				++ltit;
-			}
-			assert(_vbt->_vertexTets[i] > -1);
-		}
-	}
-
-	//	start = std::chrono::system_clock::now();
-
-	oneapi::tbb::concurrent_vector<extNode> eNodes;
-#if defined( _DEBUG )
-	for(int i=0; i< nts_vec.size(); ++i){
-#else
-	tbb::parallel_for(
-		tbb::blocked_range<size_t>(0, nts_vec.size()),
-		[&](tbb::blocked_range<size_t> r) {
-			for (size_t i = r.begin(); i != r.end(); ++i) {
-#endif
-				assignExteriorTetNodes(nts_locs[i], nts_vec[i], eNodes);
-			}
-#if !defined( _DEBUG )
-		});
-#endif
-
-	/*	end = std::chrono::system_clock::now();
-		elapsed_seconds = end - start;
-		end_time = std::chrono::system_clock::to_time_t(end);
-		message.assign("Assigning exterior nodes took ");
-		message += std::to_string(elapsed_seconds.count());
-		message += " seconds for ";
-		message += std::to_string(_vbt->_tetNodes.size());
-		message += " tets.";
-		std::cout << message << "\n"; */
-
-	for (auto& en : eNodes) {
-		int eNode = _vbt->_nodeGridLoci.size();
-		_vbt->_nodeGridLoci.push_back(std::move(en.loc));
-		for (auto& ti : en.tiPairs)
-			_vbt->_tetNodes[ti.first][ti.second] = eNode;
-	}
-	eNodes.clear();
-
-	/*	end = std::chrono::system_clock::now();
-		elapsed_seconds = end - start;
-		end_time = std::chrono::system_clock::to_time_t(end);
-		message.assign("Assigning exterior nodes took ");
-		message += std::to_string(elapsed_seconds.count());
-		message += " seconds for ";
-		message += std::to_string(_vbt->_tetNodes.size());
-		message += " tets.";
-		std::cout << message << "\n"; */
-
-	_vbt->_firstInteriorTet = _vbt->_tetNodes.size();
-	fillNonVnTetCenter();  // fast. Don't bother multithreading
-	_surfaceCentroids.clear();
-	_interiorNodes.clear();  // COURT perhaps keep this and delete vn tet interiors
-	_vbt->_tetNodes.shrink_to_fit();
-	_vbt->_tetCentroids.shrink_to_fit();
-	_vbt->_tetHash.clear();
-	_vbt->_tetHash.reserve(_vbt->_tetCentroids.size());
-	for (int n = _vbt->_tetCentroids.size(), i = 0; i < n; ++i)
-		_vbt->_tetHash.insert(std::make_pair(_vbt->_tetCentroids[i], i));
-	return true;
-}
 
 void vnBccTetCutter_tbb::addNewMultiresIncision() {
 	// Extend _vMatCoords to new vertices. Things may have already been moved so use old tet locations assigned in incision tool for new vertices
@@ -562,7 +330,7 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 		if (_vbt->_vertexTets[v] < -1)  // excised vertex
 			continue;
 		if (_vbt->_vertexTets[v] < 0) {  // only those not in a megatet
-//			if (!(_vertexTetCentroids[v][0] < USHRT_MAX))
+			if (!(_vertexTetCentroids[v][0] < USHRT_MAX))
 				_vbt->gridLocusToLowestTetCentroid(_vMatCoords[v], _vertexTetCentroids[v]);
 			auto vtet = _vbt->_tetHash.equal_range(_vertexTetCentroids[v]);
 			int limit = 0;
@@ -618,7 +386,16 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	// keep _vMatCoords and _vertexTetCentroids for augmentation with each new incision
 	_interiorNodes.clear();
 	_surfaceCentroids.clear();
-	_centroidTriangles.clear();  // only reused on this first pass, but not again.
+	if (_rtp != nullptr) {  // will need this for fast remapTetPhysics class
+		_rtp->clearVnTetVerts();
+		for (auto& ct : _centroidTriangles) {
+//			if (ct.second.size() > 1) {
+				for (auto& tt : ct.second)
+					_rtp->insertSurfaceTetVertex(tt.tetIdx, _mt->triangleVertices(tt.tris.front())[0]);
+//			}
+		}
+	}
+	_centroidTriangles.clear();  // only reused in makeFirst(), but not again.
 	_boundingNodeData.clear();
 	_lastTriangleSize = _mt->numberOfTriangles();
 	_lastVertexSize = _mt->numberOfVertices();
@@ -721,6 +498,239 @@ void vnBccTetCutter_tbb::createFirstMacroTets(materialTriangles* mt, vnBccTetrah
 		oddXy[i].assign(gsy, std::multimap<double, zIntersectFlags>());
 	}
 	macrotetRecutCore();
+}
+
+bool vnBccTetCutter_tbb::makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra* vbt, int maximumGridDimension)
+{  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
+	if (maximumGridDimension > 0x8ffe)
+		throw(std::logic_error("Maximum grid dimension requested must be less than 32K."));
+	// WARNING - no complete tests are done to check for non-self-intersecting closed manifold triangulated surface input!!
+	// This is essential. findAdjacentTriangles() is the closest test this routine provides.  Test externally.
+	_mt = mt;
+	_vbt = vbt;
+	_vbt->_mt = mt;
+	_vbt->_barycentricWeights.clear();
+	_vbt->_barycentricWeights.assign(mt->numberOfVertices(), Vec3f());
+	_vbt->_tetHash.clear();
+	_vbt->_tetNodes.clear();
+	evenXy.clear();
+	oddXy.clear();
+	if (_mt->findAdjacentTriangles(true))	return false;
+	if (!setupBccIntersectionStructures(maximumGridDimension))
+		return false;
+	_vbt->_tetSubdivisionLevels = 1;  // Not creating multiresolution tets.
+	// COURT 4x faster than single thread using tbb hash container requiring no reduction. tbb version ~30% faster than omp before reduction and reduction using critical section. tbb hash container very helpful.
+#ifdef _DEBUG
+	for (int i = 0; i < _mt->numberOfTriangles(); ++i) {
+#else
+	tbb::parallel_for(
+		tbb::blocked_range<size_t>(0, _mt->numberOfTriangles()),
+		[&](tbb::blocked_range<size_t> r) {
+			for (size_t i = r.begin(); i != r.end(); ++i) {
+#endif
+				if (_mt->triangleMaterial(i) < 0)
+					continue;
+				inputTriangleTetsTbb(i, _centTris);
+				Vec3d triVec[3];
+				int* tr = _mt->triangleVertices(i);
+				for (int j = 0; j < 3; ++j)
+					triVec[j] = _vMatCoords[tr[j]];
+				zIntersectTriangleTbb(triVec, true, _zIntr);
+			}
+#ifndef _DEBUG
+		});
+#endif
+	std::vector<tetTriangles> tetTriVec;
+	tetTriVec.assign(_centTris.size(), tetTriangles());
+	_surfaceCentroids.clear();
+	_surfaceCentroids.reserve(_centTris.size());
+	int count = 0;
+	for (auto ctit = _centTris.begin(); ctit != _centTris.end(); ++ctit) {
+		_surfaceCentroids.insert(ctit->first);
+		tetTriVec[count].tc = ctit->first;
+		tetTriVec[count++].tris = std::move(ctit->second);
+	}
+	_centTris.clear();
+	for (auto ziv : _zIntr) {
+		if (ziv.flags.odd)
+			oddXy[ziv.x][ziv.y].insert(std::make_pair(ziv.zInt, ziv.flags));
+		else
+			evenXy[ziv.x][ziv.y].insert(std::make_pair(ziv.zInt, ziv.flags));
+	}
+	_zIntr.clear();
+
+	/*	end = std::chrono::system_clock::now();
+		std::chrono::duration<double> elapsed_seconds = end - start;
+		std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+		std::string message("Inputting triangles took ");
+		message += std::to_string(elapsed_seconds.count());
+		message += " seconds for ";
+		message += std::to_string(_vbt->_tetNodes.size());
+		message += " tets.";
+		std::cout << message << "\n"; */
+
+		// create and hash all interior nodes.  Very fast (< 0.002 sec) so don't bother multithreading
+	createInteriorNodes();
+	//	evenXy.clear(); oddXy.clear();  // am reusing these structures for remakeVnTets()
+	_interiorNodes.clear();  // only nodes created thus far are interior nodes
+	_interiorNodes.reserve(_vbt->_nodeGridLoci.size());
+	for (int n = _vbt->_nodeGridLoci.size(), j = 0; j < n; ++j)
+		_interiorNodes.insert(std::make_pair(_vbt->_nodeGridLoci[j], j));
+	_vbt->_tetCentroids.clear();
+	_vbt->_tetCentroids.reserve(tetTriVec.size() >> 1);    // COURT perhaps assign() for multi threading
+
+	//	start = std::chrono::system_clock::now();
+
+	_centroidTriangles.clear();
+	_nSurfaceTets.store(_vbt->_tetNodes.size());  // this atomic must not step on any megatets that have already been created. Atomic used to multithread next section
+
+#ifdef _DEBUG
+	for (int i = 0; i < tetTriVec.size(); ++i) {
+#else
+	tbb::parallel_for(
+		tbb::blocked_range<size_t>(0, tetTriVec.size()),
+		[&](tbb::blocked_range<size_t> r) {
+			for (size_t i = r.begin(); i != r.end(); ++i) {
+#endif
+				getConnectedComponents(tetTriVec[i], _newTets, _ntsHash);  // for this centroid split its triangles into solid connected components
+			}
+#ifndef _DEBUG
+		});
+#endif
+
+	/*	end = std::chrono::system_clock::now();
+		elapsed_seconds = end - start;
+		end_time = std::chrono::system_clock::to_time_t(end);
+		message.assign("Getting connected components took ");
+		message += std::to_string(elapsed_seconds.count());
+		message += " seconds for ";
+		message += std::to_string(_vbt->_tetNodes.size());
+		message += " tets.";
+		std::cout << message << "\n"; */
+
+	_vbt->_tetCentroids.assign(_nSurfaceTets, bccTetCentroid());
+	_vbt->_tetNodes.assign(_nSurfaceTets, std::array<int, 4>());
+	for (auto& nt : _newTets) {
+		_vbt->_tetCentroids[nt.tetIdx] = nt.tc;  // COURT don't hash them here
+		_vbt->_tetNodes[nt.tetIdx] = std::move(nt.tetNodes);
+		auto pr = _centroidTriangles.insert(std::make_pair(nt.tc, std::list<tetTris>()));
+		pr.first->second.push_back(tetTris());
+		pr.first->second.back().tetIdx = nt.tetIdx;
+		pr.first->second.back().tris = std::move(nt.tris);
+	}
+	_newTets.clear();
+	// _centroidTriangles will be used later for vertex tetId and multires version, so don't delete
+	int nNts = _ntsHash.size();
+	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> nts_global;
+	std::vector< std::list<nodeTetSegment> > nts_vec;
+	std::vector< std::array<short, 3> > nts_locs;
+	nts_global.reserve(nNts);
+	nts_vec.reserve(nNts);
+	nts_locs.reserve(nNts);
+	for (auto& ns : _ntsHash) {
+		auto pr = nts_global.insert(std::make_pair(ns.first, -1));
+		if (pr.second) {
+			pr.first->second = nts_vec.size();
+			nts_vec.push_back(std::move(ns.second));
+			nts_locs.push_back(pr.first->first);
+		}
+		else {
+			auto& vr = nts_vec[pr.first->second];
+			for (auto& nr : ns.second)
+				vr.push_back(std::move(nr));
+		}
+	}
+	_ntsHash.clear();
+	// get tets where vertices reside
+	_vbt->_vertexTets.clear();
+	_vbt->_vertexTets.assign(_mt->numberOfVertices(), -1);
+	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {
+		auto ci = _centroidTriangles.find(_vertexTetCentroids[i]);
+		if (ci == _centroidTriangles.end())
+			throw(std::logic_error("Couldn't find a tetrahedron containing a vertex.\n"));
+		else if (ci->second.size() < 2)
+			_vbt->_vertexTets[i] = ci->second.front().tetIdx;
+		else {
+			auto ltit = ci->second.begin();
+			while (ltit != ci->second.end()) {
+				auto tit = ltit->tris.begin();
+				while (tit != ltit->tris.end()) {
+					int* tr = _mt->triangleVertices(*tit);
+					int j;
+					for (j = 0; j < 3; ++j) {
+						if (tr[j] == i) {
+							_vbt->_vertexTets[i] = ltit->tetIdx;
+							break;
+						}
+					}
+					if (j < 3)
+						break;
+					++tit;
+				}
+				if (tit != ltit->tris.end())
+					break;
+				++ltit;
+			}
+			assert(_vbt->_vertexTets[i] > -1);
+		}
+	}
+
+	//	start = std::chrono::system_clock::now();
+
+	oneapi::tbb::concurrent_vector<extNode> eNodes;
+#ifdef _DEBUG
+	for (int i = 0; i < nts_vec.size(); ++i) {
+#else
+	tbb::parallel_for(
+		tbb::blocked_range<size_t>(0, nts_vec.size()),
+		[&](tbb::blocked_range<size_t> r) {
+			for (size_t i = r.begin(); i != r.end(); ++i) {
+#endif
+				assignExteriorTetNodes(nts_locs[i], nts_vec[i], eNodes);
+			}
+#ifndef _DEBUG
+		});
+#endif
+
+	/*	end = std::chrono::system_clock::now();
+		elapsed_seconds = end - start;
+		end_time = std::chrono::system_clock::to_time_t(end);
+		message.assign("Assigning exterior nodes took ");
+		message += std::to_string(elapsed_seconds.count());
+		message += " seconds for ";
+		message += std::to_string(_vbt->_tetNodes.size());
+		message += " tets.";
+		std::cout << message << "\n"; */
+
+	for (auto& en : eNodes) {
+		int eNode = _vbt->_nodeGridLoci.size();
+		_vbt->_nodeGridLoci.push_back(std::move(en.loc));
+		for (auto& ti : en.tiPairs)
+			_vbt->_tetNodes[ti.first][ti.second] = eNode;
+	}
+	eNodes.clear();
+
+	/*	end = std::chrono::system_clock::now();
+		elapsed_seconds = end - start;
+		end_time = std::chrono::system_clock::to_time_t(end);
+		message.assign("Assigning exterior nodes took ");
+		message += std::to_string(elapsed_seconds.count());
+		message += " seconds for ";
+		message += std::to_string(_vbt->_tetNodes.size());
+		message += " tets.";
+		std::cout << message << "\n"; */
+
+	_vbt->_firstInteriorTet = _vbt->_tetNodes.size();
+	fillNonVnTetCenter();  // fast. Don't bother multithreading
+	_surfaceCentroids.clear();
+	_interiorNodes.clear();  // COURT perhaps keep this and delete vn tet interiors
+	_vbt->_tetNodes.shrink_to_fit();
+	_vbt->_tetCentroids.shrink_to_fit();
+	_vbt->_tetHash.clear();
+	_vbt->_tetHash.reserve(_vbt->_tetCentroids.size());
+	for (int n = _vbt->_tetCentroids.size(), i = 0; i < n; ++i)
+		_vbt->_tetHash.insert(std::make_pair(_vbt->_tetCentroids[i], i));
+	return true;
 }
 
 void vnBccTetCutter_tbb::pack(){
@@ -1257,7 +1267,7 @@ void vnBccTetCutter_tbb::createInteriorNodes() {
 void vnBccTetCutter_tbb::createInteriorMicronodes() {
 	short z;
 	std::array<short, 3> s3;
-	double zTol = _vbt->_gridSize[2] * 1e-5;
+	double zTol = _vbt->_gridSize[2] * 1.5e-4;
 	auto solidFilter = [&](std::multimap<double, zIntersectFlags>& mm) ->bool {  // isolate solid runs from surface hits and correct any switch of coincident surfaces.
 		bool inSolid = false, noInteriorNodes = true, swapHere;
 		auto mit = mm.begin();
@@ -1297,12 +1307,13 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 					mNext = mm.erase(mNext);
 					continue;
 				}
-				else {  // there can never be a coincident surface bounding a solid, so the first must be a solid end and the second a solid begin
-					if (mit->second.solidBegin) {
-						mit->second.solidBegin = false;
-						mNext->second.solidBegin = true;
+				else {  // coincident surface or multihit
+					if (mit->second.solidBegin != mNext->second.solidBegin) {
+						mit->second.solidBegin = !mit->second.solidBegin;
+						mNext->second.solidBegin = !mNext->second.solidBegin;
+						inSolid = mNext->second.solidBegin;
+						swapHere = false;
 						++mNext;
-						inSolid = true;
 					}
 					else  // delete any multihits
 						mNext = mm.erase(mNext);
@@ -1318,6 +1329,8 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 			}
 			mit = mNext;
 		}
+		if(inSolid)
+			throw(std::logic_error("Program logic error in vnBccTetCutter_tbb::createInteriorMicronodes()\n"));
 		if (noInteriorNodes)
 			return true;
 		if (mm.size() < 3) {
@@ -1375,6 +1388,10 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 				continue;
 			s3[0] = (xi + 1) * 2;
 			s3[1] = (yi + 1) * 2;
+
+//			if (xi == 22 && yi == 88)
+//				int junk = 0;
+
 			if (solidFilter(evenXy[xi][yi]))
 				continue;
 			runInteriorNodes(evenXy[xi][yi], true);
@@ -1386,6 +1403,10 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 				continue;
 			s3[0] = xi * 2 + 1;
 			s3[1] = yi * 2 + 1;
+
+//			if (xi == 20 && yi == 83)
+//				int junk = 0;
+
 			if (solidFilter(oddXy[xi][yi]))
 				continue;;
 			runInteriorNodes(oddXy[xi][yi], false);
@@ -1554,6 +1575,10 @@ bool vnBccTetCutter_tbb::isInsidePatch(const Vec3d& P, const std::vector<int>& t
 
 void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::tbb::concurrent_vector<newTet>& nt_vec, NTS_HASH& local_nts) {
 	// for this centroid split its triangles into single solid connected components
+
+//	if (tt.tc[0] == 92 && tt.tc[1] == 355 && tt.tc[2] == 170)
+//		int junk = 0;
+
 	std::set<int> trSet, ts;
 	trSet.insert(tt.tris.begin(), tt.tris.end());
 	struct patch {

@@ -18,6 +18,7 @@
 #include "vnBccTetCutter_tbb.h"
 #include "tetCollisions.h"
 #include "tetSubset.h"
+#include "remapTetPhysics.h"
 #include "pdTetPhysics.h"
 
 // forward declarations
@@ -55,8 +56,8 @@ private:
 	gl3wGraphics *_gl3w;
 	surgicalActions *_surgAct;
 	materialTriangles* _mt;  // pointer from surgGraphics.
-	//	vnBccTetrahedra _vnTets;
 	vnBccTetrahedra _vnTets;
+	remapTetPhysics _rtp;
 	tetCollisions _tetCol;
 	tetSubset _tetSubsets;
 	vnBccTetCutter_tbb _tc;  // multithreaded version using Intel threaded building blocks.  Much faster, but indices of nodes and tets different each run as nondeterministic.

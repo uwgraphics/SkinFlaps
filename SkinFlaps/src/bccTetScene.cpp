@@ -290,8 +290,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 
 void bccTetScene::updateOldPhysicsLattice()
 {
-	remapTetPhysics rtp;
-	rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions
+	_rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions.  Worst case example < 0.02 seconds - not worth multithreading.
 	_tc.addNewMultiresIncision();
 
 	// next already done unless swapping two vnTets
@@ -318,9 +317,7 @@ void bccTetScene::updateOldPhysicsLattice()
 	std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
 	_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
 #endif
-	rtp.remapNewPhysicsNodePositions(&_vnTets);  // requires nose spatial coordinate array pointer.
-
-
+	_rtp.remapNewPhysicsNodePositions(&_vnTets);  // requires node spatial coordinate array pointer. Worst case example < 0.02 seconds - not worth multithreading.
 	std::vector<int> subNodes;
 	std::vector<std::vector<int> > macroNodes;
 	std::vector<std::vector<float> > macroBarys;
@@ -345,9 +342,8 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 //		nTetSizeLevels = 4;
 //		maxDimMegatetSubdivs = 31;
 
+		_tc.setRemapTetPhysics(&_rtp);
 		_tc.createFirstMacroTets(_mt, &_vnTets, nTetSizeLevels, maxDimMegatetSubdivs);
-//		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions);
-
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 

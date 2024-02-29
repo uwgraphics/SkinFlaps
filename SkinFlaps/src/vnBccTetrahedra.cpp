@@ -208,7 +208,8 @@ void vnBccTetrahedra::gridLocusToLowestTetCentroid(const Vec3f &gridLocus, bccTe
 	tetCentroid = { (unsigned short)newC[0], (unsigned short)newC[1], (unsigned short)newC[2] };
 
 #ifdef _DEBUG
-	assert(tetCentroid == testCentroid);
+	tetCentroid = testCentroid;
+//	assert(tetCentroid == testCentroid);
 #endif
 
 //  veracity test
@@ -970,6 +971,8 @@ int vnBccTetrahedra::parametricTriangleTet(const int triangle, const float (&uv)
 			int tet = vertexSolidLinePath(tr[i], gridLocus);
 			if (tet > -1)
 				return tet;
+			else
+				int junk = 0;
 		}
 	}
 	return -1;

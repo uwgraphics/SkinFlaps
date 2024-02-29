@@ -288,6 +288,9 @@ float tetCollisions::inverse_rsqrt(float number)
 
 void tetCollisions::addFixedCollisionSet(materialTriangles* mt, const std::string& levelSetFile, std::vector<Vec2f>& txPoly) {  // call once at load
 	// make polygon slightly bigger to capture border vertices
+
+	return;  // COURT put back in after Qisi fix
+
 	insidePolygon ip;
 	std::set<int> collisionVertices;
 	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {

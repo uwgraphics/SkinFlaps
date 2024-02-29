@@ -192,8 +192,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.063068,
-            0.540804
+            0.059241,
+            0.507532
           ],
           "incisionConnect":true,
           "material":2
@@ -207,68 +207,8 @@
             0.000000
           ],
           "historyTexture":[
-            0.047998,
-            0.539129
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.045552,
-            0.451099
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.064195,
-            0.416065
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            0.000000,
-            0.000000,
-            0.000000
-          ],
-          "historyTexture":[
-            0.081685,
-            0.391018
-          ],
-          "incisionConnect":false,
-          "material":2
-        }
-      },
-      {
-        "underminePoint":{
-          "displacement":[
-            -0.042448,
-            0.140265,
-            -0.046524
-          ],
-          "historyTexture":[
-            0.081404,
-            0.438677
+            0.067773,
+            0.448605
           ],
           "incisionConnect":true,
           "material":2

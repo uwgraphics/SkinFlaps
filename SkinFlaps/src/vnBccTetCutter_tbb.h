@@ -21,19 +21,23 @@
 #include "materialTriangles.h"
 #include "vnBccTetrahedra.h"
 
+class remapTetPhysics;  // forward declaration
+
 class vnBccTetCutter_tbb
 {
 public:
 	bool makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra* vbt, int maximumCubeGridDimension);  // initial creation of vbt based only on materialTriangles input amd maxGridDim.
 	void createFirstMacroTets(materialTriangles* mt, vnBccTetrahedra* vbt, const int nLevels, const int maximumDimensionMacroSubdivs);  // creates initial macro tet environment
 	void addNewMultiresIncision();  // after have done createFirstMacroTets() and possibly made other incisions, this routine inputs new incision(s) and creates new tet structure.
-	vnBccTetCutter_tbb(void) {}
+	inline void setRemapTetPhysics(remapTetPhysics* rtp) { _rtp = rtp; }  // for use in surgical simulation project to reset spatial coords after a topo change.  Can be ignored elsewhere if desired.
+	vnBccTetCutter_tbb(void) { _rtp = nullptr; }
 	~vnBccTetCutter_tbb(void){}
 
 private:
 	materialTriangles* _mt;
 	vnBccTetrahedra* _vbt;
-	std::vector<Vec3f> _vMatCoords;
+	remapTetPhysics* _rtp;
+	std::vector<Vec3f> _vMatCoords;  // material coordinates of surface vertices
 
 	std::unordered_set<int> _vnTris;
 	std::vector<bccTetCentroid> _vnCentroids;

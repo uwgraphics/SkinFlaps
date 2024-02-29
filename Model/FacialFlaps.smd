@@ -39,7 +39,7 @@
         "lowTetWeight" : 500.0,
         "highTetWeight" : 1000.0,
         "collisionWeight": 40000.0,
-        "selfCollisionWeight" :  10000.0,
+        "selfCollisionWeight" : 30000.0,
         "fixedWeight" : 10000.0,
         "periferalWeight" : 1000.0,
         "hookWeight" : 500.0,

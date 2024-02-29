@@ -530,7 +530,8 @@ void materialTriangles::getNeighbors(unsigned int vertex, std::vector<neighborNo
 	for(j=0; j<3; ++j)
 		if(tnow[j]==vertex)
 			break;
-	assert(j<3);
+	if(j>2)
+		throw(std::logic_error("Program error found by materialTriangles::getNeighbors() routine."));
 	adjs = &(_adjs[trNum][0]);
 	// set triStart to the end adjacency code for counterclockwise traversal
 	neighborNode n;
@@ -1120,9 +1121,9 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 			_adjs[adjTE>>2][adjTE & 3] = (tn << 2) + 1;
 		_adjs[tn][2] = (triangle << 2) + ((edge + 1) % 3);
 		_adjs[triangle][(edge + 1) % 3] = (tn << 2) + 2;
-//		if((_vertexFace[v[1]]&0x3fffffff)==triangle)
-//			_vertexFace[v[1]] = (tn | 0x40000000);	// first vertex on a free edge
-//		_vertexFace[newVert] = (tn | 0x40000000);
+		if((_vertexFace[v[1]]&0x3fffffff)==triangle)
+			_vertexFace[v[1]] = (tn | 0x40000000);	// first vertex on a free edge
+		_vertexFace[newVert] = (tn | 0x40000000);
 		return newVert;
 	}
 	int tx1 = tx0;
@@ -1169,7 +1170,7 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 	trAdjs[2] = (triangle << 2) + ((edge + 1) % 3);
 	trAdjsA[2] = (ta << 2) + ((ea + 1) % 3);
 	// new vertexFace assignments
-/*	_vertexFace[newVert] = triangle;
+	_vertexFace[newVert] = triangle;
 	if((_vertexFace[ve1]&0x3fffffff)==triangle) {
 		if((_vertexFace[ve1]&0x40000000)>0)
 			_vertexFace[ve1] = tn|0x40000000;
@@ -1181,7 +1182,7 @@ int materialTriangles::splitTriangleEdge(int triangle, int edge, const float par
 			_vertexFace[ve] = tna|0x40000000;
 		else
 			_vertexFace[ve] = tna;
-	} */
+	}
 	return newVert;
 }
 
@@ -1314,8 +1315,8 @@ int materialTriangles::addVertices(int numberToAdd)
 	{
 		_xyz.push_back(Vec3f());
 		// in new version texture not present.  Force addTexture() instead
-//		if(!_vertexFace.empty())
-//			_vertexFace.push_back(0x80000000);
+		if(!_vertexFace.empty())
+			_vertexFace.push_back(0x80000000);
 	}
 	_adjacenciesComputed = false;
 	return retval;

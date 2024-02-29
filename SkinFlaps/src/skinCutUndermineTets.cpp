@@ -118,6 +118,72 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 	// If topTriangle already part of a flap a bottom vertex will be added. If no flap present an unconnected bottom edge vertex will be created.
 	// If a flap bottom does not already exists on input, bottomVertex will be negated on output.
 	assert(_mt->triangleMaterial(topTriangle) == 2);
+
+	if (topTriangle == 17932) {
+//		_mt->findAdjacentTriangles(true);
+		for (int j, k, n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
+			if (_mt->triangleMaterial(i) != 4)
+				continue;
+			const int *tr = _mt->triangleVertices(i);
+			std::set<int> tv;
+			int topV[3] = { -1,-1,-1 };
+			for (auto& db : _deepBed) {
+				for(j=0; j<3; ++j)
+					if (db.second.deepMtVertex == tr[j]) {
+						tv.insert(db.first);
+						topV[j] = db.first;
+					}
+			}
+			if(tv.size() < 3)
+				std::cout << "invalid bottom tri\n";
+			for (j = 0; j < n; ++j) {
+				if (_mt->triangleMaterial(j) != 2)
+					continue;
+				tr = _mt->triangleVertices(j);
+				for (k = 0; k < 3; ++k) {
+					if (tv.find(tr[k]) == tv.end())
+						break;
+				}
+				if (k < 3)
+					continue;
+				else
+					break;
+			}
+			if (j < n)
+				std::cout << "bottom tri found\n";
+			else
+				std::cout << "invalid bottom tri\n";
+
+/*			for (j = 0; j < 3; ++j) {
+				auto it = _deepBed.find(tr[j]);
+				if (it == _deepBed.end() || it->second.deepMtVertex < 0)
+					break;
+				dv.insert(it->second.deepMtVertex);
+			}
+			if (j < 3)
+				continue;
+			for (j = 0; j < n; ++j) {
+				if (_mt->triangleMaterial(j) != 4)
+					continue;
+				tr = _mt->triangleVertices(j);
+				for (k = 0; k < 3; ++k) {
+					if (dv.find(tr[k]) == dv.end())
+						break;
+				}
+				if (k < 3)
+					continue;
+				else
+					break;
+			}
+			if(j<n)
+				std::cout << "bottom tri found\n";
+			else
+				std::cout << "invalid bottom tri\n"; */
+		}
+
+//		std::cout << "here";
+	}
+
 	// look for a flap bottom replicant of topTriangle if it exists.
 	int deepVerts[3], *tr = _mt->triangleVertices(topTriangle);
 	int bottomTriangle = 0, n = _mt->numberOfTriangles(), j = -1;
@@ -153,7 +219,7 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 						break;
 					}
 					else
-						throw(std::logic_error("Topological eror found in createFlapTopBottomVertices()."));
+						throw(std::logic_error("Topological error found in createFlapTopBottomVertices()."));
 				}
 				else if (nit->vertex == deepVerts[1])
 					break;
@@ -584,7 +650,14 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<int> &topVerts, std::list<
 		++tvit;
 		++i;
 	}
-	assert(i == topVerts.size());
+	i = 0;
+	dvit = deepVerts.begin();
+	for (tvit = topVerts.begin(); tvit != topVerts.end(); ++tvit) {  // fix _deepBed if incising a flap bottom
+		if (oppBotVerts[i] != *dvit)
+			_deepBed[*tvit].deepMtVertex = oppBotVerts[i];
+		++dvit;
+		++i;
+	}
 	_mt->findAdjacentTriangles(true);
 	// get all triangles on the edge of a skin cut.
 	_inExCisionTriangles.clear();
@@ -1373,6 +1446,44 @@ void skinCutUndermineTets::undermineSkin() {
 
 	_mt->findAdjacentTriangles(true);
 	_prevUndermineTriangle = -1;
+
+// another test section
+/*	int validBot = 0, invalidBot = 0;
+	for (int j, k, n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
+		if (_mt->triangleMaterial(i) != 4)
+			continue;
+		const int* tr = _mt->triangleVertices(i);
+		std::set<int> tv;
+		int topV[3] = { -1,-1,-1 };
+		for (auto& db : _deepBed) {
+			for (j = 0; j < 3; ++j)
+				if (db.second.deepMtVertex == tr[j]) {
+					tv.insert(db.first);
+					topV[j] = db.first;
+				}
+		}
+		if (tv.size() < 3)
+			++invalidBot;
+		for (j = 0; j < n; ++j) {
+			if (_mt->triangleMaterial(j) != 2)
+				continue;
+			tr = _mt->triangleVertices(j);
+			for (k = 0; k < 3; ++k) {
+				if (tv.find(tr[k]) == tv.end())
+					break;
+			}
+			if (k < 3)
+				continue;
+			else
+				break;
+		}
+		if (j < n)
+			++validBot;
+		else
+			++invalidBot;
+	}
+	std::cout << "Found " << validBot << " valid bottom triangles and " << invalidBot << " invalid ones.\n"; */
+
 }
 
 void skinCutUndermineTets::clearCurrentUndermine(const int underminedTissue){
