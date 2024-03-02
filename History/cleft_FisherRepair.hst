@@ -2590,6 +2590,22 @@
     }
   },
   {
+    "addHook":{
+      "displacement":[
+        0.391899,
+        0.245556,
+        -0.196487
+      ],
+      "historyTexture":[
+        0.400469,
+        0.772035
+      ],
+      "hookNum":14,
+      "material":4,
+      "strongHook":true
+    }
+  },
+  {
     "addSuture":{
       "displacement0":[
         0.532730,

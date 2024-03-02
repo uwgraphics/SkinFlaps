@@ -497,10 +497,6 @@ int vnBccTetrahedra::vertexSolidLinePath(const int vertex, const Vec3f materialT
 	// returns tet idx containing materialTarget. Else if no path, return -1. VN y junction hit making search impossible returns -2, but (sh/c)ould have checked all paths.
 	// remember that only microtets can virtual node and be duplicated.  This facilitates search through tets whose level is above 1.
 	// Any existing adjacent macrotet is guaranteed to link. Must only check duplicated level 1 tets.
-
-	if (vertex == 3486)
-		int junk = 0;
-
 	Vec3f tmp;
 	vertexGridLocus(vertex, tmp);
 	Vec3d N = materialTarget - tmp;

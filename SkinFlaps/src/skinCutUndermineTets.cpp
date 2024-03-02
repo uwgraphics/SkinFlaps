@@ -118,72 +118,6 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 	// If topTriangle already part of a flap a bottom vertex will be added. If no flap present an unconnected bottom edge vertex will be created.
 	// If a flap bottom does not already exists on input, bottomVertex will be negated on output.
 	assert(_mt->triangleMaterial(topTriangle) == 2);
-
-	if (topTriangle == 17932) {
-//		_mt->findAdjacentTriangles(true);
-		for (int j, k, n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
-			if (_mt->triangleMaterial(i) != 4)
-				continue;
-			const int *tr = _mt->triangleVertices(i);
-			std::set<int> tv;
-			int topV[3] = { -1,-1,-1 };
-			for (auto& db : _deepBed) {
-				for(j=0; j<3; ++j)
-					if (db.second.deepMtVertex == tr[j]) {
-						tv.insert(db.first);
-						topV[j] = db.first;
-					}
-			}
-			if(tv.size() < 3)
-				std::cout << "invalid bottom tri\n";
-			for (j = 0; j < n; ++j) {
-				if (_mt->triangleMaterial(j) != 2)
-					continue;
-				tr = _mt->triangleVertices(j);
-				for (k = 0; k < 3; ++k) {
-					if (tv.find(tr[k]) == tv.end())
-						break;
-				}
-				if (k < 3)
-					continue;
-				else
-					break;
-			}
-			if (j < n)
-				std::cout << "bottom tri found\n";
-			else
-				std::cout << "invalid bottom tri\n";
-
-/*			for (j = 0; j < 3; ++j) {
-				auto it = _deepBed.find(tr[j]);
-				if (it == _deepBed.end() || it->second.deepMtVertex < 0)
-					break;
-				dv.insert(it->second.deepMtVertex);
-			}
-			if (j < 3)
-				continue;
-			for (j = 0; j < n; ++j) {
-				if (_mt->triangleMaterial(j) != 4)
-					continue;
-				tr = _mt->triangleVertices(j);
-				for (k = 0; k < 3; ++k) {
-					if (dv.find(tr[k]) == dv.end())
-						break;
-				}
-				if (k < 3)
-					continue;
-				else
-					break;
-			}
-			if(j<n)
-				std::cout << "bottom tri found\n";
-			else
-				std::cout << "invalid bottom tri\n"; */
-		}
-
-//		std::cout << "here";
-	}
-
 	// look for a flap bottom replicant of topTriangle if it exists.
 	int deepVerts[3], *tr = _mt->triangleVertices(topTriangle);
 	int bottomTriangle = 0, n = _mt->numberOfTriangles(), j = -1;
@@ -374,7 +308,6 @@ void skinCutUndermineTets::createFlapTopBottomVertices(const int topTriangle, fl
 	else
 		assert(false);
 	tet = _vbt->parametricTriangleTet(bottomTriangle, uvDeep, dp.gridLocus);
-//	tet = parametricMTtriangleTet(bottomTriangle, uvDeep, dp.gridLocus);
 	bottomVertex = _mt->addNewVertexInMidTriangle(bottomTriangle, uvDeep);
 	dp.deepMtVertex = bottomVertex;
 	assert(_vbt->_vertexTets.size() == bottomVertex);

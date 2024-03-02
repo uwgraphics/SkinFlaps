@@ -293,9 +293,7 @@ void bccTetScene::updateOldPhysicsLattice()
 	_rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions.  Worst case example < 0.02 seconds - not worth multithreading.
 	_tc.addNewMultiresIncision();
 
-	// next already done unless swapping two vnTets
-//	_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
-//	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
+//	std::cout << "Tet number at this time is " << _vnTets.tetNumber() << "\n";
 
 #ifdef NO_PHYSICS
 	_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
@@ -339,13 +337,12 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 //		std::chrono::time_point<std::chrono::system_clock> start, end;
 //		start = std::chrono::system_clock::now();
 
-//		nTetSizeLevels = 4;
-//		maxDimMegatetSubdivs = 31;
-
 		_tc.setRemapTetPhysics(&_rtp);
 		_tc.createFirstMacroTets(_mt, &_vnTets, nTetSizeLevels, maxDimMegatetSubdivs);
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
+
+//		std::cout << "Tet number at this time is " << _vnTets.tetNumber() << "\n";
 
 		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * 1.5f);  // COURT fix me after macrotet issue resolved
 
@@ -385,7 +382,6 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 		std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
 		_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
 #endif
-
 		_vnTets.materialCoordsToNodeSpatialVector();
 
 		std::vector<int> subNodes;

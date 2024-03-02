@@ -32,8 +32,20 @@ surgicalActions::~surgicalActions()
 
 bool surgicalActions::saveSurgicalHistory(const char *fullFilePath)
 {
+	std::string ppStr, hstStr;
+	if (_historyIt != _historyArray.end()) {
+		json::Array htmp;
+		size_t idx = 0;
+		auto hit = _historyArray.begin();
+		do {
+			htmp.insert(idx++, *hit);
+			++hit;
+		} while (hit != _historyIt);
+		hstStr = Serialize(htmp);
+	}
+	else
+		hstStr = Serialize(_historyArray);
 	std::ofstream outf(fullFilePath);
-	std::string ppStr,hstStr = Serialize(_historyArray);
 	prettyPrintJSON pp;
 	pp.convert(hstStr.c_str(), ppStr);
 	outf.write(ppStr.c_str(), ppStr.size());
