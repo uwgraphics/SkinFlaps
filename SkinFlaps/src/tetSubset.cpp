@@ -18,11 +18,13 @@
 #include "pdTetPhysics.h"
 #include "tetSubset.h"
 
+// COURT - with multires tets this approach is flawed.  Perhaps should do only in lowest level centroids and have only subcut volumes exhibit this behavior.  Fix later.
+
 bool tetSubset::createSubset(vnBccTetrahedra* vbt, const std::string objFile, float lowTetWeight, float highTetWeight, float strainMin, float strainMax) {
 	materialTriangles mt;
 	if (mt.readObjFile(objFile.c_str()))
 		return false;
-	if (mt.findAdjacentTriangles(true, false) > 0) {
+	if (mt.findAdjacentTriangles(true) > 0) {
 		std::cout << "Topological error in tet subset file: " << objFile << "\n";
 		return false;
 	}
@@ -43,31 +45,19 @@ bool tetSubset::createSubset(vnBccTetrahedra* vbt, const std::string objFile, fl
 	bb.Empty_Box();
 	for (int n = mt.numberOfVertices(), i = 0; i < n; ++i) {
 		Vec3f spat, mat;
-		mt.getVertexCoordinate(i, spat._v);
+		mt.getVertexCoordinate(i, spat.xyz);
 		vbt->spatialToGridCoords(spat, mat);
-		mt.setVertexCoordinate(i, mat._v);
-		bb.Enlarge_To_Include_Point(mat._v);
+		mt.setVertexCoordinate(i, mat.xyz);
+		bb.Enlarge_To_Include_Point(mat.xyz);
 	}
-	auto th = vbt->getTetHash();
-	long long last;
-	last = LONG_MAX;
-	last <<= 32;  // impossible centroid
-	for (auto hit = th->begin(); hit != th->end(); ++hit) {
-		if (hit->first == last)
+	std::set<bccTetCentroid> cents;
+	auto tcArr = vbt->getTetCentroidArray();
+	for (int n = tcArr.size(), i = 0; i < n; ++i) {
+		if (!cents.insert(tcArr[i]).second)  // != cents.end())  // only unique
 			continue;
-		bccTetCentroid tc;
-		tc.ll = hit->first;
-		Vec3f V(tc.xyz[0], tc.xyz[1], tc.xyz[2]);
-		if (tc.halfCoordAxis < 1)
-			V.X += 0.5f;
-		else if (tc.halfCoordAxis < 2)
-			V.Y += 0.5f;
-		else
-			V.Z += 0.5f;
-		if (!bb.Inside(V._v)) {
-			last = hit->first;
+		Vec3f V((const unsigned short (&)[3]) * tcArr[i].data());
+		if (!bb.Inside(V.xyz))
 			continue;
-		}
 		int nIntersects = 0;
 		for (int n = mt.numberOfTriangles(), i = 0; i < n; ++i) {
 			int* tr = mt.triangleVertices(i);
@@ -94,91 +84,7 @@ bool tetSubset::createSubset(vnBccTetrahedra* vbt, const std::string objFile, fl
 			++nIntersects;
 		}
 		if (nIntersects & 1) {
-			ts->subsetCentroids.push_back(tc.ll);
-		}
-		last = hit->first;
-	}
-	return true;
-}
-
-bool tetSubset::createSubset(vnBccTetrahedra* vbt, const std::string name, float lowTetWeight, float highTetWeight, float strainMin, float strainMax,
-	const std::list<std::string>& objFiles) {
-	// creates a subset of the overall tet volume in vbt.  Various uses including tissue subtypes
-	std::vector<materialTriangles> mtVec;
-	mtVec.reserve(objFiles.size());
-	for (auto& of : objFiles) {
-		mtVec.push_back(materialTriangles());
-		if (mtVec.back().readObjFile(of.c_str()))
-			return false;
-	}
-	_tetSubs.push_back(tetSub());
-	tetSub* ts = &_tetSubs.back();
-	ts->name = name;
-	ts->lowTetWeight = lowTetWeight;
-	ts->highTetWeight = highTetWeight;
-	ts->strainMin = strainMin;
-	ts->strainMax = strainMax;
-	ts->subsetCentroids.clear();
-	for (auto& mt : mtVec) {
-		// convert vertex coords to grid material coords
-		boundingBox<float> bb;
-		bb.Empty_Box();
-		for (int n = mt.numberOfVertices(), i = 0; i < n; ++i) {
-			Vec3f spat, mat;
-			mt.getVertexCoordinate(i, spat._v);
-			vbt->spatialToGridCoords(spat, mat);
-			mt.setVertexCoordinate(i, mat._v);
-			bb.Enlarge_To_Include_Point(mat._v);
-		}
-		auto th = vbt->getTetHash();
-		long long last;
-		last = LONG_MAX;
-		last <<= 32;  // impossible centroid
-		for (auto hit = th->begin(); hit != th->end(); ++hit) {
-			if (hit->first == last)
-				continue;
-			bccTetCentroid tc;
-			tc.ll = hit->first;
-			Vec3f V(tc.xyz[0], tc.xyz[1], tc.xyz[2]);
-			if (tc.halfCoordAxis < 1)
-				V.X += 0.5f;
-			else if (tc.halfCoordAxis < 2)
-				V.Y += 0.5f;
-			else
-				V.Z += 0.5f;
-			if (!bb.Inside(V._v)) {
-				last = hit->first;
-				continue;
-			}
-			int nIntersects = 0;
-			for (int n = mt.numberOfTriangles(), i = 0; i < n; ++i) {
-				int* tr = mt.triangleVertices(i);
-				Vec3f triV[3];
-				for (int j = 0; j < 3; ++j) {
-					float* fp = mt.vertexCoordinate(tr[j]);
-					triV[j].set(fp[0], fp[1], fp[2]);
-				}
-				if (triV[0].X < V.X && triV[1].X < V.X && triV[2].X < V.X)
-					continue;
-				if (triV[0].X > V.X && triV[1].X > V.X && triV[2].X > V.X)
-					continue;
-				if (triV[0].Y < V.Y && triV[1].Y < V.Y && triV[2].Y < V.Y)
-					continue;
-				if (triV[0].Y > V.Y && triV[1].Y > V.Y && triV[2].Y > V.Y)
-					continue;
-				triV[1] -= triV[0];
-				triV[2] -= triV[0];
-				Mat3x3f M;
-				M.Initialize_With_Column_Vectors(triV[1], triV[2], Vec3f(0.0f, 0.0f, -1.0f));
-				Vec3f R = M.Robust_Solve_Linear_System(V - triV[0]);
-				if (R.Z < 0.0f || R.X < 0.0f || R.X > 1.0f || R.Y < 0.0f || R.Y > 1.0f)
-					continue;
-				++nIntersects;
-			}
-			if (nIntersects & 1) {
-				ts->subsetCentroids.push_back(tc.ll);
-			}
-			last = hit->first;
+			ts->subsetCentroids.push_back(tcArr[i]);  // COURT - not unique
 		}
 	}
 	return true;
@@ -187,7 +93,7 @@ bool tetSubset::createSubset(vnBccTetrahedra* vbt, const std::string name, float
 void tetSubset::sendTetSubsets(vnBccTetrahedra* vbt, const materialTriangles* mt, pdTetPhysics* ptp) {
 	std::set<int> tets5;
 	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {
-		if (mt->triangleMaterial(i) != 5)
+		if (mt->triangleMaterial(i) != 5)  // at present only deep bed surfaces are effected.  Fix this.
 			continue;
 		const int* tr = mt->triangleVertices(i);
 		for (int j = 0; j < 3; ++j)
@@ -197,19 +103,9 @@ void tetSubset::sendTetSubsets(vnBccTetrahedra* vbt, const materialTriangles* mt
 		std::vector<int> tets;
 		tets.reserve(ts.subsetCentroids.size());
 		for (auto& tc : ts.subsetCentroids) {
-			int num = vbt->getTetHash()->count(tc);
-			auto tit = vbt->getTetHash()->find(tc);
-			if (num == 1)
-				tets.push_back(tit->second);
-			else if (num == 2) {
-				for (int j = 0; j < 2; ++j) {
-					if (tets5.find(tit->second) != tets5.end())
-						tets.push_back(tit->second);
-					++tit;
-				}
-			}
-			else
-				;
+			std::list<int> tetList;
+			vbt->centroidTets(tc, tetList);
+			tets.insert(tets.end(), tetList.begin(), tetList.end());
 		}
 		ptp->tetSubset(ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax, tets);
 	}

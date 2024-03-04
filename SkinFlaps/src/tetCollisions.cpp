@@ -25,7 +25,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			Mat3x3f M(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 			M((i + 1) % 3, 0) = 2.0f;
 			M((i + 2) % 3, 2) *= -1.0f;
-			M *= (float)_vnt->getTetUnitSize();
+			M *= (float)_vnt->getTetUnitSize();  // not used now in multires
 			_rest[i << 1] = M.Inverse();
 			M((i + 2) % 3, 1) *= -1.0f;
 			M((i + 2) % 3, 2) *= -1.0f;
@@ -52,13 +52,17 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			}
 			int tet = _vnt->getVertexTetrahedron(tr[j]);
 			auto tc = _vnt->tetCentroid(tet);
-			vnt->barycentricWeightToGridLocus(*tc, *vnt->getVertexWeight(tr[j]), matPos[j]);
+			vnt->barycentricWeightToGridLocus(tc, *vnt->getVertexWeight(tr[j]), matPos[j]);
 			auto bv = verts.emplace(tr[j], vertexRay());
 			if (bv.second) {
 				bv.first->second.vertex = tr[j];
 				bv.first->second.materialNormal.set(0.0f, 0.0f, 0.0f);
-				bv.first->second.restIdx = tc->halfCoordAxis << 1;
-				if ((tc->xyz[tc->halfCoordAxis] + tc->xyz[(tc->halfCoordAxis + 2) % 3]) & 1)
+				int ha, level;
+				bool up;
+				vnt->centroidType(tc, level, ha, up);
+				assert(level < 2);  // should only have soft collisions where virtual noding, so must be level 1.
+				bv.first->second.restIdx = ha << 1;
+				if (!up)
 					++(bv.first->second.restIdx);
 			}
 			br[j] = &bv.first->second;
@@ -113,7 +117,7 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 		int tet = vnt->getVertexTetrahedron(bedV.second.vertex);
 		tets.insert(tet);
 		bedV.second.materialNormal.normalize();
-		_mt->getVertexCoordinate(bedV.first, bedV.second.P._v);
+		_mt->getVertexCoordinate(bedV.first, bedV.second.P.xyz);
 		const int *nodes = _vnt->tetNodes(tet);
 		Vec3f cols[3];
 		for (int i = 1; i < 4; ++i)
@@ -148,7 +152,7 @@ void tetCollisions::findSoftCollisionPairs() {
 //	tbb::tick_count t0 = tbb::tick_count::now();
 
 	auto getVertexData = [&](vertexRay& v) {
-		_mt->getVertexCoordinate(v.vertex, v.P._v);
+		_mt->getVertexCoordinate(v.vertex, v.P.xyz);
 		const int* nodes = _vnt->tetNodes(_vnt->getVertexTetrahedron(v.vertex));
 		Vec3f cols[3];
 		for (int i = 1; i < 4; ++i)
@@ -167,12 +171,12 @@ void tetCollisions::findSoftCollisionPairs() {
 	bedBox.assign(_bedRays.size(), bb);
 	for (size_t n = _flapBottomTris.size(), i = 0; i < n; ++i) {
 		for (int j = 0; j < 3; ++j)
-			flapBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(_flapBottomTris[i][j]->P._v));
+			flapBox[i].Enlarge_To_Include_Point(reinterpret_cast<const float(&)[3]>(_flapBottomTris[i][j]->P.xyz));
 	}
 	for (size_t n = _bedRays.size(), i = 0; i < n; ++i) {
 		vertexRay& b = _bedRays[i];
-		bedBox[i].Enlarge_To_Include_Point(b.P._v);
-		bedBox[i].Enlarge_To_Include_Point((b.P - b.N)._v);  // normal negated for bed rays
+		bedBox[i].Enlarge_To_Include_Point(b.P.xyz);
+		bedBox[i].Enlarge_To_Include_Point((b.P - b.N).xyz);  // normal negated for bed rays
 	}
 	std::vector<int> topTets, bottomTets;
 	topTets.assign(_bedRays.size(), -1);
@@ -268,45 +272,6 @@ void tetCollisions::findSoftCollisionPairs() {
 	_ptp->currentSoftCollisionPairs(topTets, topBarys, bottomTets, bottomBarys, collisionNormals);
 }
 
-int tetCollisions::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus, bccTetCentroid &tC)
-{  // in material coords
-	int* tr = _mt->triangleVertices(mtTriangle);
-	Vec3f tV[3];
-	for (int i = 0; i < 3; ++i)
-		_vnt->vertexGridLocus(tr[i], tV[i]);
-	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
-	_vnt->gridLocusToTetCentroid(gridLocus, tC);
-	for (int i = 0; i < 3; ++i) {
-		if (tC.ll == _vnt->tetCentroid(_vnt->getVertexTetrahedron(tr[i]))->ll)
-			return _vnt->getVertexTetrahedron(tr[i]);
-	}
-
-	return -1;
-
-	// find candidate cubes
-	std::list<int> cc, tp;
-	auto pr = _vnt->getTetHash()->equal_range(tC.ll);
-	while (pr.first != pr.second) {
-		cc.push_back(pr.first->second);
-		++pr.first;
-	}
-	if (cc.size() < 1) {
-//		assert(false);
-		return -1;
-	}
-	if (cc.size() < 2)
-		return cc.front();
-	for (auto c : cc) {
-		for (int i = 0; i < 3; ++i) {
-			if (_vnt->decreasingCentroidPath(c, _vnt->getVertexTetrahedron(tr[i]), tp))
-				return c;
-		}
-	}
-//	assert(false);
-	return -1;
-}
-
-
 
 float tetCollisions::inverse_rsqrt(float number)
 {  // usual Quake cheat
@@ -325,6 +290,9 @@ float tetCollisions::inverse_rsqrt(float number)
 
 void tetCollisions::addFixedCollisionSet(materialTriangles* mt, const std::string& levelSetFile, std::vector<Vec2f>& txPoly) {  // call once at load
 	// make polygon slightly bigger to capture border vertices
+
+	return;  // COURT put back in after Qisi fix
+
 	insidePolygon ip;
 	std::set<int> collisionVertices;
 	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {
@@ -375,8 +343,8 @@ void tetCollisions::updateFixedCollisions(materialTriangles *mt, vnBccTetrahedra
 float tetCollisions::rayDepth(const Vec3f &vtx, const Vec3f &nrm) {  // depth of a ray from vertex to nearest deep surface
 	boundingBox<float> bb, tbb;
 	bb.Empty_Box();
-	bb.Enlarge_To_Include_Point(vtx._v);
-	bb.Enlarge_To_Include_Point((vtx - nrm*3.0f)._v);
+	bb.Enlarge_To_Include_Point(vtx.xyz);
+	bb.Enlarge_To_Include_Point((vtx - nrm*3.0f).xyz);
 	Vec3f P, T[3], N;
 	float dSq, dSqMin = FLT_MAX, ret;
 	// do slightly permissive find
@@ -387,8 +355,8 @@ float tetCollisions::rayDepth(const Vec3f &vtx, const Vec3f &nrm) {  // depth of
 		int* tr = _mt->triangleVertices(i);
 		tbb.Empty_Box();
 		for (j = 0; j < 3; ++j) {
-			_mt->getVertexCoordinate(tr[j], T[j]._v);
-			tbb.Enlarge_To_Include_Point(T[j]._v);
+			_mt->getVertexCoordinate(tr[j], T[j].xyz);
+			tbb.Enlarge_To_Include_Point(T[j].xyz);
 		}
 		if (!bb.Intersection(tbb))
 			continue;

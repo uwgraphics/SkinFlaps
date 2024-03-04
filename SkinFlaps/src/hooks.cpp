@@ -107,24 +107,6 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	hpr.first->second._strong = tiny;
 	++_hookNow;
 	hpr.first->second.triangle = triangle;
-
-
-	// COURT temporary fix for multires tets
-/*	int* tr = tri->triangleVertices(triangle), tetIdx;
-	if (uv[0] > 0.5f) {
-		uv[0] = 1.0f;
-		uv[1] = 0.0f;
-	}
-	else if (uv[1] > 0.5f) {
-		uv[0] = 0.0f;
-		uv[1] = 1.0f;
-	}
-	else {
-		uv[0] = 0.0f;
-		uv[1] = 0.0f;
-	} */
-
-
 	hpr.first->second.uv[0] = uv[0];
 	hpr.first->second.uv[1] = uv[1];
 	hpr.first->second._tri = tri;
@@ -142,8 +124,12 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	tri->getTriangleNormal(triangle, n, true);
 	Vec3f vz(0.0f, 0.0f, 1.0f);
 	angle = acos(n*vz);
-	n = vz^n;
-	axisAngleRotateMatrix4x4(om, n.xyz, angle);
+	Vec3f axis = vz^n;
+	if (fabs(axis[0]) < 1e-5 && fabs(axis[1]) < 1e-5 && fabs(axis[2]) < 1e-5) {
+		assert(fabs(angle) < 1e-5f || fabs(angle) > 3.1414f);
+		axis[1] = 1.0f;  // perpendicular to start of cone
+	}
+	axisAngleRotateMatrix4x4(om, axis.xyz, angle);
 	translateMatrix4x4(om,xyz[0],xyz[1],xyz[2]);
 	Vec3f gridLocus, bw;
 	if (_deepCut->getMaterialTriangles() != nullptr && _ptp->solverInitialized()) {  // COURT - won't need second condition

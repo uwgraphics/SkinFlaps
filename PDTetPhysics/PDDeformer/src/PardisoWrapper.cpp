@@ -89,7 +89,8 @@ void PardisoWrapper<T, IntType>::factSchur() {
         if (m) {
             IntType info = LAPACKPolicy<T>::fact(m, schur);
             if(info != 0) {
-                throw std::logic_error("info after LAPACKE_dspotrf = " + std::to_string(info));
+                std::cout << "info after LAPACKE_dspotrf = " << std::to_string(info);  // COURT changed from a throw as doesn't kill the program
+                //                throw std::logic_error("info after LAPACKE_dspotrf = " + std::to_string(info));
             }
         }
     }

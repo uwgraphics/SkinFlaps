@@ -39,13 +39,14 @@
         "lowTetWeight" : 500.0,
         "highTetWeight" : 1000.0,
         "collisionWeight": 40000.0,
-        "selfCollisionWeight" :  10000.0,
+        "selfCollisionWeight" : 20000.0,
         "fixedWeight" : 10000.0,
         "periferalWeight" : 1000.0,
         "hookWeight" : 500.0,
         "sutureWeight" : 2000.0,
         "autoSutureSpacing" : 0.14,
-        "maxDimSubdivisions" : 222
+        "nTetSizeLevels" : 4,
+        "maxDimMegatetSubdivs" : 34
     },
     "tetrahedralSubsets" : {
         "nasalCartilage.obj" : {

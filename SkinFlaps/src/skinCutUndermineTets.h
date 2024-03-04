@@ -43,8 +43,6 @@ public:
 	void clearCurrentUndermine(const int underminedTissue);
 	bool triangleUndermined(int triangle);
 	void excise(const int triangle);
-	int parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f &gridLocus);
-	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f &gridLocus);
 	bool physicsRecutRequired(){ return _solidRecutRequired; }
 	bool setDeepBed(materialTriangles *mt, const std::string &deepBedPath, vnBccTetrahedra *activeVnt);
 	inline static void setVnBccTetrahedra(vnBccTetrahedra *activeVnt) { _vbt = activeVnt;  }
@@ -80,7 +78,7 @@ protected:
 	int createDeepBedVertex(std::unordered_map<int, deepPoint>::iterator &dit);
 	int addTinEdgeVertex(const Vec3f &closePoint, const Vec3f &nextConnectedPoint);
 	int TinSub(const int edgeTriangle, const float edgeParam);
-	int flapBottomTet(const int topTet, const Vec3f &bottomGridLocus);
+	int flapBottomTet(const int topVertex, const Vec3f &bottomGridLocus);
 	bool topDeepSplit(std::vector<int> &topV, std::vector<int> &deepV, bool frontSplit, bool backSplit);
 	bool topDeepSplit_Sub(std::list<int> &topVerts, std::list<int> &deepVerts, bool frontSplit, bool backSplit);
 	bool planeCutSurfaceLine(const int startTopV, const int endTopV, const int startDeepV, const int endDeepV, std::list<int> &newTopVerts, std::list<int> &newDeepVerts);

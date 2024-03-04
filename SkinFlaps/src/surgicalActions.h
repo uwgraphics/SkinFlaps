@@ -9,7 +9,7 @@
 #include "surgGraphics.h"
 #include "fence.h"
 
-//#include "deepCut.h"
+#include "deepCut.h"
 #include "skinCutUndermineTets.h"  // replace with above later
 
 #include "json.h"
@@ -34,7 +34,7 @@ public:
 	inline void setGl3wGraphics(gl3wGraphics *gl3w) { _gl3w = gl3w; _bts.setGl3wGraphics(gl3w); }
 	void setFacialFlapsGui(FacialFlapsGui *ffg) { _ffg = ffg; }
 	inline hooks* getHooks() { return &_hooks; }
-//	inline sutures* getSutures() { return &_sutures; }
+	inline sutures* getSutures() { return &_sutures; }
 	bool loadScene(const char *modelDirectory, const char *sceneFilename);
 	inline bccTetScene* getBccTetScene() { return &_bts; }
 	inline surgGraphics* getSurgGraphics() { return &_sg; }
@@ -77,8 +77,8 @@ private:
 	surgGraphics _sg;	// dynamic triangulated skin object
 	hooks _hooks;
 	sutures _sutures;
-//	deepCut _incisions;  // derived from skinCutUndermineTets class
-	skinCutUndermineTets _incisions;  // derived from skinCutUndermineTets class
+	deepCut _incisions;  // derived from skinCutUndermineTets class
+//	skinCutUndermineTets _incisions;  // now derived from deepCut class
 
 	struct undermineTriangle {
 		unsigned int incisionConnect : 1;

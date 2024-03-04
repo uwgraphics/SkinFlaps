@@ -32,8 +32,20 @@ surgicalActions::~surgicalActions()
 
 bool surgicalActions::saveSurgicalHistory(const char *fullFilePath)
 {
+	std::string ppStr, hstStr;
+	if (_historyIt != _historyArray.end()) {
+		json::Array htmp;
+		size_t idx = 0;
+		auto hit = _historyArray.begin();
+		do {
+			htmp.insert(idx++, *hit);
+			++hit;
+		} while (hit != _historyIt);
+		hstStr = Serialize(htmp);
+	}
+	else
+		hstStr = Serialize(_historyArray);
 	std::ofstream outf(fullFilePath);
-	std::string ppStr,hstStr = Serialize(_historyArray);
 	prettyPrintJSON pp;
 	pp.convert(hstStr.c_str(), ppStr);
 	outf.write(ppStr.c_str(), ppStr.size());
@@ -70,12 +82,12 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		{
 			_selectedSurgObject = objectHit;
 			hookNum = atoi(_selectedSurgObject.c_str()+2);
-//			_sutures.selectSuture(-1);
+			_sutures.selectSuture(-1);
 			_hooks.selectHook(hookNum);
 		}
 		else if(objectHit.substr(0,2)=="S_")	// user picked a suture
 		{
-/*			_selectedSurgObject = objectHit;
+			_selectedSurgObject = objectHit;
 			hookNum = atoi(_selectedSurgObject.c_str()+2);
 			_hooks.selectHook(-1);
 			int userNum = _sutures.baseToUserSutureNumber(hookNum);
@@ -84,7 +96,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 				_sutures.selectSuture(-1);
 			}
 			else
-				_sutures.selectSuture(hookNum); */
+				_sutures.selectSuture(hookNum);
 		}
 		else
 			;
@@ -111,10 +123,11 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		}
 
 		// COURT visual debug use
-		/*		for (int j, i = 0; i < tr->numberOfTriangles(); ++i) {
+/*				uv[0] = 0.0f; uv[1] = 0.0f;
+				for (int j, i = 0; i < tr->numberOfTriangles(); ++i) {
 					int* trp = tr->triangleVertices(i);
 					for (j = 0; j < 3; ++j)
-						if (trp[j] == 14272)
+						if (trp[j] == 3486)
 							break;
 					if (j < 3) {
 						triangle = i;
@@ -139,14 +152,14 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 				_ffg->physicsDrag = true;
 				_bts.setForcesAppliedFlag();
 				physicsDone = false;
-				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 					_bts.updatePhysics();
 					physicsDone = true;
-					}
-				);
+//					}
+//				);
 			}
 
-//			_sutures.selectSuture(-1);
+			_sutures.selectSuture(-1);
 			_hooks.selectHook(hookNum);
 			char s[80];
 			sprintf(s, "H_%d", hookNum);
@@ -197,7 +210,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_fence.getPostNormal(0, nrm);
 			_fence.addPost(tr, _fence.getPostTriangle(0), vtx.xyz, nrm.xyz, endConn, false, false);
 			_hooks.selectHook(-1);
-//			_sutures.selectSuture(-1);
+			_sutures.selectSuture(-1);
 			onKeyDown(GLFW_KEY_ENTER);	// press enter key for user
 		};
 		if (_ffg->CtrlOrShiftKeyIsDown()) {
@@ -248,7 +261,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		tr->getBarycentricNormal(triangle, uv, nrm.xyz);
 		_fence.addPost(tr, triangle, vtx.xyz, nrm.xyz, endConn, false, false);
 		_hooks.selectHook(-1);
-//		_sutures.selectSuture(-1);
+		_sutures.selectSuture(-1);
 		if (_fence.numberOfPosts() > 1 && endConn)	// this must finish an incision
 			onKeyDown(GLFW_KEY_ENTER);	// press enter key for user
 	}
@@ -282,13 +295,10 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_sutures.setGLmatrices(_gl3w->getGLmatrices());
 			_sutures.setPhysicsLattice(_bts.getPdTetPhysics_2());
 			_sutures.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-//			_sutures.setDeepCut(&_incisions);
+			_sutures.setDeepCut(&_incisions);
 			_sutures.setSurgicalActions(this);
 		}
 		int i = 0, edg, triMat = tr->triangleMaterial(triangle);
-
-		triMat = 5;  // COURT another multires hack
-
 		int eTri = triangle;
 		float param, uv[2];
 		tr->getBarycentricProjection(triangle, position, uv);
@@ -420,7 +430,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		exciseTitle["excise"] = exciseObj;
 		_historyArray.push_back(exciseTitle);
 		_historyIt = _historyArray.end();
-		//	_incisions.excise(triangle);
+		_incisions.excise(triangle);
 		physicsDone = false;
 		//		_ffg->physicsDrag = true;
 		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
@@ -430,15 +440,15 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			}
 		);
 		_bts.setPhysicsPause(false);
-		//	_hooks.selectHook(-1);
-		//	_sutures.selectSuture(-1);
+		_hooks.selectHook(-1);
+		_sutures.selectSuture(-1);
 		_selectedSurgObject = "";
 		_ffg->setToolState(0);
 		setToolState(0);
 	}
 	else if (_toolState == 6)	// deep cut mode
 	{
-/*		if (objectHit.substr(0, 3) == "NP_") {	// user picked a fence handle
+		if (objectHit.substr(0, 3) == "NP_") {	// user picked a fence handle
 			_selectedSurgObject = objectHit;
 			hookNum = atoi(_selectedSurgObject.c_str() + 3);
 			_sutures.selectSuture(-1);
@@ -479,7 +489,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		}
 		tr->getBarycentricPosition(triangle, uv, pos);
 		if(_fence.numberOfPosts() < 1)
-			tr->getTriangleNormal(triangle, norm.xyz, true);
+			tr->getTriangleNormal(triangle, norm, true);
 		else
 			_fence.getPostNormal(_fence.numberOfPosts() - 1, norm);  // use previous normal as starting point to minimize potential crossover
 		_fence.addPost(tr, triangle, pos, norm.xyz, false, true, !closedEnd);  // never connect to nearest hard edge
@@ -489,7 +499,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		sprintf(s, "NP_%d", hookNum);
 		_selectedSurgObject = s;
 		_hooks.selectHook(-1);
-		_sutures.selectSuture(-1); */
+		_sutures.selectSuture(-1);
 	}
 	else if (_toolState == 7){	// periosteal undermine mode
 		auto sn = _gl3w->getNodePtr(objectHit);
@@ -501,7 +511,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		_bts.updateSurfaceDraw();
 		perioTri pt;
 		pt.incisionConnect = !_ffg->CtrlOrShiftKeyIsDown();
-//		pt.periostealTriangle = _incisions.addPeriostealUndermineTriangle(triangle, dir, pt.incisionConnect);
+		pt.periostealTriangle = _incisions.addPeriostealUndermineTriangle(triangle, dir, pt.incisionConnect);
 		if (pt.periostealTriangle > 0x7ffffffe){
 			sendUserMessage("No periosteal triangle hit.  Try again-", "USER ERROR");
 			return true;
@@ -533,9 +543,6 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 		}
 		int eTri = triangle;
 		int edge, triMat = tr->triangleMaterial(triangle);
-
-		triMat = 5;  // COURT another multires hack
-
 		float param, uv[2];
 		auto invalidate = [&]() {
 			// prevent user from doing a new op until previous one is finished
@@ -621,15 +628,11 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 			return true;
 		}
 		else{
-
-			// COURT another multires hack.  Put next section back in later
-//			if (_sutures.firstVertexMaterial(i) == 2){
-//				sendUserMessage("A deep tissue can only be sutured to deep tissue and not a skin/mucosal edge-", "USER ERROR");
-//				invalidate();
-//				return true;
-//			}
-
-
+			if (_sutures.firstVertexMaterial(i) == 2){
+				sendUserMessage("A deep tissue can only be sutured to deep tissue and not a skin/mucosal edge-", "USER ERROR");
+				invalidate();
+				return true;
+			}
 			tr->getBarycentricProjection(triangle, position, uv);
 			// suturing to a non-skin surface object.
 			if (uv[0] + uv[1] > 0.67f){  // force to an edge
@@ -912,19 +915,19 @@ void surgicalActions::onKeyDown(int key)
 			}
 			json::Object sObj;
 			int sutNum = atoi(_selectedSurgObject.c_str() + 2);
-//			int userNum = _sutures.baseToUserSutureNumber(sutNum);
+			int userNum = _sutures.baseToUserSutureNumber(sutNum);
 			_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
 			// prevent user from doing a new op until previous one is finished
 			while (!physicsDone)  // physics update thread must be complete before doing next op.
 				;
-//			int linkNum = _sutures.deleteSuture(sutNum);
-/*			if (userNum < 0) {
+			int linkNum = _sutures.deleteSuture(sutNum);
+			if (userNum < 0) {
 				json::Object lObj;
 				lObj["autoSuturesFor"] = _sutures.baseToUserSutureNumber(linkNum);
 				sObj["deleteSuture"] = lObj;
 			}
 			else
-				sObj["deleteSuture"] = userNum; */
+				sObj["deleteSuture"] = userNum;
 			_historyArray.push_back(sObj);
 			_historyIt = _historyArray.end();
 		}
@@ -937,7 +940,7 @@ void surgicalActions::onKeyDown(int key)
 	else if (key == GLFW_KEY_ENTER)	// <enter> key
 	{
 		// prevent user from doing a new op until previous one is finished
-		assert(physicsDone);  // physics update thread must be complete before doing next op.
+//		assert(physicsDone);  // physics update thread must be complete before doing next op.
 		if (_toolState == 7){	//periosteal undermine mode
 			_bts.setPhysicsPause(true);  // should already be done
 			while (!physicsDone)
@@ -994,11 +997,11 @@ void surgicalActions::onKeyDown(int key)
 			uObj.Clear();
 			uObj["periostealUndermine"] = uArr;
 			_historyArray.push_back(uObj);
-//			_incisions.clearCurrentUndermine(8);  // set all periosteal undermined triangles to material 8 and reset.
+			_incisions.clearCurrentUndermine(8);  // set all periosteal undermined triangles to material 8 and reset.
 			_periostealUndermineTriangles.clear();
 			_historyIt = _historyArray.end();
-//			_hooks.selectHook(-1);
-//			_sutures.selectSuture(-1);
+			_hooks.selectHook(-1);
+			_sutures.selectSuture(-1);
 			_selectedSurgObject = "";
 		}
 		else if (_toolState == 2)	//incision mode
@@ -1051,7 +1054,7 @@ void surgicalActions::onKeyDown(int key)
 			iObj["makeIncision"] = iArr;
 			_historyArray.push_back(iObj);
 			_historyIt = _historyArray.end();
-			if(!nukeThis)	{
+			if (!nukeThis) {
 				if (!_incisions.skinCut(positions, normals, edgeStart, edgeEnd)) {
 						sendUserMessage("Incision tool error.  Please save history file for debugging-", "Error Message");
 				}
@@ -1131,8 +1134,8 @@ void surgicalActions::onKeyDown(int key)
 		}
 		else if (_toolState == 6)	// deep cut mode
 		{
-//			if (!_incisions.inputCorrectFence(&_fence, _ffg))
-//				return;
+			if (!_incisions.inputCorrectFence(&_fence, _ffg))
+				return;
 			std::vector<Vec3f> positions, rays;
 			std::vector<float> postUvs;
 			std::vector<int> postTriangles;
@@ -1190,21 +1193,21 @@ void surgicalActions::onKeyDown(int key)
 			while (!physicsDone)
 				;
 			_bts.updateSurfaceDraw();
-//			if (!_incisions.cutDeep()) {
-//				sendUserMessage("Attempted deepCut failed. Save history to debug.", "PROGRAM ERROR");
-//				return;
-//			}
+			if (!_incisions.cutDeep()) {
+				sendUserMessage("Attempted deepCut failed. Save history to debug.", "PROGRAM ERROR");
+				return;
+			}
 			physicsDone = false;
 			_ffg->physicsDrag = true;
 			_ffg->user_message_flag = false;
-//			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
 				physicsDone = true;
-//				}
-//			);
+				}
+			);
 			_fence.clear();
-//			_incisions.clearDeepCutter();
+			_incisions.clearDeepCutter();
 			_bts.setPhysicsPause(false);
 		}
 		else
@@ -1811,7 +1814,7 @@ void surgicalActions::nextHistoryAction()
 						}
 					);
 				}
-//				_sutures.selectSuture(-1);
+				_sutures.selectSuture(-1);
 				_hooks.selectHook(hookNum);
 				char s[20];
 #ifdef _WINDOWS
@@ -1836,7 +1839,7 @@ void surgicalActions::nextHistoryAction()
 			_bts.setForcesAppliedFlag();
 			char s[20];
 			sprintf(s, "H_%d", hookNum);
-//			_sutures.selectSuture(-1);
+			_sutures.selectSuture(-1);
 			_hooks.selectHook(hookNum);	// deselect hooks
 			_selectedSurgObject = s;
 			++_historyIt;
@@ -1845,7 +1848,7 @@ void surgicalActions::nextHistoryAction()
 		{
 			int hookNum = (*_historyIt)["deleteHook"].ToInt();
 			_hooks.deleteHook(hookNum);
-//			_sutures.selectSuture(-1);
+			_sutures.selectSuture(-1);
 			_hooks.selectHook(-1);
 			++_historyIt;
 		}
@@ -1988,7 +1991,7 @@ void surgicalActions::nextHistoryAction()
 				historyAttachFailure(msg);
 				return;
 			}
-//			_incisions.excise(tri);
+			_incisions.excise(tri);
 			physicsDone = false;
 			_ffg->physicsDrag = true;
 			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
@@ -2004,7 +2007,7 @@ void surgicalActions::nextHistoryAction()
 			json::Object sutureObj = (*_historyIt)["addSuture"].ToObject();
 			int edge, sutNum = sutureObj["sutureNum"].ToInt();
 			float param, uv[2], xyz[3];
-/*			if (_sutures.getNumberOfSutures() < 1) {	// initialize sutures
+			if (_sutures.getNumberOfSutures() < 1) {	// initialize sutures
 				_sutures.setSutureSize(_sg.getSceneNode()->getRadius()*0.003f);
 				_sutures.setShapes(_gl3w->getShapes());
 				_sutures.setGLmatrices(_gl3w->getGLmatrices());
@@ -2149,7 +2152,7 @@ void surgicalActions::nextHistoryAction()
 #else
 			sprintf(s, "S_%d", sn);
 #endif
-			_selectedSurgObject = s; */
+			_selectedSurgObject = s;
 			++_historyIt;
 			if (_historyIt == _historyArray.end()) {  // automatically promote any fake sutures if this is the last one
 				while (!physicsDone)
@@ -2162,18 +2165,18 @@ void surgicalActions::nextHistoryAction()
 			int sutNum;
 			if ((*_historyIt)["deleteSuture"].GetType() == json::ObjectVal) {
 				sutNum = (*_historyIt)["deleteSuture"]["autoSuturesFor"].ToInt();
-//				sutNum = _sutures.userToBaseSutureNumber(sutNum);
+				sutNum = _sutures.userToBaseSutureNumber(sutNum);
 				++sutNum;
-//				if (_sutures.baseToUserSutureNumber(sutNum) < 0)
-//					_sutures.deleteSuture(sutNum);
+				if (_sutures.baseToUserSutureNumber(sutNum) < 0)
+					_sutures.deleteSuture(sutNum);
 			}
 			else {
 				sutNum = (*_historyIt)["deleteSuture"].ToInt();
-//				sutNum = _sutures.userToBaseSutureNumber(sutNum);
-//				_sutures.deleteSuture(sutNum);
+				sutNum = _sutures.userToBaseSutureNumber(sutNum);
+				_sutures.deleteSuture(sutNum);
 			}
-//			_sutures.selectSuture(-1);
-//			_hooks.selectHook(-1);
+			_sutures.selectSuture(-1);
+			_hooks.selectHook(-1);
 			++_historyIt;
 		}
 		else if (_historyIt->HasKey("makeDeepCut"))
@@ -2189,7 +2192,7 @@ void surgicalActions::nextHistoryAction()
 			endOpen = iObj["openOut"].ToBool();
 			int pointNum = iObj["pointNumber"].ToInt();
 			materialTriangles* tr = _sg.getMaterialTriangles();
-//			_incisions.clearDeepCutter();
+			_incisions.clearDeepCutter();
 			if (!_fence.isInitialized()) {	// initialize fence
 				_fence.setFenceSize(tr->getDiameter() * 0.01f);
 				_fence.setGl3wGraphics(_gl3w);
@@ -2241,7 +2244,7 @@ void surgicalActions::nextHistoryAction()
 					;
 				_fence.addPost(tr, tri, xyz.xyz, postN.xyz, false, true, startOpen);
 			}
-/*			if (!_incisions.inputCorrectFence(&_fence, _ffg)) {
+			if (!_incisions.inputCorrectFence(&_fence, _ffg)) {
 				sendUserMessage("The deepCut in this history file failed.", "PROGRAM ERROR");
 				_fence.clear();
 				_incisions.clearDeepCutter();
@@ -2272,7 +2275,7 @@ void surgicalActions::nextHistoryAction()
 				physicsDone = true;
 				}
 			);
-			_fence.clear(); */
+			_fence.clear();
 			++_historyIt;
 		}
 		else if (_historyIt->HasKey("periostealUndermine")) {
@@ -2302,10 +2305,10 @@ void surgicalActions::nextHistoryAction()
 					historyAttachFailure(msg);
 					return;
 				}
-//				_incisions.addPeriostealUndermineTriangle(tri, hVec, ic);
+				_incisions.addPeriostealUndermineTriangle(tri, hVec, ic);
 			}
 			// all periosteal undermine triangles now marked as material 10
-//			_incisions.clearCurrentUndermine(8);  // set all periosteal undermined triangles to material 8 and reset.
+			_incisions.clearCurrentUndermine(8);  // set all periosteal undermined triangles to material 8 and reset.
 			_bts.fixPeriostealPeriferalVertices();
 			physicsDone = false;
 			_ffg->physicsDrag = true;
