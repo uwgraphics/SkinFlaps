@@ -34,7 +34,12 @@ public:
 	void clear();
 	int readObjFile(const char *fileName);  // uses shading group separators to separate materials
 	bool writeObjFile(const char *fileName, const char* materialFileName=nullptr);
-	void getVertexCoordinate(unsigned int vertex, float (&xyz)[3]) const;
+
+	inline void getVertexCoordinate(unsigned int vertex, float(&xyz)[3]) const{	// type safe version
+		const float* v = &_xyz[vertex].xyz[0];
+		xyz[0] = v[0]; xyz[1] = v[1]; xyz[2] = v[2];
+	}
+
 	bool getBarycentricProjection(const int triangle, const float (&xyz)[3], float(&uv)[2]);
 	void getBarycentricPosition(const int triangle, const float (&uv)[2], float (&xyz)[3]);
 	void getBarycentricNormal(const int triangle, const float(&uv)[2], float(&nrm)[3]);
@@ -63,15 +68,26 @@ public:
 	inline int* triangleVertices(int triangle) {return _triPos[triangle].data(); }
 	inline const int* triangleVertices(int triangle) const { return _triPos[triangle].data(); }
 	inline int* triangleTextures(int triangle) { return _triTex[triangle].data(); }
-	void triangleAdjacencies(int triangle, int(&adjTris)[3], int (&adjEdges)[3]);
+
+	inline void triangleAdjacencies(int triangle, int(&adjTris)[3], int(&adjEdges)[3]) {
+		unsigned int* adjs = _adjs[triangle].data();
+		for (int i = 0; i < 3; ++i) {
+			adjTris[i] = adjs[i] >> 2;
+			adjEdges[i] = adjs[i] & 3;
+		}
+	}
+
 	inline const int* triangleTextures(int triangle) const { return &(_triTex[triangle][0]); }
 	inline int triangleMaterial(int triangle) const { return _triMat[triangle]; }
 	inline void setTriangleMaterial(int triangle, int material) {_triMat[triangle] = material;}
-	void setVertexCoordinate(int vertex, const float(&newCoord)[3]);
-//	int getVertexTriangle(int vertexNumber){return _vertexFace[vertexNumber]&0x3fffffff;}	// gets triangle vertex is a member of
+	inline void setVertexCoordinate(const int vertex, const float(&newCoord)[3]){
+		float* v = _xyz[vertex].xyz;
+		v[0] = newCoord[0];
+		v[1] = newCoord[1];
+		v[2] = newCoord[2];
+	}
+
 	void getTriangleNormal(int triangle, Vec3f& normal, bool normalized=true);
-//	void getAreaNormal(const int triangle, const float (&uv)[2], const float radius, float(&normal)[3], bool normalized = true);
-//	void getMeanVertexNormal(int vertex, float(&normal)[3], int onlyMaterial = -1);
 	void getMeanVertexNormal(const int triangle, const int index, float(&normal)[3], int onlyMaterial = -1, bool normalize = true);  // if onlyMaterial>-1 only use neighbor triangles with material == onlyMaterial
 	inline int numberOfTriangles() const { return (int)_triPos.size(); }
 	inline int numberOfVertices() { return (int)_xyz.size(); }
@@ -87,11 +103,6 @@ public:
 		v1 = _xyz[tr[2]] - _xyz[tr[0]];
 		return v0 ^ v1; }
 
-//	matTriangle* getTriangleArray(int &numberOfTriangles);
-//	float* getPositionArray(int &numberOfVertices);
-//	float* getTextureArray(int &numberOfTextures);
-//	std::vector<matTriangle>* getTriangleArray() { return &_tris; }
-
 	inline const std::vector<std::array<int, 3> >& getTrianglePositionArray() { return _triPos; }
 	inline const std::vector<std::array<int, 3> >& getTriangleTextureArray() { return  _triTex; }
 	inline const std::vector<int>& getTriangleMaterialArray() { return _triMat; }
@@ -100,18 +111,12 @@ public:
 	std::vector<Vec2f>& getTextureArray() { return _uv; }
 	bool localPick(const float *lineStart, const float *lineDirection, float(&position)[3], int &triangle, float(&triangleParam)[2], const int onlyMaterial = -1);
 	int linePick(const Vec3f& lineStart, const Vec3f& lineDirection, std::vector<Vec3f> &positions, std::vector<int> &triangles, std::vector<float> &params, const int onlyMaterial=-1);
-//	int linePick(const float *lineStart, const float *lineDirection, std::vector<float> &rayParams, std::vector<int> &triangles, std::vector<Vec2f> &triangleParams);
 	int splitTriangleEdge(int triangle, int edge, const float parameter);
 	int addNewVertexInMidTriangle(int triangle, const float (&uvParameters)[2]);
-//	int isValidClosedManifold();  // return -1 if inconsistent and # of topological handles if consistent
 	bool deleteEdge(int triangle, int edge);  // always leaves triangle vertex[edge] behind and deletes vertex[edge+1] as well as the 2 triangles on either side of edge
 	void closestPoint(const float(&xyz)[3], int& triangle, float(&uv)[2], int onlyMaterial = -1);
 
 	// default behavior of deleteEdge() is remaining vertex is an average of the initial two. If you want asomething else (e.g. volume preservation) compute externally.
-//	void cleanAndPack();  // warning - invalidates all triangle and vertex indices.
-//	void cleanAndPack(std::vector<int> &newVertexMap, std::vector<int> &newTriangleMap); // returns mapping of old indices to new
-//	bool hasSelfIntersection(const bool isClosed, std::vector<std::pair<int, int> >& triangleIntersectPairs); // slow. should only be used to debug surface
-//	void partitionTriangleMaterials();  // key is material, second is index into triangle array of the next element beyond key material
 	float getDiameter();
 
 	materialTriangles(void);
@@ -151,12 +156,8 @@ private:
 
 	void makeVertexToTriangleMap();
 	bool parseNextInputFileLine(std::ifstream *infile, std::string &unparsedLine, std::vector<std::string> &parsedLine);
-	void interpolateEdgeTextures(int triangle, int edge, int newVert, float param);
-//	void recurseTriangleNormals(const int triangle, std::set<int> &trisDone, float(&center)[3], float radiusSq, float(&normalSum)[3]);
 	bool rayTriangleIntersection(const Vec3f &rayOrigin, const Vec3f &rayDirection, const int triangle, float &rayParam, float(&triParam)[2], Vec3f &intersect);
 	// be careful of next routine if you aren't expert. While local correction is faster, findAdjacentTriangles() is much less error prone.
-//	void correctLocalNeighborArrays(std::vector<int> &changedTriangles);  // does local patching of adjacency and vertexFace arrays for input changedTriangles and the triangles adjacent to them
-//	void addOneMaterialTextureSeamVertex(int vertex, int(&textures)[2]);
 	struct lineHit{
 		int triangle;
 		Vec2f uv;  // parametric position on triangle

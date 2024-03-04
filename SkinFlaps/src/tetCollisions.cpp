@@ -57,10 +57,12 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			if (bv.second) {
 				bv.first->second.vertex = tr[j];
 				bv.first->second.materialNormal.set(0.0f, 0.0f, 0.0f);
-				int ha, size;
-				vnt->centroidHalfAxisSize(tc, ha, size);
+				int ha, level;
+				bool up;
+				vnt->centroidType(tc, level, ha, up);
+				assert(level < 2);  // should only have soft collisions where virtual noding, so must be level 1.
 				bv.first->second.restIdx = ha << 1;
-				if ((tc[ha] + tc[(ha + 2) % 3]) & 2)
+				if (!up)
 					++(bv.first->second.restIdx);
 			}
 			br[j] = &bv.first->second;

@@ -57,6 +57,7 @@ public:
 	inline const Vec3f &nodeSpatialCoordinate(const int nodeIndex) { return _nodeSpatialCoords[nodeIndex]; }
 	inline const Vec3f nodeMaterialCoordinate(const int nodeIndex) { return _minCorner + Vec3f(reinterpret_cast<short (&)[3]>(*_nodeGridLoci[nodeIndex].data())) * (float) _unitSpacing; }
 	inline const float *nodeSpatialCoordinatePtr(const int nodeIndex) { return _nodeSpatialCoords[nodeIndex].xyz; }
+	inline const std::array<short, 3>& nodeGridLocation(const int tetNode) { return _nodeGridLoci[tetNode]; }
 	inline double getTetUnitSize() { return _unitSpacing; }
 	inline double getTetUnitSizeInv() { return _unitSpacingInv; }
 
@@ -70,7 +71,7 @@ public:
 	void barycentricWeightToGridLocus(const bccTetCentroid &tetCentroid, const Vec3f &barycentricWeight, Vec3f &gridLocus);
 	void vertexGridLocus(const int vertex, Vec3f &gridLocus);  // always material coords
 	void vertexMaterialCoordinate(const int vertex, std::array<float, 3> &matCoord);
-	int firstInteriorTet() { return _firstInteriorTet; }  // all tets before this are surface tets possibly virtual noded and with out unique centroid. Here on are unique interior tets.
+	inline int firstInteriorTet() { return _firstInteriorTet; }  // all tets before this are surface tets possibly virtual noded and with out unique centroid. Here on are unique interior tets.
 	inline const bccTetCentroid& tetCentroid(int tet) { return _tetCentroids[tet]; }  // do we want to keep these when they are so easily computed?
 
 	inline const bccTetCentroid computeTetCentroid(int tet) {
@@ -86,27 +87,6 @@ public:
 		for (int j = 0; j < 3; ++j)
 			tc[j] = center[j] >> 1;
 		return tc;
-	}
-
-	inline void centroidHalfAxisSize(const bccTetCentroid &tc, int &halfAxis, int &size) {
-		size = 1;
-		halfAxis = -1;
-		while (true) {
-			int i;
-			for (i = 0; i < 3; ++i) {
-				if (tc[i] & size) {
-					halfAxis = i;
-					break;
-				}
-			}
-			if (i < 3)
-				break;
-			else {
-				if (size > 128)
-					throw(std::logic_error("Centroid size greater than 128.\n"));
-				size <<= 1;
-			}
-		}
 	}
 
 	inline void getBarycentricTetPosition(const int tet, const Vec3f &barycentricWeight, Vec3f &position)
@@ -154,12 +134,10 @@ public:
 		return n == 2;
 	}
 
-	int faceAdjacentCentroid(const bccTetCentroid& tc, const int face, bccTetCentroid& tcAdj);  // returns face adjacent centroid at same tet size as source.
 	void edgeNodes(const int tet, const int edge, int &n0, int &n1);  // same edge numbering as above
 	int parametricTriangleTet(const int triangle, const float(&uv)[2], Vec3f& gridLocus);  // returns grid locus and tetrahedron at parametric location uv in input triangle
 	int parametricEdgeTet(const int vertex0, const int vertex1, const float param, Vec3f& gridLocus);
 
-	inline const std::array<short, 3>& nodeGridLocation(const int tetNode) { return _nodeGridLoci[tetNode]; }
 	void centroidToNodeLoci(const bccTetCentroid& centroid, short (&gridLoci)[4][3]);
 
 	void nodeMicroCentroids(std::array<short, 3>& node, bccTetCentroid cntrd[24]);  // for these routines a coordinate greater than 65533 indicates a centroid out of positive grid bounds
@@ -180,6 +158,25 @@ public:
 			bitNow <<= 1;
 		}
 		return -1;  // invalid centroid greater than level 5
+	}
+	inline void centroidType(const bccTetCentroid& tc, int& level, int& halfCoordinate, bool& up) {
+		int tbit = 1;
+		for (level = 1; level < 11; ++level) {
+			for (halfCoordinate = 0; halfCoordinate < 3; ++halfCoordinate) {
+				if (tc[halfCoordinate] & tbit)
+					break;
+			}
+			if (halfCoordinate < 3)
+				break;
+			tbit <<= 1;
+		}
+		if (level > 10)
+			throw(std::logic_error("centroidType() sent a centroid with a level greater than 10.\n"));
+		tbit <<= 1;
+		if ((tbit & tc[halfCoordinate]) == (tbit & tc[(halfCoordinate + 1) % 3]))
+			up = false;
+		else
+			up = true;
 	}
 
 	vnBccTetrahedra(const vnBccTetrahedra&) = delete;

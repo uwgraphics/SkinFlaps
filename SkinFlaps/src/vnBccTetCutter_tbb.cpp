@@ -389,10 +389,8 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	if (_rtp != nullptr) {  // will need this for fast remapTetPhysics class
 		_rtp->clearVnTetVerts();
 		for (auto& ct : _centroidTriangles) {
-//			if (ct.second.size() > 1) {
-				for (auto& tt : ct.second)
-					_rtp->insertSurfaceTetVertex(tt.tetIdx, _mt->triangleVertices(tt.tris.front())[0]);
-//			}
+			for (auto& tt : ct.second)
+				_rtp->insertSurfaceTetVertex(tt.tetIdx, _mt->triangleVertices(tt.tris.front())[0]);
 		}
 	}
 	_centroidTriangles.clear();  // only reused in makeFirst(), but not again.
@@ -793,10 +791,6 @@ void vnBccTetCutter_tbb::decimateInteriorMicroTets(int firstInteriorMicroTet, st
 	// tets were created in nested subdiv order, making hierarchical decimation easier
 	_decimatedNodes.clear();
 	int n = _vbt->_tetCentroids.size(), i = firstInteriorMicroTet, nDec = 0;
-
-//	std::unordered_map<bccTetCentroid, int, bccTetCentroidHasher> tcL1;
-//	tcL1.reserve((n - i) >> 3);
-
 	for (int level = 2; level < _vbt->_tetSubdivisionLevels; ++level) {  // decimate to one below megatet level
 		while (i < n) {
 			bccTetCentroid subTc[8], tcUp = _vbt->centroidUpOneLevel(_vbt->_tetCentroids[i]);
@@ -815,9 +809,6 @@ void vnBccTetCutter_tbb::decimateInteriorMicroTets(int firstInteriorMicroTet, st
 				dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[i + 3][1], std::make_pair(newTet[1], newTet[3]))).first;
 				// mark subtets deleted and add macroTet
 				_vbt->_tetNodes.push_back(std::move(newTet));
-
-//				tcL1.insert(std::make_pair(tcUp, _vbt->_tetCentroids.size()));
-
 				_vbt->_tetCentroids.push_back(tcUp);
 				for (int j = 0; j < 8; ++j) {
 					_vbt->_tetNodes[i + j][0] = -1;
@@ -1388,10 +1379,6 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 				continue;
 			s3[0] = (xi + 1) * 2;
 			s3[1] = (yi + 1) * 2;
-
-//			if (xi == 22 && yi == 88)
-//				int junk = 0;
-
 			if (solidFilter(evenXy[xi][yi]))
 				continue;
 			runInteriorNodes(evenXy[xi][yi], true);
@@ -1403,10 +1390,6 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 				continue;
 			s3[0] = xi * 2 + 1;
 			s3[1] = yi * 2 + 1;
-
-//			if (xi == 20 && yi == 83)
-//				int junk = 0;
-
 			if (solidFilter(oddXy[xi][yi]))
 				continue;;
 			runInteriorNodes(oddXy[xi][yi], false);
@@ -1575,10 +1558,6 @@ bool vnBccTetCutter_tbb::isInsidePatch(const Vec3d& P, const std::vector<int>& t
 
 void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::tbb::concurrent_vector<newTet>& nt_vec, NTS_HASH& local_nts) {
 	// for this centroid split its triangles into single solid connected components
-
-//	if (tt.tc[0] == 92 && tt.tc[1] == 355 && tt.tc[2] == 170)
-//		int junk = 0;
-
 	std::set<int> trSet, ts;
 	trSet.insert(tt.tris.begin(), tt.tris.end());
 	struct patch {
@@ -2205,7 +2184,6 @@ void vnBccTetCutter_tbb::inputTriangleTetsTbb(const int& surfaceTriangle, CENTtr
 				Vec3f V0(gridLoci[i]), V1(gridLoci[(i + 1) & 3]), V2(gridLoci[(i + 2) & 3]);
 
 				if (tri_tri_intersect(V0.xyz, V1.xyz, V2.xyz, T[0].xyz, T[1].xyz, T[2].xyz))
-					//				if (tri_fixedTri_intersect(V0.xyz, V1.xyz, V2.xyz))
 					doTets.insert(std::make_pair(tAdj, adjFace));
 			}
 			doTets.erase(dtit);

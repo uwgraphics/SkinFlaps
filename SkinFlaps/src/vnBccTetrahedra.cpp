@@ -14,7 +14,6 @@
 #include <array>
 #include <functional>
 #include "Mat3x3f.h"
-
 #include "Mat3x3d.h"
 
 #include "boundingBox.h"
@@ -44,9 +43,11 @@ void vnBccTetrahedra::clear()
 
 void vnBccTetrahedra::centroidToNodeLoci(const bccTetCentroid& centroid, short (&gridLoci)[4][3]) {
 	// fixed for multires
-	int c1, c2, hc, size, levelUpBit;
-	centroidHalfAxisSize(centroid, hc, size);
-	levelUpBit = (size << 1);
+	int c1, c2, hc, level, size, levelUpBit;
+	bool up;
+	centroidType(centroid, level, hc, up);
+	levelUpBit = 2 << (level - 1);
+	size = levelUpBit >> 1;
 	c1 = hc < 2 ? hc + 1 : 0;
 	c2 = hc > 0 ? hc - 1 : 2;
 	for (int j = 0; j < 4; ++j) {
@@ -54,7 +55,7 @@ void vnBccTetrahedra::centroidToNodeLoci(const bccTetCentroid& centroid, short (
 		gridLoci[j][1] = centroid[1];
 		gridLoci[j][2] = centroid[2];
 	}
-	if ((centroid[hc] & levelUpBit) == (centroid[c2] & levelUpBit)) {  // 0-1 Cartesian axis below 2-3 
+	if (up) {  // 0-1 Cartesian axis below 2-3 
 		gridLoci[0][hc] -= size;
 		gridLoci[1][hc] -= size;
 		gridLoci[2][hc] += size;
@@ -282,12 +283,15 @@ int vnBccTetrahedra::faceAdjacentMultiresTet(const bccTetCentroid tc, const int 
 	// triangle faces are listed cyclic from the 4 tet nodes. Face 0 and 2 are CW, 1 & 3 CCW.
 	// Returns face # of the adjacent tet.  If adjacent centroid would be outside positive octant (illegal centroid), face return is -1.
 	// This routine corrected for tc of any size. tcAdj returned will be of the same size.
-	int ha, size;
-	centroidHalfAxisSize(tc, ha, size);
+	int ha, level, size;
+	bool up;
+	centroidType(tc, level, ha, up);
+	size = 2 << (level - 1);
+	size >>= 1;
 	int adjFace;
 	tcAdj = tc;
 	int aha = (ha + 1) % 3;
-	if (((tc[ha] + tc[aha]) >> 1) & size) {  // up tet
+	if (up) {  // up tet
 		if (face < 1 || face > 2) {
 			adjFace = 1;
 			if (tcAdj[ha] < 1)
@@ -434,8 +438,12 @@ int vnBccTetrahedra::edgeCircumCentroids(bccTetCentroid tc, int edge, bccTetCent
 		N[0] = 1; N[1] = 3;
 	}
 	if (edge < 1 || edge == 2) {  // Cartesian edges
-		int size, ha;
-		centroidHalfAxisSize(tc, ha, size);
+		int level, size, ha;
+		bool up;
+		centroidType(tc, level, ha, up);
+		assert(level > 2);  // only works on microtets?
+		size = 2 << (level - 1);
+		size >>= 1;
 		ret = 2;
 		int  offset = edge < 1 ? 2 : 1;
 		circumCentroids[0] = circumCentroids[5];
@@ -563,16 +571,12 @@ int vnBccTetrahedra::vertexSolidLinePath(const int vertex, const Vec3f materialT
 	std::list<tetLink> tree;
 	do {
 		while (prevTet.p < 1.0) {
-
-			if (prevTet.tet == 10685)
-				int junk = 0;
-
 			if (!tetIntersect(_tetCentroids[prevTet.tet], prevTet.face, prevTet.p))
 				throw(std::logic_error("Program error in vertexSolidLinePath()\n"));
 			if (prevTet.p >= 1.0)
 				return prevTet.tet;
 			bccTetCentroid tcAdj;
-			adjFace = faceAdjacentCentroid(_tetCentroids[prevTet.tet], prevTet.face, tcAdj);
+			adjFace = faceAdjacentMultiresTet(_tetCentroids[prevTet.tet], prevTet.face, tcAdj);
 			// get next tet in path and assure node link to previous, otherwise return -1
 			auto pr = _tetHash.equal_range(tcAdj);
 			if (pr.first == pr.second) {
@@ -968,7 +972,7 @@ int vnBccTetrahedra::parametricTriangleTet(const int triangle, const float (&uv)
 			if (tet > -1)
 				return tet;
 			else
-				int junk = 0;
+				std::cout << "vertexSolidLinePath() not found for vertex \n" << tet << "\n";
 		}
 	}
 	return -1;
@@ -976,14 +980,14 @@ int vnBccTetrahedra::parametricTriangleTet(const int triangle, const float (&uv)
 
 bool vnBccTetrahedra::subtetCentroids(const bccTetCentroid& macroCentroid, bccTetCentroid(&subCentroids)[8]) {
 	int hc, level;
-	centroidHalfAxisSize(macroCentroid, hc, level);
+	bool up;
+	centroidType(macroCentroid, level, hc, up);
 	if (level < 2)
 		return false;
-	int levelUp = level << 1, levelDown = level >> 1;
+	int levelUp = 2 << (level - 1), levelDown, levelBit;
+	levelBit = levelUp >> 1;
+	levelDown = levelBit >> 1;
 	int c1 = (hc + 1) % 3, c2 = (hc + 2) % 3;
-
-	bool up = (macroCentroid[hc] & levelUp) == (macroCentroid[c2] & levelUp) ? true : false;
-
 	for (int i = 0; i < 8; ++i)
 		subCentroids[i] = macroCentroid;
 	auto markInvalid = [&](bccTetCentroid& tc) {
@@ -1003,16 +1007,16 @@ bool vnBccTetrahedra::subtetCentroids(const bccTetCentroid& macroCentroid, bccTe
 		subCentroids[2][hc] -= levelDown;
 		subCentroids[3][hc] -= levelDown;
 	}
-	if (subCentroids[0][c1] < level)
+	if (subCentroids[0][c1] < levelBit)
 		markInvalid(subCentroids[0]);
 	else
-		subCentroids[0][c1] -= level;
-	subCentroids[1][c1] += level;
-	if(subCentroids[up ? 3 : 2][c2] < level)
+		subCentroids[0][c1] -= levelBit;
+	subCentroids[1][c1] += levelBit;
+	if(subCentroids[up ? 3 : 2][c2] < levelBit)
 		markInvalid(subCentroids[up ? 3 : 2]);
 	else
-		subCentroids[up ? 3 : 2][c2] -= level;
-	subCentroids[up ? 2 : 3][c2] += level;
+		subCentroids[up ? 3 : 2][c2] -= levelBit;
+	subCentroids[up ? 2 : 3][c2] += levelBit;
 	// 4 core tets ring around hc axis
 	if(subCentroids[4][c1] < levelDown)
 		markInvalid(subCentroids[4]);
@@ -1036,9 +1040,11 @@ bool vnBccTetrahedra::subtetCentroids(const bccTetCentroid& macroCentroid, bccTe
 
 const bccTetCentroid vnBccTetrahedra::centroidUpOneLevel(const bccTetCentroid& tcIn) {
 	bccTetCentroid tcUp;
-	int levelBit, levelX2, levelX4, hc;  // levelBit = 1, level = getResolutionLevel(tcIn);
-	centroidHalfAxisSize(tcIn, hc, levelBit);
-	levelX2 = levelBit << 1;
+	int level, levelBit, levelX2, levelX4, hc;  // levelBit = 1, level = getResolutionLevel(tcIn);
+	bool up;
+	centroidType(tcIn, level, hc, up);
+	levelX2 = 2 << (level - 1);
+	levelBit = levelX2 >> 1;
 	levelX4 = levelX2 << 1;
 	int c1 = (hc + 1) % 3, c2 = (hc + 2) % 3;
 	tcUp = tcIn;
@@ -1075,53 +1081,6 @@ const bccTetCentroid vnBccTetrahedra::centroidUpOneLevel(const bccTetCentroid& t
 		}
 	}
 	return tcUp;
-}
-
-int vnBccTetrahedra::faceAdjacentCentroid(const bccTetCentroid& tc, const int face, bccTetCentroid& tcAdj)
-{	// triangle faces are listed cyclic from the 4 tet nodes. Face 0 and 2 are CW, 1 & 3 CCW.
-	// Returns face # of the adjacent macrotet.  If adjacent centroid would be outside positive octant (illegal centroid), face return is -1.
-	int adjFace;
-	tcAdj = tc;
-	int ha, aha, size;
-	centroidHalfAxisSize(tc, ha, size);
-	tcAdj[ha] -= size;
-	if (face < 1 || face >2) {
-		aha = (ha + 2) % 3;
-		tcAdj[aha] += size;
-		if (((tc[ha] + tc[aha]) >> 1) & size) {  // down tet
-			tcAdj[ha] += 2 * size;
-			adjFace = 2;
-			if (face < 1) {
-				if (tcAdj[aha] < 2 * size)
-					return -1;
-				tcAdj[aha] -= 2 * size;
-			}
-		}
-		else {
-			adjFace = 1;
-			if (face > 2) {
-				if (tcAdj[aha] < 2 * size)
-					return -1;
-				tcAdj[aha] -= 2 * size;
-			}
-		}
-	}
-	else {
-		aha = (ha + 1) % 3;
-		tcAdj[aha] += size;
-		if (face > 1) {
-			if (tcAdj[aha] < 2 * size)
-				return -1;
-			tcAdj[aha] -= 2 * size;
-		}
-		if (((tc[ha] + tc[aha]) >> 1) & size) {  // up tet
-			tcAdj[ha] += 2 * size;
-			adjFace = face > 1 ? 0 : 3;
-		}
-		else
-			adjFace = face > 1 ? 3 : 0;
-	}
-	return adjFace;
 }
 
 vnBccTetrahedra::vnBccTetrahedra() : _nodeSpatialCoords(nullptr), _firstInteriorTet(-1)
