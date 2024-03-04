@@ -10,6 +10,9 @@
 #if TIMING
 #include "chrono" // for timing only
 #endif
+#include <string>
+#include <stdexcept>
+
 
 
 template<class T, class IntType>
@@ -86,10 +89,8 @@ void PardisoWrapper<T, IntType>::factSchur() {
         if (m) {
             IntType info = LAPACKPolicy<T>::fact(m, schur);
             if(info != 0) {
-                std::cerr<<"info after LAPACKE_dspotrf = "<<info<<std::endl;
-
- //               exit(22);  // QISI - COURT commented out this exit for crash removal
-
+                std::cout << "info after LAPACKE_dspotrf = " << std::to_string(info);  // COURT changed from a throw as doesn't kill the program
+                //                throw std::logic_error("info after LAPACKE_dspotrf = " + std::to_string(info));
             }
         }
     }
@@ -122,8 +123,7 @@ void PardisoWrapper<T, IntType>::symbolicFact() {
     }
 
     if ( error != 0 ) {
-        std::cerr<<"ERROR during symbolic factorization: "<<error<<std::endl;
-        exit ((int)phase);
+        throw std::logic_error("ERROR during symbolic factorization (phase " + std::to_string(phase) + ") with error " + std::to_string(error));
     }
 #if TIMING
     endStamp = std::chrono::steady_clock::now();
@@ -163,8 +163,7 @@ void PardisoWrapper<T, IntType>::numericFact() {
     }
 
     if ( error != 0 ) {
-        std::cerr<<"ERROR during numerical factorization: "<<error<<std::endl;
-        exit ((int)phase);
+        throw std::logic_error("ERROR during numerical factorization (phase " + std::to_string(phase) + ") with error " + std::to_string(error));
     }
 #if TIMING
     endStamp = std::chrono::steady_clock::now();
@@ -183,8 +182,8 @@ void PardisoWrapper<T, IntType>::releasePardisoInternal() {
         T ddum;
         error = PardisoPolicy<T, IntType>::exec(pt, maxfct, mnum, mtype, phase, n, &ddum, rowIndex, column, &idum, nrhs, iparm, msglvl, &ddum, &ddum);
         if ( error != 0 ) {
-            std::cerr<<"ERROR during release phase "<<phase<<": "<<error<<std::endl;
-            exit ((int)phase);
+            throw std::logic_error("ERROR during release (phase " + std::to_string(phase) + ") with error " + std::to_string(error));
+
         }
     }
 
@@ -221,16 +220,15 @@ void PardisoWrapper<T, IntType>::forwardSubstitution(T* const _rhs, T* const _x)
         error = PardisoPolicy<T, IntType>::exec(pt, maxfct, mnum, mtype, phase, n, value, rowIndex, column, schurNodes, nrhs, iparm, msglvl, _rhs, _x);
 
         if ( error != 0 ) {
-            std::cerr<<"ERROR during solution phase "<<phase<<": "<<error<<std::endl;
-            exit (phase);
+            throw std::logic_error("ERROR during solution (phase " + std::to_string(phase) + ") with error " + std::to_string(error));
         }
 
     } else {
 
         error = PardisoPolicy<T, IntType>::exec(pt, maxfct, mnum, mtype, phase, n, value, rowIndex, column, &idum, nrhs, iparm, msglvl, _rhs, _x);
         if (error != 0) {
-            std::cerr<<"ERROR during solution: "<<error<<std::endl;
-            exit(331);
+            throw std::logic_error("ERROR during solution (phase " + std::to_string(331) + ") with error " + std::to_string(error));
+
         }
     }
 }
@@ -244,8 +242,7 @@ void PardisoWrapper<T, IntType>::diagSolve(T* const _rhs, T* const _x) {
             IntType info = LAPACKPolicy<T>::solve(m,nrhs,schur,&_rhs[n-m]);
             if (info != 0)
             {
-                std::cerr<<"info after LAPACKE_dspotrs = "<<info<<std::endl;
-                exit(phase);
+                throw std::logic_error("info after LAPACKE_dspotrs = " + std::to_string(info));
             }
             for (IntType i = 0; i < n; i++ ) {
                 _x[i] = _rhs[i];
@@ -260,8 +257,7 @@ void PardisoWrapper<T, IntType>::diagSolve(T* const _rhs, T* const _x) {
             error = PardisoPolicy<T, IntType>::exec(pt, maxfct, mnum, mtype, phase, n, value, rowIndex, column, &idum, nrhs, iparm, msglvl, _rhs,
                     _x);
             if (error != 0) {
-                std::cerr<<"ERROR during solution: "<<error<<std::endl;
-                exit(33);
+                throw std::logic_error("ERROR during solution (phase " + std::to_string(33) + ") with error " + std::to_string(error));
             }
 
         }
@@ -281,16 +277,14 @@ void PardisoWrapper<T, IntType>::backwardSubstitution(T* const _rhs, T* const _x
                     iparm, msglvl, _rhs, _x);
             if ( error != 0 )
             {
-                std::cerr<<"ERROR during solution phase "<<phase<<": "<<error<<std::endl;
-                exit (phase);
+                throw std::logic_error("ERROR during solution (phase " + std::to_string(phase) + ") with error " + std::to_string(error));
             }
         } else {
             error = PardisoPolicy<T, IntType>::exec(pt, maxfct, mnum, mtype, phase, n, value, rowIndex, column, &idum, nrhs, iparm, msglvl, _rhs,
                     _x);
 
             if (error != 0) {
-                std::cerr<<"ERROR during solution: "<<error<<std::endl;
-                exit(33);
+                throw std::logic_error("ERROR during solution (phase " + std::to_string(33) + ") with error " + std::to_string(error));
             }
         }
     }

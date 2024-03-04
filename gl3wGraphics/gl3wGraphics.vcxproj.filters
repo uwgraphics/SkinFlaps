@@ -10,9 +10,9 @@
     <ClCompile Include="lines.cpp" />
     <ClCompile Include="lightsShaders.cpp" />
     <ClCompile Include="surgGraphics.cpp" />
-    <ClCompile Include="staticTriangle.cpp" />
     <ClCompile Include="gl3wGraphics.cpp" />
     <ClCompile Include="sceneNode.cpp" />
+    <ClCompile Include="staticTriangle.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bitmap.h" />
@@ -39,7 +39,7 @@
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="surgGraphics.h" />
     <ClInclude Include="gl3wGraphics.h" />
-    <ClInclude Include="staticTriangle.h" />
     <ClInclude Include="clockwise.h" />
+    <ClInclude Include="staticTriangle.h" />
   </ItemGroup>
 </Project>

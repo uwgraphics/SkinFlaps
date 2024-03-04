@@ -24,7 +24,6 @@ private:
 
 	T m_stressLimit{ 1 };
 
-//	std::unordered_map<int, int> fixedTetMap, fixedNodeMap;  // QISI nuke fixedNodeMap as no longer used
 	std::vector<int> fixedTetConstraints;
 
 public:
@@ -87,6 +86,33 @@ public:
 		return reinterpret_cast<std::array<T, d>(*)>(m_solver.getPositionPtr());
 	}
 
+	inline std::array<float, 3>* createBccTetStructure_multires(const std::vector< std::array<int, 4> >& tetIndices, const std::vector<uint8_t>& tetSizeMultiples, float tetScale) {
+		m_solver.initializeDeformer_multires(reinterpret_cast<const int(*)[4]>(&tetIndices[0][0]), reinterpret_cast<const uint8_t*>(&tetSizeMultiples[0]), tetIndices.size(), tetScale * 2);
+		m_deformerInited = true;
+		m_solverInited = false;
+		fixedTetConstraints.clear();
+		return reinterpret_cast<std::array<T, d>(*)>(m_solver.getPositionPtr());
+	}
+
+	// Next routine for inputting nodes on the face separating a large tet from possible multiple smaller ones. The subnodes input are present on a smaller tet, but not on the larger one.
+	// These are constrained by internodeWeight to be barycentrically located on the larger face by faceNodes.  With multiple levels of physics resolution faceNodes and their
+	// corresponding barycentric multipliers can number more than three for a single subtet.
+	void addInterNodeConstraints(const std::vector<int>& subNodes, const std::vector<std::vector<int> >& faceNodes, const std::vector<std::vector<float> >& faceBarycentrics, const float internodeWeight) {
+		int sns = subNodes.size();
+		assert(sns == faceNodes.size() && sns == faceBarycentrics.size());
+		for (int i = 0; i < sns; i++) {
+			if (faceNodes[i].size() > 3) {
+				// std::cout << i << "th internode needs " << faceNodes[i].size() << " macro nodes" << std::endl;
+				m_solver.addInterNodeConstraint(subNodes[i], faceNodes[i].size(), &faceNodes[i][0], &faceBarycentrics[i][0], 0);  // QISI - currently not processing these?
+			} else {
+				int l = faceNodes[i].size() < 3 ? faceNodes[i].size() : 3;
+				int fN[3]{}; for (int v = 0; v < l; ++v) fN[v] = faceNodes[i][v];
+				float bC[3]{}; for (int v = 0; v < l; ++v) bC[v] = faceBarycentrics[i][v];
+				int handle = m_solver.addInterNodeConstraint(subNodes[i], fN, bC, internodeWeight);
+			}
+		}
+	}
+
 	/* Doesn’t always follow createNewTetTopology() and may happen without changing
 	 * tets. For example periosteal undermining releases some of these removing some
 	 * Dirichlet constraints but all the tet constraints stay the same.	 */
@@ -119,63 +145,6 @@ public:
 			fixedTetConstraints.push_back(handle);
 		}
 	}
-
-/*	inline void setFixedNodes(const std::vector<int>& fixedNodes, const std::array<float, 3>* position, const std::vector<int>& peripheralNodes, const std::array<float, 3>* peripheralPosition) {
-		// position only contains positions of fixedNodes
-//		assert(false);
-		if (!m_deformerInited)
-			throw std::logic_error("need to init tet topology before setFixedNodes");
-		const T weight[d] = { 0,0,0 };
-		for (auto& nodeMap:fixedNodeMap) 
-			if (nodeMap.second >= 0) {
-				m_solver.deleteConstraint(nodeMap.second);
-				nodeMap.second = -1;
-			}
-
-		if (fixedNodeMap.empty()) {
-			for (int i = 0; i < fixedNodes.size(); i++) {
-				const int idx = fixedNodes[i];
-				const int indices[d + 1] = { idx,idx,idx,idx };
-				int handle = m_solver.addConstraint(indices, weight, reinterpret_cast<const T(&)[3]>(position[i]), m_fixedWeight); // change weight
-				fixedNodeMap.insert({ idx, handle });
-			}
-			for (int i = 0; i < peripheralNodes.size(); i++) {
-				const int idx = peripheralNodes[i];
-				const int indices[d + 1] = { idx,idx,idx,idx };
-				int handle = m_solver.addConstraint(indices, weight, reinterpret_cast<const T(&)[3]>(peripheralPosition[i]), m_peripheralWeight); // change weight
-				fixedNodeMap.insert({ idx, handle });
-			}
-		}
-		else {
-			// assuming fixed node number only decreases after each topo change
-			for (int i = 0; i < fixedNodes.size(); i++) {
-				const int idx = fixedNodes[i];
-				const int indices[d + 1] = { idx,idx,idx,idx };
-				int handle = m_solver.addConstraint(indices, weight, reinterpret_cast<const T(&)[3]>(position[i]), m_fixedWeight); // change weight
-				fixedNodeMap[idx] = handle;
-			}
-			for (int i = 0; i < peripheralNodes.size(); i++) {
-				const int idx = peripheralNodes[i];
-				const int indices[d + 1] = { idx,idx,idx,idx };
-				int handle = m_solver.addConstraint(indices, weight, reinterpret_cast<const T(&)[3]>(peripheralPosition[i]), m_peripheralWeight); // change weight
-				fixedNodeMap[idx] = handle;
-			}
-		}
-	} */
-	
-		/*
-	inline void releaseInterfaceNodes(const std::vector<int> &releaseNodes) {
-		if (!m_deformerInited)
-			throw std::logic_error("need to init tet topology before releaseInterfaceNodes");
-		for (const int idx : releaseNodes) {
-			auto& iter = fixedNodeMap.find(idx);
-			if (iter != fixedNodeMap.end())
-				m_solver.deleteConstraint(iter->second);
-			else
-				throw std::logic_error("Fixed node does not exist");
-		}
-	}
-	*/
 
 	/* returns constraint index */
 	inline int addHook(const int tet, const std::array<float, 3> &barycentricWeight, const std::array<float, 3> &hookPosition, bool strong = false) {

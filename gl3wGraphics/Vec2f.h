@@ -35,116 +35,110 @@ public:
 		struct {
 			value_type X, Y;
 		};
-		value_type _v[2];
+		value_type xy[2];
 	};
 
 
-	Vec2f() { _v[0] = 0.0; _v[1] = 0.0; }
-	Vec2f(value_type x, value_type y) { _v[0] = x; _v[1] = y; }
+	Vec2f() { xy[0] = 0.0; xy[1] = 0.0; }
+	Vec2f(value_type x, value_type y) { xy[0] = x; xy[1] = y; }
 
-	inline bool operator == (const Vec2f& v) const { return _v[0] == v._v[0] && _v[1] == v._v[1]; }
+	inline bool operator == (const Vec2f& v) const { return xy[0] == v.xy[0] && xy[1] == v.xy[1]; }
 
-	inline bool operator != (const Vec2f& v) const { return _v[0] != v._v[0] || _v[1] != v._v[1]; }
+	inline bool operator != (const Vec2f& v) const { return xy[0] != v.xy[0] || xy[1] != v.xy[1]; }
 
 	inline bool operator <  (const Vec2f& v) const
 	{
-		if (_v[0]<v._v[0]) return true;
-		else if (_v[0]>v._v[0]) return false;
-		else return (_v[1]<v._v[1]);
+		if (xy[0]<v.xy[0]) return true;
+		else if (xy[0]>v.xy[0]) return false;
+		else return (xy[1]<v.xy[1]);
 	}
 
-	inline value_type * ptr() { return _v; }
-	inline const value_type * ptr() const { return _v; }
+	inline value_type * ptr() { return xy; }
+	inline const value_type * ptr() const { return xy; }
 
-	inline void set(value_type x, value_type y) { _v[0] = x; _v[1] = y; }
+	inline void set(value_type x, value_type y) { xy[0] = x; xy[1] = y; }
 
-	inline value_type & operator [] (int i) { return _v[i]; }
-	inline value_type operator [] (int i) const { return _v[i]; }
-
-	inline value_type & x() { return _v[0]; }
-	inline value_type & y() { return _v[1]; }
-
-	inline value_type x() const { return _v[0]; }
-	inline value_type y() const { return _v[1]; }
+	inline value_type & operator [] (int i) { return xy[i]; }
+	inline value_type operator [] (int i) const { return xy[i]; }
 
 	/** Dot product. */
 	inline value_type operator * (const Vec2f& rhs) const
 	{
-		return _v[0] * rhs._v[0] + _v[1] * rhs._v[1];
+		return xy[0] * rhs.xy[0] + xy[1] * rhs.xy[1];
 	}
 
 	/** Multiply by scalar. */
 	inline const Vec2f operator * (value_type rhs) const
 	{
-		return Vec2f(_v[0] * rhs, _v[1] * rhs);
+		return Vec2f(xy[0] * rhs, xy[1] * rhs);
 	}
 
 	/** Unary multiply by scalar. */
 	inline Vec2f& operator *= (value_type rhs)
 	{
-		_v[0] *= rhs;
-		_v[1] *= rhs;
+		xy[0] *= rhs;
+		xy[1] *= rhs;
 		return *this;
 	}
 
 	/** Divide by scalar. */
 	inline const Vec2f operator / (value_type rhs) const
 	{
-		return Vec2f(_v[0] / rhs, _v[1] / rhs);
+		return Vec2f(xy[0] / rhs, xy[1] / rhs);
 	}
 
 	/** Unary divide by scalar. */
 	inline Vec2f& operator /= (value_type rhs)
 	{
-		_v[0] /= rhs;
-		_v[1] /= rhs;
+		xy[0] /= rhs;
+		xy[1] /= rhs;
 		return *this;
 	}
 
 	/** Binary vector add. */
 	inline const Vec2f operator + (const Vec2f& rhs) const
 	{
-		return Vec2f(_v[0] + rhs._v[0], _v[1] + rhs._v[1]);
+		return Vec2f(xy[0] + rhs.xy[0], xy[1] + rhs.xy[1]);
 	}
 
 	// Unary vector add. Slightly more efficient because no temporary intermediate object.
 	inline Vec2f& operator += (const Vec2f& rhs)
 	{
-		_v[0] += rhs._v[0];
-		_v[1] += rhs._v[1];
+		xy[0] += rhs.xy[0];
+		xy[1] += rhs.xy[1];
 		return *this;
 	}
 
 	// Binary vector subtract.
 	inline const Vec2f operator - (const Vec2f& rhs) const
 	{
-		return Vec2f(_v[0] - rhs._v[0], _v[1] - rhs._v[1]);
+		return Vec2f(xy[0] - rhs.xy[0], xy[1] - rhs.xy[1]);
 	}
 
 	/** Unary vector subtract. */
 	inline Vec2f& operator -= (const Vec2f& rhs)
 	{
-		_v[0] -= rhs._v[0];
-		_v[1] -= rhs._v[1];
+		xy[0] -= rhs.xy[0];
+		xy[1] -= rhs.xy[1];
 		return *this;
 	}
 
 	/** Negation operator. Returns the negative of the Vec2f. */
 	inline const Vec2f operator - () const
 	{
-		return Vec2f(-_v[0], -_v[1]);
+		return Vec2f(-xy[0], -xy[1]);
 	}
 
 	/** Length of the vector = sqrt( vec . vec ) */
 	inline value_type length() const
 	{
-		return sqrtf(_v[0] * _v[0] + _v[1] * _v[1]);
+		return sqrtf(xy[0] * xy[0] + xy[1] * xy[1]);
 	}
 
 	/** Length squared of the vector = vec . vec */
 	inline value_type length2(void) const
 	{
-		return _v[0] * _v[0] + _v[1] * _v[1];
+		return xy[0] * xy[0] + xy[1] * xy[1];
 	}
 
 	// Normalize the vector so that it has length unity.
@@ -155,8 +149,8 @@ public:
 		if (norm>0.0)
 		{
 			value_type inv = 1.0f / norm;
-			_v[0] *= inv;
-			_v[1] *= inv;
+			xy[0] *= inv;
+			xy[1] *= inv;
 		}
 		return(norm);
 	}

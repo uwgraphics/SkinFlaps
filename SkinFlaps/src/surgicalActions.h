@@ -8,7 +8,10 @@
 #include "sutures.h"
 #include "surgGraphics.h"
 #include "fence.h"
+
 #include "deepCut.h"
+#include "skinCutUndermineTets.h"  // replace with above later
+
 #include "json.h"
 #include <Vec3f.h>
 #include "bccTetScene.h"
@@ -35,7 +38,10 @@ public:
 	bool loadScene(const char *modelDirectory, const char *sceneFilename);
 	inline bccTetScene* getBccTetScene() { return &_bts; }
 	inline surgGraphics* getSurgGraphics() { return &_sg; }
-	inline deepCut* getDeepCutPtr() { return &_incisions; }
+
+	//	inline deepCut* getDeepCutPtr() { return &_incisions; }
+	inline skinCutUndermineTets* getDeepCutPtr() { return &_incisions; }  // COURT fix when deepCut added back
+
 	bool loadHistory(const char *historyDir, const char *historyFile);
 	void nextHistoryAction();
 	bool historyEmpty()	{return _historyArray.size()<1;}
@@ -72,6 +78,7 @@ private:
 	hooks _hooks;
 	sutures _sutures;
 	deepCut _incisions;  // derived from skinCutUndermineTets class
+//	skinCutUndermineTets _incisions;  // now derived from deepCut class
 
 	struct undermineTriangle {
 		unsigned int incisionConnect : 1;

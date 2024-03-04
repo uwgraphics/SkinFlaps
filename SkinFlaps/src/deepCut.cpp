@@ -130,8 +130,8 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 		}
 		else if (mat == 1 || (mat > 4 && mat < 10)) {
 			Vec3f gridLocus, bw;
-			int tet = parametricMTtriangleTet(ri.triangle, uv, gridLocus);
-			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
+			int tet = _vbt->parametricTriangleTet(ri.triangle, uv, gridLocus);
+			_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->_tetCentroids[tet], bw);
 			ri.deepVert = _mt->addNewVertexInMidTriangle(ri.triangle, uv);
 			assert(ri.deepVert == _vbt->_vertexTets.size());
 			_vbt->_vertexTets.push_back(tet);
@@ -149,7 +149,7 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 	for (auto &r : rtiHits)
 		if (!punchDeepVert(_deepPosts[r.first.first].triIntersects[r.first.second]))
 			return false;
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	getDeepSpatialCoordinates();  // after punches need to redo
 	// create bilinear surface precomputations for each patch per nVidia subroutine
 	for (int i = 1; i < _deepPosts.size(); ++i) {
@@ -205,7 +205,7 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 			_loopSkinTopBegin = ti.mat2Vert;
 		setTopLoopBegin = false;
 		_previousSkinTopEnd = _deepPosts[postTo].triIntersects[idxTo].mat2Vert;
-		_mt->findAdjacentTriangles(true, false);
+		_mt->findAdjacentTriangles(true);
 		updateDeepSpatialCoordinates();  // after punches need to redo
 		auto dit = ti.scl.deepVertsTris.begin();
 		if (!surfacePolyLines.back().empty()) // skip duplicated entry
@@ -263,13 +263,19 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 	ptex.pos = -1;
 	ptex.tex = -1;
 	std::map<int, posTex> oppositeSideVertices;  // relates vertices on first side of cut to opposite side which are created here.
+	auto cloneVertex = [&](const int sourceVertex) ->int {
+		// makes a new vertex which is a copy of sourceVertex
+		int retval = _mt->addVertices(1);
+		_mt->setVertexCoordinate(retval, (const float(&)[3])* _mt->vertexCoordinate(sourceVertex));
+		return retval;
+	};
 	auto dupVertex = [&](int vert) {
 		auto pr = oppositeSideVertices.insert(std::make_pair(vert, ptex));
 		if (pr.second) {
 			if (nonDupedVertices.find(vert) != nonDupedVertices.end())  // no dup
 				pr.first->second.pos = vert;
 			else {  // all deep vertices so don't add to _deepBed
-				pr.first->second.pos = _mt->cloneVertex(vert);
+				pr.first->second.pos = cloneVertex(vert);
 				assert(pr.first->second.pos == _vbt->_vertexTets.size());
 				_vbt->_vertexTets.push_back(_vbt->_vertexTets[vert]);
 				_vbt->_barycentricWeights.push_back(_vbt->_barycentricWeights[vert]);
@@ -367,7 +373,7 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 		hpl.reverse();
 	splitSurface(_holePolyLines);
 	// fill in new cut surface triangles
-	auto addDeepTriangles = [&](std::vector<materialTriangles::matTriangle>& tris) {
+	auto addDeepTriangles = [&](std::vector<matTriangle>& tris) {
 		for(auto &t : tris){
 			int V[3], T[3];
 			// remove any degenrate triangles along straight line of non-duped vertices
@@ -397,13 +403,13 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 		addDeepTriangles(_endPlanes[0].quadTriangles);
 	if (_endPlanes[1].P.X < DBL_MAX)
 		addDeepTriangles(_endPlanes[1].quadTriangles);
-	if (_mt->findAdjacentTriangles(true, false))
+	if (_mt->findAdjacentTriangles(true))
 		return false;  // should throw
 	return true;
 }
 
 void deepCut::getDeepCutLine(rayTriangleIntersect &top, rayTriangleIntersect &bot) {
-	Vec3f V, C = Vec3f(top.intersect._v), D = Vec3f(bot.intersect._v) - C;
+	Vec3f V, C = Vec3f(top.intersect.xyz), D = Vec3f(bot.intersect.xyz) - C;
 	float len = D.length();
 	int n = (int)(D.length() * _vbt->getTetUnitSizeInv());
 	D /= (float)n;
@@ -411,49 +417,63 @@ void deepCut::getDeepCutLine(rayTriangleIntersect &top, rayTriangleIntersect &bo
 		V = C + D * (float)i;
 		int tet;
 		Vec3f baryWeight;
-		if (!interiorSpatialTet(V, tet, baryWeight))
+		if (!uniqueSpatialTet(V, tet, baryWeight))
 			continue;
 		top.dcl.push_back(_mt->addVertices(1));
-		_mt->setVertexCoordinate(top.dcl.back(), V._v);  // texture not set
+		_mt->setVertexCoordinate(top.dcl.back(), V.xyz);  // texture not set
+
+		// COURT this was commented out.
+		//  
 		assert(_vbt->_vertexTets.size() == top.dcl.back());
 		_vbt->_vertexTets.push_back(tet);
 		_vbt->_barycentricWeights.push_back(baryWeight);
 	}
 }
 
-bool deepCut::interiorSpatialTet(const Vec3f pos, int& tet, Vec3f& baryWeight) {
+bool deepCut::uniqueSpatialTet(const Vec3f pos, int& tet, Vec3f& baryWeight) {
 
 //	std::chrono::time_point<std::chrono::system_clock> start, end;
 //	start = std::chrono::system_clock::now();
 
-	tet = -1;  // only found once so no write contention. Could make atomic.
-	int n = _vbt->tetNumber();  // , i
-//	for (i = _vbt->firstInteriorTet(); i < n; ++i) {
+	tet = -1;  // only found once so no write contention.
+	auto tetInside = [&](int tetid, Vec3f& bw) ->bool {
+		boundingBox<float> bb;
+		bb.Empty_Box();
+		Vec3f vp[4];
+		const int* tn = _vbt->tetNodes(tetid);  //  > _tetNodes[i].data();
+		for (int j = 0; j < 4; ++j) {
+			vp[j] = _vbt->_nodeSpatialCoords[tn[j]];
+			bb.Enlarge_To_Include_Point(vp[j].xyz);
+		}
+		if (bb.Outside(pos.xyz))
+			return false;
+		Mat3x3f M;
+		M.Initialize_With_Column_Vectors(vp[1] - vp[0], vp[2] - vp[0], vp[3] - vp[0]);
+		Vec3f R = M.Robust_Solve_Linear_System(pos - vp[0]);
+		if (R[0] <= 0.0f || R[1] <= 0.0f || R[2] <= 0.0f || R[0] >= 1.0f || R[1] >= 1.0f || R[2] >= 1.0f || R[0] + R[1] + R[2] >= 1.0f)
+			return false;
+		bw = R;
+		return true;
+	};
+	for (int i = 0; i < _vbt->_nMegatets; ++i) {  // in this new megatet environment check these largest unique tets first
+		if (tetInside(i, baryWeight)){
+			tet = i;
+			return true;
+		}
+	}
+//	for (int i = _vbt->firstInteriorTet(); i < _vbt->tetNumber(); ++i) {  // Now check the unique interior tets 
 	tbb::parallel_for(tbb::blocked_range<std::size_t>(_vbt->firstInteriorTet(), _vbt->tetNumber()), [&](tbb::blocked_range<size_t> r) {
 		for (int i = r.begin(); i != r.end(); ++i) {
-			boundingBox<float> bb;
-			bb.Empty_Box();
-			Vec3f* vp[4];
-			int* tn = _vbt->_tetNodes[i].data();
-			for (int j = 0; j < 4; ++j) {
-				vp[j] = &_vbt->_nodeSpatialCoords[tn[j]];
-				bb.Enlarge_To_Include_Point(vp[j]->_v);
+			Vec3f bw;
+			if (tetInside(i, bw)) {
+				tet = i;
+				baryWeight = bw;
+				break;
 			}
-			if (bb.Outside(pos._v))
-				continue;
-			Mat3x3f M;
-			M.Initialize_With_Column_Vectors(*vp[1] - *vp[0], *vp[2] - *vp[0], *vp[3] - *vp[0]);
-			Vec3f R = M.Robust_Solve_Linear_System(pos - *vp[0]);
-			if (R[0] <= 0.0f || R[1] <= 0.0f || R[2] <= 0.0f || R[0] >= 1.0f || R[1] >= 1.0f || R[2] >= 1.0f || R[0] + R[1] + R[2] >= 1.0f)
-				continue;
-			tet = i;
-			baryWeight = R;
-			break;  // internal tets are guaranteed unique barring rare inversions
 		}
 		if (tet > -1)
 			oneapi::tbb::task_group_context().cancel_group_execution();
 	});
-//	}
 
 //	end = std::chrono::system_clock::now();
 //	std::chrono::duration<double> elapsed_seconds = end - start;
@@ -791,7 +811,7 @@ bool deepCut::deepCutEndPlane(int endPlane) {
 	return true;
 }
 
-void deepCut::makePolygonTriangles(const std::list<int> &polyVerts, const std::list<Vec2d> &polyUV, const bilinearPatch *blp, const endPlane *ep, std::vector<materialTriangles::matTriangle> &polyTriangles){
+void deepCut::makePolygonTriangles(const std::list<int> &polyVerts, const std::list<Vec2d> &polyUV, const bilinearPatch *blp, const endPlane *ep, std::vector<matTriangle> &polyTriangles){
 	// polyVerts contains polygonVertices and polyUV their patch parametric locations
 	std::vector<std::pair<int, Vec2d> > deepOuterPolygon;
 	deepOuterPolygon.reserve(polyVerts.size());
@@ -838,7 +858,7 @@ void deepCut::makePolygonTriangles(const std::list<int> &polyVerts, const std::l
 	int nOuterPolygon = (int)bUv.size();
 	// recursively add internal Delaunay vertices to mtFace
 	double incr = (maxC.X - minC.X) + (maxC.Y - minC.Y);
-	incr /= (polyVerts.size() * 0.5);
+	incr /= (polyVerts.size() * 0.33);
 	int n = (int)((maxC.X - minC.X) / incr), m = (int)((maxC.Y - minC.Y) / incr);
 	Vec2d V2;
 	insidePolygon ip;
@@ -868,11 +888,11 @@ void deepCut::makePolygonTriangles(const std::list<int> &polyVerts, const std::l
 				else 
 					Nd = ep->P + ep->U * V2.X + ep->V * V2.Y;
 				int tet;
-				Vec3f N(Nd._v), baryWeight;
-				if (!interiorSpatialTet(Vec3f(N._v), tet, baryWeight))
+				Vec3f N(Nd.xyz), baryWeight;
+				if (!uniqueSpatialTet(Vec3f(N.xyz), tet, baryWeight))
 					continue;
 				intPt.newV = _mt->addVertices(1);
-				_mt->setVertexCoordinate(intPt.newV, N._v);  // texture not set
+				_mt->setVertexCoordinate(intPt.newV, N.xyz);  // texture not set
 				assert(_vbt->_vertexTets.size() == intPt.newV);
 				_vbt->_vertexTets.push_back(tet);
 				_vbt->_barycentricWeights.push_back(baryWeight);
@@ -922,7 +942,8 @@ void deepCut::makePolygonTriangles(const std::list<int> &polyVerts, const std::l
 	cdt.eraseOuterTrianglesAndHoles();
 	polyTriangles.reserve(cdt.triangles.size());
 	for (size_t n = cdt.triangles.size(), i = 0; i < n; ++i) {
-		materialTriangles::matTriangle tri;
+//		std::vector<int> tri;
+		matTriangle tri;
 		tri.material = 6;
 		for (int j = 0; j < 3; ++j) {
 			int v;
@@ -990,7 +1011,7 @@ bool deepCut::updateDeepSpatialCoordinates()
 		else {
 			Vec3f v;
 			_vbt->getBarycentricTetPosition(botTet, bw, v);
-			_deepXyz[dbit->first] = Vec3d(v._v);
+			_deepXyz[dbit->first] = Vec3d(v.xyz);
 		}
 	}
 	return true;
@@ -1026,18 +1047,19 @@ bool deepCut::getDeepSpatialCoordinates()
 			}
 			Vec3f v;
 			_vbt->getBarycentricTetPosition(_vbt->getVertexTetrahedron(dbit->second.deepMtVertex), *_vbt->getVertexWeight(dbit->second.deepMtVertex), v);
-			_deepXyz[dbit->first] = Vec3d(v._v);
+			_deepXyz[dbit->first] = Vec3d(v.xyz);
 		}
 		else {
 			Vec3f bw;
 			int botTet = deepPointTetWeight(dbit, bw);
 			if (botTet < 0) {  // COURt if there are a lot of these or any occur over an important area of the model should recompute deep bed.
-				std::cout << "Deep bed point at vertex " << dbit->first << " with deep vertex " << dbit->second.deepMtVertex << " not in a tet.\n";
+				std::cout << "Deep bed point at vertex " << dbit->first << " with deep vertex " << dbit->second.deepMtVertex << " not connected to a tet.\n";
+				_deepXyz[dbit->first].X = DBL_MAX;  // mark invalid for deep cut.
 			}
 			else {
 				Vec3f v;
 				_vbt->getBarycentricTetPosition(botTet, bw, v);
-				_deepXyz[dbit->first] = Vec3d(v._v);
+				_deepXyz[dbit->first] = Vec3d(v.xyz);
 			}
 		}
 	}
@@ -1045,11 +1067,11 @@ bool deepCut::getDeepSpatialCoordinates()
 	bb.Empty_Box();
 	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i){
 		if (_deepXyz[i].X < DBL_MAX)  // don't include invalid vertex
-			bb.Enlarge_To_Include_Point(_deepXyz[i]._v);
+			bb.Enlarge_To_Include_Point(_deepXyz[i].xyz);
 	}
 	Vec3d vn, vx;
-	bb.Maximum_Corner(vx._v);
-	bb.Minimum_Corner(vn._v);
+	bb.Maximum_Corner(vx.xyz);
+	bb.Minimum_Corner(vn.xyz);
 	_maxSceneSize = (float)((vx - vn).length());
 	return true;
 }
@@ -1060,8 +1082,8 @@ void deepCut::getDeepPosts(std::vector<Vec3f>& xyz, std::vector<Vec3f>& nrm) {
 	xyz.reserve(_deepPosts.size());
 	nrm.reserve(_deepPosts.size());
 	for (int n = _deepPosts.size(), i = 0; i < n; ++i) {
-		xyz.push_back(Vec3f(_deepPosts[i].triIntersects[0].intersect._v));
-		nrm.push_back(Vec3f(_deepPosts[i].triIntersects.back().intersect._v));
+		xyz.push_back(Vec3f(_deepPosts[i].triIntersects[0].intersect.xyz));
+		nrm.push_back(Vec3f(_deepPosts[i].triIntersects.back().intersect.xyz));
 		nrm.back() -= xyz.back();
 	}
 }
@@ -1298,8 +1320,8 @@ bool deepCut::rayIntersectMaterialTriangles(const Vec3d& rayStart, const Vec3d& 
 	std::multimap<double, rayTriangleIntersect> rtiMap;
 	boundingBox<double> bb, tbb;
 	bb.Empty_Box();
-	bb.Enlarge_To_Include_Point(rayStart._v);
-	bb.Enlarge_To_Include_Point((rayStart + rayDirection * _maxSceneSize)._v);
+	bb.Enlarge_To_Include_Point(rayStart.xyz);
+	bb.Enlarge_To_Include_Point((rayStart + rayDirection * _maxSceneSize).xyz);
 	Vec3d P, T[3], N;
 	// do slightly permissive find
 	for (int n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i) {
@@ -1312,7 +1334,7 @@ bool deepCut::rayIntersectMaterialTriangles(const Vec3d& rayStart, const Vec3d& 
 			if (_deepXyz[tr[j]].X > 1e22)  // invalid vertex, thus so is this triangle
 				break;
 			T[j].set(_deepXyz[tr[j]]);
-			tbb.Enlarge_To_Include_Point(T[j]._v);
+			tbb.Enlarge_To_Include_Point(T[j].xyz);
 		}
 		if (j < 3)
 			continue;
@@ -1405,9 +1427,12 @@ int deepCut::addPeriostealUndermineTriangle(const int triangle, const Vec3f &lin
 	if (mat == 7 || mat == 8 || mat == 10)  // a periosteal triangle possibly in the middle of an undermine
 		perioTri = triangle;
 	else{
-		std::vector<float> positions, rayParams;
+		std::vector<Vec3f> positions;
+		std::vector<float> rayParams;
 		std::vector<int> rayTris;
-		_mt->linePick(_mt->vertexCoordinate(_mt->triangleVertices(triangle)[0]), linePickDirection._v, positions, rayTris, rayParams, 7);
+		Vec3f startPos;
+		_mt->getVertexCoordinate(_mt->triangleVertices(triangle)[0], startPos.xyz);
+		_mt->linePick(startPos, linePickDirection, positions, rayTris, rayParams, 7);
 		if (rayTris.empty())
 			return -1;
 		for (int n = rayTris.size(), i = 0; i < n; ++i) {
@@ -1564,7 +1589,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch* blp, const endPlane* ep,
 	boundingBox<double> bb;
 	bb.Empty_Box();
 	for (auto& bp : deepOuterPolygon)
-		bb.Enlarge_To_Include_Point(_deepXyz[bp.first]._v);
+		bb.Enlarge_To_Include_Point(_deepXyz[bp.first].xyz);
 	Vec3d E, nE;
 	double rayParams[2];
 	Vec2d faceParams[2];
@@ -1599,7 +1624,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch* blp, const endPlane* ep,
 		for (j = 0; j < 3; ++j) {
 			if (tr[j] > _preDeepCutVerts)  // new triangle already processed by this deep cut.
 				break;
-			bt.Enlarge_To_Include_Point(_deepXyz[tr[j]]._v);
+			bt.Enlarge_To_Include_Point(_deepXyz[tr[j]].xyz);
 		}
 		if (j < 3 || !bb.Intersection(bt))
 			continue;
@@ -1687,11 +1712,11 @@ void deepCut::findCutInteriorHoles(const bilinearPatch* blp, const endPlane* ep,
 	};
 	auto deepSurfacePoint = [&](unsigned int &te, Vec2f &uv) ->int {
 		Vec3f gridLocus, bw;
-		int tet = parametricMTtriangleTet(te >> 2, uv._v, gridLocus);
+		int tet = _vbt->parametricTriangleTet(te >> 2, uv.xy, gridLocus);
 		if (tet < 0)
 			throw(std::logic_error("Program error in deepCut hole finder."));
-		_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
-		int ret = _mt->addNewVertexInMidTriangle(te >> 2, uv._v);
+		_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->_tetCentroids[tet], bw);
+		int ret = _mt->addNewVertexInMidTriangle(te >> 2, uv.xy);
 		assert(ret == _vbt->_vertexTets.size());
 		_vbt->_vertexTets.push_back(tet);
 		_vbt->_barycentricWeights.push_back(bw);
@@ -1706,7 +1731,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch* blp, const endPlane* ep,
 		uvFromEdge(te1 & 3, 1.0 - h.param2[1], uv[1]);
 		uvt = uv[0] * 0.6667 + uv[1] * 0.3333;
 		if (mat == 2) {
-			createFlapTopBottomVertices(h.te2[0] >> 2, uvt._v, cutP[0][0], cutP[0][1]);
+			createFlapTopBottomVertices(h.te2[0] >> 2, uvt.xy, cutP[0][0], cutP[0][1]);
 			newP = cutP[0][0];
 		}
 		else {
@@ -1729,7 +1754,7 @@ void deepCut::findCutInteriorHoles(const bilinearPatch* blp, const endPlane* ep,
 		uvt *= 0.5f;
 		uvt += uv[1] * 0.5f;
 		if (mat == 2)
-			createFlapTopBottomVertices(te1 >> 2, uvt._v, cutP[1][0], cutP[1][1]);
+			createFlapTopBottomVertices(te1 >> 2, uvt.xy, cutP[1][0], cutP[1][1]);
 		else {
 			cutP[1][0] = -1;
 			cutP[1][1] = deepSurfacePoint(te1, uvt);
@@ -2296,8 +2321,9 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 							topUVs.pop_back();
 							cutDeepSurface(deepStartV, deepUvStart, -1, deepUvStart, topTe, topParams, topUVs, scl);
 							Vec3f gridLocus, bw;
-							int tet = parametricMTedgeTet(splitTri, splitEdge, lastParam, gridLocus);
-							_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
+							int* st = _mt->triangleVertices(splitTri);
+							int tet = _vbt->parametricEdgeTet(st[splitEdge], st[(splitEdge + 1) % 3], lastParam, gridLocus);
+							_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), bw);
 							mat2BorderVertex = _mt->splitTriangleEdge(splitTri, splitEdge, lastParam);
 							mat2BorderTexture = _mt->numberOfTextures() - 1;  // added in above call
 							assert(mat2BorderVertex == _vbt->_vertexTets.size());
@@ -2342,8 +2368,10 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 							topTe.back() = _mt->triAdjs(ate >> 2)[ate & 3];
 							cutSkinLine(topStartV, topUvStart, topVertex, lastUV2, topTe, topParams, topUVs, Tin, false, scl);
 							Vec3f gridLocus, bw;
-							int tet = parametricMTedgeTet(lastTe >> 2, lastTe & 3, lastParam, gridLocus);
-							_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), bw);
+							int* st = _mt->triangleVertices(lastTe >> 2);
+							int tet = _vbt->parametricEdgeTet(st[lastTe & 3], st[((lastTe & 3) + 1) % 3], lastParam, gridLocus);
+//							int tet = parametricMTedgeTet(lastTe >> 2, lastTe & 3, lastParam, gridLocus);
+							_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), bw);
 							int newV = _mt->splitTriangleEdge(lastTe >> 2, lastTe & 3, lastParam);
 							int newTx = _mt->numberOfTextures() - 1;  // added in above call
 							assert(newV == _vbt->_vertexTets.size());
@@ -2420,9 +2448,9 @@ void deepCut::mat2BorderSplit(int borderV, int borderTx, int incisionTopV) {  //
 	_vbt->_vertexTets.push_back(_vbt->getVertexTetrahedron(incisionTopV));
 	_vbt->_barycentricWeights.push_back(*_vbt->getVertexWeight(incisionTopV));
 	Vec3f V;
-	_mt->getVertexCoordinate(incisionTopV, V._v);
-	_mt->setVertexCoordinate(oppVert, V._v);
-	_mt->findAdjacentTriangles(true, false);
+	_mt->getVertexCoordinate(incisionTopV, V.xyz);
+	_mt->setVertexCoordinate(oppVert, V.xyz);
+	_mt->findAdjacentTriangles(true);
 	std::vector<materialTriangles::neighborNode> nei;
 	_mt->getNeighbors(incisionTopV, nei);
 	auto nit = nei.begin();
@@ -2444,7 +2472,7 @@ void deepCut::mat2BorderSplit(int borderV, int borderTx, int incisionTopV) {  //
 					Vec2f tx;
 					auto fp = _mt->getTexture(topTx);
 					tx.set(fp[0], fp[1]);
-					_mt->setTexture(oppTex, tx._v);
+					_mt->setTexture(oppTex, tx.xy);
 				}
 				tr[i] = oppVert;
 				triTx[i] = oppTex;
@@ -2463,7 +2491,7 @@ void deepCut::mat2BorderSplit(int borderV, int borderTx, int incisionTopV) {  //
 	tex[1] = tex[2];
 	tex[2] = oppTex;
 	int oppTri = _mt->addTriangle(v3, 6, tex);
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	unsigned int te = _mt->triAdjs(firstTri)[1];
 	int firstTex = _mt->triangleTextures(te >> 2)[te & 3];
 	_mt->triangleTextures(firstTri)[2] = firstTex;
@@ -2482,12 +2510,14 @@ void deepCut::cutDeepSurface(int startV, Vec2d& startUV, int endV, Vec2d& endUV,
 	for (auto& t : te) {
 		Vec3f gridLocus;
 		int tri = t >> 2, edge = t & 3;
-		int tet = parametricMTedgeTet(tri, edge, *pit, gridLocus);
+		int* st = _mt->triangleVertices(tri);
+		int tet = _vbt->parametricEdgeTet(st[edge], st[(edge + 1) % 3], *pit, gridLocus);
+//		int tet = parametricMTedgeTet(tri, edge, *pit, gridLocus);
 		int bedVertex = _mt->splitTriangleEdge(tri, edge, *pit);
 		assert(bedVertex == _vbt->_vertexTets.size());
 		_vbt->_vertexTets.push_back(tet);
 		_vbt->_barycentricWeights.push_back(Vec3f());
-		_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(tet), _vbt->_barycentricWeights.back());
+		_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->_tetCentroids[tet], _vbt->_barycentricWeights.back());
 		scl.deepVertsTris.push_back(bedVertex);
 		scl.deepUVs.push_back(*uvit);
 		++pit;
@@ -2543,7 +2573,7 @@ void deepCut::cutSkinLine(int startV, Vec2d &startUV, int endV, Vec2d& endUV, st
 		botVerts.push_back(dbit->second.deepMtVertex);
 		botUVs.push_back(endUV);
 	}
-	_mt->findAdjacentTriangles(true, false);
+	_mt->findAdjacentTriangles(true);
 	updateDeepSpatialCoordinates();
 	if(!topDeepSplit_Sub(topVerts, botVerts, Tin, Tout))
 		throw(std::logic_error("Program error in skinCutLine()."));

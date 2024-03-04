@@ -21,11 +21,11 @@ public:
 
     Mat3x3f(const Vec3f& column1,const Vec3f& column2,const Vec3f& column3)
     {
-		x[0]=column1._v[0];x[1]=column1._v[1];x[2]=column1._v[2];x[3]=column2._v[0];x[4]=column2._v[1];x[5]=column2._v[2];x[6]=column3._v[0];x[7]=column3._v[1];x[8]=column3._v[2];
+		x[0]=column1.xyz[0];x[1]=column1.xyz[1];x[2]=column1.xyz[2];x[3]=column2.xyz[0];x[4]=column2.xyz[1];x[5]=column2.xyz[2];x[6]=column3.xyz[0];x[7]=column3.xyz[1];x[8]=column3.xyz[2];
     }
 
     void Initialize_With_Column_Vectors(const Vec3f& column1,const Vec3f& column2,const Vec3f& column3)
-    {x[0]=column1._v[0];x[1]=column1._v[1];x[2]=column1._v[2];x[3]=column2._v[0];x[4]=column2._v[1];x[5]=column2._v[2];x[6]=column3._v[0];x[7]=column3._v[1];x[8]=column3._v[2];}
+    {x[0]=column1.xyz[0];x[1]=column1.xyz[1];x[2]=column1.xyz[2];x[3]=column2.xyz[0];x[4]=column2.xyz[1];x[5]=column2.xyz[2];x[6]=column3.xyz[0];x[7]=column3.xyz[1];x[8]=column3.xyz[2];}
 
     float& operator()(const int i,const int j)
     {assert(i > -1 && i < 3);assert(j > -1 && j < 3);return x[i+(j<<1)+j];}
@@ -90,7 +90,7 @@ public:
     {assert(a!=0);float s=1/a;return Mat3x3f(s*x[0],s*x[1],s*x[2],s*x[3],s*x[4],s*x[5],s*x[6],s*x[7],s*x[8]);}
     
     Vec3f operator*(const Vec3f& v) const // 9 mults, 6 adds
-    {return Vec3f(x[0]*v._v[0]+x[3]*v._v[1]+x[6]*v._v[2],x[1]*v._v[0]+x[4]*v._v[1]+x[7]*v._v[2],x[2]*v._v[0]+x[5]*v._v[1]+x[8]*v._v[2]);}
+    {return Vec3f(x[0]*v.xyz[0]+x[3]*v.xyz[1]+x[6]*v.xyz[2],x[1]*v.xyz[0]+x[4]*v.xyz[1]+x[7]*v.xyz[2],x[2]*v.xyz[0]+x[5]*v.xyz[1]+x[8]*v.xyz[2]);}
 
 /*    VECTOR_2D<T> operator*(const VECTOR_2D<T>& v) const // assumes w=1 is the 3rd coordinate of v
     {T w=x[2]*v.x+x[5]*v.y+x[8];assert(w!=0);
@@ -223,9 +223,9 @@ public:
 
     static Mat3x3f Rotation_Matrix(const Vec3f& axis,const float radians)
     {float c=cos(radians),s=sin(radians);
-	return Mat3x3f(axis._v[0]*axis._v[0]+(1-axis._v[0]*axis._v[0])*c,axis._v[0]*axis._v[1]*(1-c)+axis._v[2]*s,axis._v[0]*axis._v[2]*(1-c)-axis._v[1]*s,
-                                         axis._v[0]*axis._v[1]*(1-c)-axis._v[2]*s,axis._v[1]*axis._v[1]+(1-axis._v[1]*axis._v[1])*c,axis._v[1]*axis._v[2]*(1-c)+axis._v[0]*s,
-                                         axis._v[0]*axis._v[2]*(1-c)+axis._v[1]*s,axis._v[1]*axis._v[2]*(1-c)-axis._v[0]*s,axis._v[2]*axis._v[2]+(1-axis._v[2]*axis._v[2])*c);}
+	return Mat3x3f(axis.xyz[0]*axis.xyz[0]+(1-axis.xyz[0]*axis.xyz[0])*c,axis.xyz[0]*axis.xyz[1]*(1-c)+axis.xyz[2]*s,axis.xyz[0]*axis.xyz[2]*(1-c)-axis.xyz[1]*s,
+                                         axis.xyz[0]*axis.xyz[1]*(1-c)-axis.xyz[2]*s,axis.xyz[1]*axis.xyz[1]+(1-axis.xyz[1]*axis.xyz[1])*c,axis.xyz[1]*axis.xyz[2]*(1-c)+axis.xyz[0]*s,
+                                         axis.xyz[0]*axis.xyz[2]*(1-c)+axis.xyz[1]*s,axis.xyz[1]*axis.xyz[2]*(1-c)-axis.xyz[0]*s,axis.xyz[2]*axis.xyz[2]+(1-axis.xyz[2]*axis.xyz[2])*c);}
 
 /*    static Mat3x3f<T> Rotation_Matrix(const VECTOR_3D<T>& rotation)
     {T angle=rotation.Magnitude();return angle?Rotation_Matrix(rotation/angle,angle):Identity_Matrix();}
@@ -242,7 +242,7 @@ public:
     return Rotation_Matrix(axis,acos(cos_theta));} */
 
     static Mat3x3f Outer_Product(const Vec3f& u,const Vec3f& v)
-    {return Mat3x3f(u._v[0]*v._v[0],u._v[1]*v._v[0],u._v[2]*v._v[0],u._v[0]*v._v[1],u._v[1]*v._v[1],u._v[2]*v._v[1],u._v[0]*v._v[2],u._v[1]*v._v[2],u._v[2]*v._v[2]);}
+    {return Mat3x3f(u.xyz[0]*v.xyz[0],u.xyz[1]*v.xyz[0],u.xyz[2]*v.xyz[0],u.xyz[0]*v.xyz[1],u.xyz[1]*v.xyz[1],u.xyz[2]*v.xyz[1],u.xyz[0]*v.xyz[2],u.xyz[1]*v.xyz[2],u.xyz[2]*v.xyz[2]);}
 
     static float Inner_Product(const Mat3x3f& A,const Mat3x3f& B)
     {return A.x[0]*B.x[0]+A.x[1]*B.x[1]+A.x[2]*B.x[2]+A.x[3]*B.x[3]+A.x[4]*B.x[4]+A.x[5]*B.x[5]+A.x[6]*B.x[6]+A.x[7]*B.x[7]+A.x[8]*B.x[8];}
@@ -310,7 +310,7 @@ inline Mat3x3f operator*(const float a,const Mat3x3f& A)
 {return A*a;}
 
 inline Vec3f operator*(const Vec3f& v,const Mat3x3f& A)
-{return Vec3f(v._v[0]*A.x[0]+v._v[1]*A.x[1]+v._v[2]*A.x[2],v._v[0]*A.x[3]+v._v[1]*A.x[4]+v._v[2]*A.x[5],v._v[0]*A.x[6]+v._v[1]*A.x[7]+v._v[2]*A.x[8]);}
+{return Vec3f(v.xyz[0]*A.x[0]+v.xyz[1]*A.x[1]+v.xyz[2]*A.x[2],v.xyz[0]*A.x[3]+v.xyz[1]*A.x[4]+v.xyz[2]*A.x[5],v.xyz[0]*A.x[6]+v.xyz[1]*A.x[7]+v.xyz[2]*A.x[8]);}
 
 //inline Mat3x3f operator*(const DIAGONAL_Mat3x3f<T>& A,const Mat3x3f<T>& B)
 //{return Mat3x3f<T>(A.x11*B.x[0],A.x22*B.x[1],A.x33*B.x[2],A.x11*B.x[3],A.x22*B.x[4],A.x33*B.x[5],A.x11*B.x[6],A.x22*B.x[7],A.x33*B.x[8]);}

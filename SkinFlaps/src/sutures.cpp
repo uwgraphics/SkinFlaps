@@ -10,7 +10,7 @@
 #include <Vec3d.h>
 #include "materialTriangles.h"
 #include "vnBccTetrahedra.h"
-#include "deepCut.h"
+// #include "deepCut.h"
 #include "surgicalActions.h"
 #include "GLmatrices.h"
 // #include <tbb/task_arena.h>
@@ -89,19 +89,19 @@ void sutures::updateSutureGraphics()
 		v = sut->_tri->vertexCoordinate(tri[sut->_edges[0]]);
 		v2 = sut->_tri->vertexCoordinate(tri[(sut->_edges[0]+1)%3]);
 		for(int i=0; i<3; ++i)
-			v0._v[i]=v2[i]*sut->_params[0] + v[i]*(1.0f-sut->_params[0]);
+			v0.xyz[i]=v2[i]*sut->_params[0] + v[i]*(1.0f-sut->_params[0]);
 		tri = sut->_tri->triangleVertices(sut->_tris[1]);
 		v = sut->_tri->vertexCoordinate(tri[sut->_edges[1]]);
 		v2 = sut->_tri->vertexCoordinate(tri[(sut->_edges[1]+1)%3]);
 		for(int i=0; i<3; ++i)
-			v1._v[i]=v2[i]*sut->_params[1] + v[i]*(1.0f-sut->_params[1]);
+			v1.xyz[i]=v2[i]*sut->_params[1] + v[i]*(1.0f-sut->_params[1]);
 		GLfloat sSize = _sutureSize;
 		if (sut->_type < 2)
 			sSize *= 2.0f;
 		scaleMatrix4x4(mm, sSize, sSize, sSize);
-		sut->_v1[0]=v1._v[0]; sut->_v1[1]=v1._v[1]; sut->_v1[2]=v1._v[2];
+		sut->_v1[0]=v1.xyz[0]; sut->_v1[1]=v1.xyz[1]; sut->_v1[2]=v1.xyz[2];
 		p = (v0+v1)*0.5f;
-		translateMatrix4x4(mm,p._v[0],p._v[1],p._v[2]);
+		translateMatrix4x4(mm,p.xyz[0],p.xyz[1],p.xyz[2]);
 		mm = sut->getCylinderShape()->getModelViewMatrix();
 		loadIdentity4x4(mm);
 		dv = v0-v1;
@@ -110,11 +110,11 @@ void sutures::updateSutureGraphics()
 		if(len<1e-16f)
 			;
 		else	{
-			float qAxis[3]={-dv._v[1]/len,dv._v[0]/len,0.0f};	// normalized dvXj
-			len = acos(dv._v[2]/len);
+			float qAxis[3]={-dv.xyz[1]/len,dv.xyz[0]/len,0.0f};	// normalized dvXj
+			len = acos(dv.xyz[2]/len);
 			axisAngleRotateMatrix4x4(mm,qAxis,len);
 		}
-		translateMatrix4x4(mm,p._v[0],p._v[1],p._v[2]);
+		translateMatrix4x4(mm,p.xyz[0],p.xyz[1],p.xyz[2]);
 		++sit;
 	}
 }
@@ -141,7 +141,7 @@ void sutures::setSecondVertexPosition(int sutureNumber, float *position)
 	v = sut->_tri->vertexCoordinate(tri[sut->_edges[0]]);
 	v2 = sut->_tri->vertexCoordinate(tri[(sut->_edges[0]+1)%3]);
 	for(int i=0; i<3; ++i)
-		v0._v[i]=v2[i]*sut->_params[0] + v[i]*(1.0f-sut->_params[0]);
+		v0.xyz[i]=v2[i]*sut->_params[0] + v[i]*(1.0f-sut->_params[0]);
 	GLfloat sSize = _sutureSize;
 	if (sut->_type < 2)
 		sSize *= 2.0f;
@@ -149,11 +149,11 @@ void sutures::setSecondVertexPosition(int sutureNumber, float *position)
 	loadIdentity4x4(mm);
 	scaleMatrix4x4(mm,sSize, sSize, sSize);
 	sut->_v1[0]=position[0]; sut->_v1[1]=position[1]; sut->_v1[2]=position[2];
-	p[0]=(v0._v[0]+position[0])*0.5f; p[1]=(v0._v[1]+position[1])*0.5f; p[2]=(v0._v[2]+position[2])*0.5f;
+	p[0]=(v0.xyz[0]+position[0])*0.5f; p[1]=(v0.xyz[1]+position[1])*0.5f; p[2]=(v0.xyz[2]+position[2])*0.5f;
 	translateMatrix4x4(mm,p[0],p[1],p[2]);
 	mm = sut->getCylinderShape()->getModelViewMatrix();
 	loadIdentity4x4(mm);
-	dv[0]=v0._v[0]-position[0]; dv[1]=v0._v[1]-position[1]; dv[2]=v0._v[2]-position[2];
+	dv[0]=v0.xyz[0]-position[0]; dv[1]=v0.xyz[1]-position[1]; dv[2]=v0.xyz[2]-position[2];
 	len = dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2];
 	len = sqrt(len);
 	scaleMatrix4x4(mm, sSize*0.5f, sSize*0.5f, len*0.5f);
@@ -184,14 +184,18 @@ int sutures::setSecondEdge(int sutureNumber, materialTriangles *tri, int triangl
 	if (tri == sit->second._tri)	{	// true for now. May change later.
 		Vec3f bw, gridLocus;
 		for (int i = 0; i < 2; ++i){
-			sit->second._tetIdx[i] = _dc->parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], gridLocus);
+
+			sit->second._tetIdx[i] = parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], sit->second._baryWeights[i]);  // COURT temporary multires fix
+
+
+/*			sit->second._tetIdx[i] = _dc->parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], gridLocus);
 			if (sit->second._tetIdx[i] < 0){
 				--_sutureNow;
 				assert(_sutureNow == sutureNumber);
 				deleteSuture(sutureNumber);
 				return 2;
 			}
-			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(sit->second._tetIdx[i]), sit->second._baryWeights[i]);
+			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(sit->second._tetIdx[i]), sit->second._baryWeights[i]); */
 		}
 		if (_ptp->solverInitialized())
 			sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));
@@ -209,14 +213,18 @@ void sutures::updateSuturePhysics(){  // call after a topology change
 		Vec3f bw, gridLocus;
 		int i;
 		for (i = 0; i < 2; ++i){
-			sit->second._tetIdx[i] = _dc->parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], gridLocus);
+
+			sit->second._tetIdx[i] = parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], sit->second._baryWeights[i]);  // COURT temporary multires fix
+
+
+/*/			sit->second._tetIdx[i] = _dc->parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], gridLocus);
 			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(sit->second._tetIdx[i]), bw);
 			if (sit->second._tetIdx[i] < 0){
 				++sit;
 				deleteSuture(sutNow);
 				break;
 			}
-			sit->second._baryWeights[i].set(bw._v);  // COURT - old bw was likely fine. Only tetIdx can change
+			sit->second._baryWeights[i].set(bw.xyz);  // COURT - old bw was likely fine. Only tetIdx can change */
 		}
 		if (i < 2)
 			sit = _sutures.erase(sit);
@@ -486,9 +494,9 @@ void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &
 {  // problem with this routine is that, in the absence of collisions, overlap can occur so simple nearest spatial incision point won't work with suture always finding same side of skin edge.
 	// This overlap impossible in material coords, but since opposing incision edges are identical must disambiguate with incision edge normal.
 	// Once closest material coords edge found, do edge neighbor search in spatial coords for correction.
-	materialTriangles *mt = _dc->getMaterialTriangles();
+	materialTriangles *mt = _vbt->getMaterialTriangles();
 	Vec3f gridLocus, startLocus;
-	int *tr = mt->triangleVertices(triangle);
+	const int *tr = mt->triangleVertices(triangle);
 	_vbt->vertexGridLocus(tr[0], gridLocus);
 	startLocus = gridLocus * (1.0f - triUv[0] - triUv[1]);
 	for(int i = 0; i < 2; ++i) {
@@ -503,7 +511,7 @@ void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &
 		unsigned int adj = mt->triAdjs(i)[0];
 		if (mt->triangleMaterial(adj >> 2) != 2)
 			continue;
-		int *tr = mt->triangleVertices(i);
+		const int *tr = mt->triangleVertices(i);
 		Vec3f v0, v1;
 		_vbt->vertexGridLocus(tr[0], v0);
 		_vbt->vertexGridLocus(tr[1], v1);
@@ -534,6 +542,18 @@ void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &
 	param = bestParam;
 	return;
 }
+
+
+
+int sutures::parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f& baryWeight) {  // COURT - temporary hack for multires tets
+	const materialTriangles *mt = _vbt->getMaterialTriangles();
+	int v = mt->triangleVertices(triangle)[param < 0.5f ? edge : (edge + 1) % 3];
+	baryWeight = *_vbt->getVertexWeight(v);
+	return _vbt->getVertexTetrahedron(v);
+}
+
+
+
 
 
 sutures::sutures()

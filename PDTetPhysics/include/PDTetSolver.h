@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include "GridDeformerTet.h"
 #ifdef USE_CUDA
 #include "CudaSolver.h"
@@ -43,6 +44,10 @@ private:
 
 	bool hasCollision = false;
 
+	std::vector<int> invalidNodes;
+	std::vector<std::vector<int>> invalidEmbedding;
+	std::vector<std::vector<float>> invalidWeights;
+
 public:
 
 	inline T* getPositionPtr() {
@@ -81,7 +86,18 @@ public:
 	void initializeDeformer(const int (*elements)[d+1], const T (*x)[d], const size_t nEls, const size_t nNodes);
 
 	void initializeDeformer(const int(*elements)[d + 1], const size_t nEls, const T tetSize);
-	
+
+
+
+	// COURT added these 2 functions for multiresolution physics
+	void initializeDeformer_multires(const int(*elements)[d + 1], const uint8_t *tetSizeMultipliers, const size_t nEls, const T gridSize);
+	int addInterNodeConstraint(const int microNode, int nMacros, const int* macroNodes, const T* macroWeights, const T stiffness);
+
+
+
+
+	int addInterNodeConstraint(const int microNode, const int(&macroNodes)[d], const T(&barycentricWeight)[d], const T stiffness);
+
 	int addConstraint(const long tet, const T(&barycentricWeight)[d], const T(&hookPosition)[d], const T stiffness, const T limit = std::numeric_limits<T>::max());  // returns constraint index
 
 	int addConstraint(const int (&index)[d+1], const T(&barycentricWeight)[d], const T(&hookPosition)[d], const T stiffness, const T limit = std::numeric_limits<T>::max());  // returns constraint index

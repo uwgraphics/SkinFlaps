@@ -13,6 +13,9 @@
 #include "surgGraphics.h"
 #include "gl3wGraphics.h"
 
+bool gl3wGraphics::mouseWheelZoom = true;
+float gl3wGraphics::mouseWheelLevel = 500.0f;
+
 bool gl3wGraphics::addCustomSceneNode(std::shared_ptr<sceneNode>& sn, std::vector<int> &txIds, const GLchar *vertexShader, const GLchar *fragmentShader, std::vector<std::string> &attributes)
 {  // assumes textures loaded already and input in txIds
 	std::sort(txIds.begin(), txIds.end());
@@ -92,10 +95,9 @@ void gl3wGraphics::mouseButtonEvent(unsigned short screenX, unsigned short scree
             (_ySize - 2.0f*screenY)    / _ySize);
 			_tBall.add_quats(spin_quat, _rotQuat, _rotQuat);
 		}
-		else if(button>1)	{	// rightMouse
-//			if ( abs(_lastY - screenY) < 10)  // too short a redraw interval to change anything
-//				return;
-			_glM.changeZoom((float)(_lastY-screenY)/_ySize);
+		else if (button > 1) {	// rightMouse
+			if (!mouseWheelZoom)
+				_glM.changeZoom((float)(_lastY - screenY) / _ySize);
 		}
 		else	{	// middleMouse
 			_glM.setPan((float)(_lastX-screenX)/_xSize,(float)(screenY-_lastY)/_ySize);
@@ -121,7 +123,7 @@ gl3wGraphics::~gl3wGraphics()
 
 void gl3wGraphics::drawAll()
 {
-	// This is normally only necessary if there is more than one wxGLCanvas
+	// This next line is normally only necessary if there is more than one wxGLCanvas
     // or more than one wxGLContext in the application.
     //SetCurrent(*m_glRC);
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -131,7 +133,7 @@ void gl3wGraphics::drawAll()
 	_glM.setFrameAndRotation(&m[0][0]);
 //	std::list<sceneNode*>::iterator nit;
 	GLuint currentProgram=0;
-	for(auto nit=_nodes.begin(); nit!=_nodes.end(); ++nit)	{ // textured TRIANGLES will always happen first
+	for(auto nit = _nodes.begin(); nit != _nodes.end(); ++nit)	{ // textured TRIANGLES will always happen first
 		if (!(*nit)->visible)  continue;
 		if((*nit)->getGlslProgramNumber()!=currentProgram) {
 			currentProgram=(*nit)->getGlslProgramNumber();

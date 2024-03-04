@@ -65,7 +65,7 @@ void PDTetSolver<T, d>::initializeSolver()
 {
 	using IteratorType = typename DeformerType::IteratorType;
 	m_gridDeformer.deallocateAuxiliaryStructures();
-	m_gridDeformer.initializeCollisionElements();
+	m_gridDeformer.initializeElementFlags();
 	m_gridDeformer.initializeAuxiliaryStructures();
 	if (m_gridDeformer.m_collisionConstraints.size()||m_gridDeformer.m_collisionSutures.size()) {
 		hasCollision = true;
@@ -76,11 +76,11 @@ void PDTetSolver<T, d>::initializeSolver()
 		m_solver_c.deallocate();
 
 		m_solver_c.initialize(m_gridDeformer.m_nodeType); // initialzie
-		m_solver_c.computeTensor(m_gridDeformer.m_elements, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muLow, m_gridDeformer.m_muHigh, m_gridDeformer.m_sutures); // computeTensor
+		m_solver_c.computeTensor(m_gridDeformer.m_elements, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muLow, m_gridDeformer.m_muHigh, m_gridDeformer.m_sutures, m_gridDeformer.m_InternodeConstraints); // computeTensor
 #ifdef USE_CUDA
 		m_solver_c.computeE2Tensor(m_gridDeformer.m_elements, m_gridDeformer.m_elementFlags, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muHigh[0] * (1 + m_weightProportion * m_weightProportion)); // computeE2Tensor
 #endif
-		m_solver_c.initializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures); // init pardiso
+		m_solver_c.initializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures, m_gridDeformer.m_InternodeConstraints); // init pardiso
 #ifdef USE_CUDA
 		m_solver_c.initializeCuda(m_gridDeformer.m_collisionConstraints, m_gridDeformer.m_collisionSutures); // init Cuda
 		std::cout << "using CudaSolver with nInner = " << m_nInner << std::endl;
@@ -94,8 +94,8 @@ void PDTetSolver<T, d>::initializeSolver()
 		m_solver_d.deallocate();
 
 		m_solver_d.initialize(m_gridDeformer.m_nodeType);
-		m_solver_d.computeTensor(m_gridDeformer.m_elements, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muHigh[0] * (1 + m_weightProportion * m_weightProportion), m_gridDeformer.m_sutures);
-		m_solver_d.initializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures);
+		m_solver_d.computeTensor(m_gridDeformer.m_elements, m_gridDeformer.m_gradientMatrix, m_gridDeformer.m_elementRestVolume, m_gridDeformer.m_muHigh[0] * (1 + m_weightProportion * m_weightProportion), m_gridDeformer.m_sutures, m_gridDeformer.m_InternodeConstraints);
+		m_solver_d.initializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures, m_gridDeformer.m_InternodeConstraints);
 		std::cout << "using DirectSolver" << std::endl;
 	}
 }
@@ -104,13 +104,13 @@ template<class T, int d>
 void PDTetSolver<T, d>::reInitializeSolver()
 {
 	if (hasCollision) {
-		m_solver_c.reInitializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures);
+		m_solver_c.reInitializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures, m_gridDeformer.m_InternodeConstraints);
 #ifdef USE_CUDA
 		m_solver_c.reInitializeCuda(m_gridDeformer.m_collisionConstraints, m_gridDeformer.m_collisionSutures);
 #endif
 	}
 	else {
-		m_solver_d.reInitializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures);
+		m_solver_d.reInitializePardiso(m_gridDeformer.m_constraints, m_gridDeformer.m_sutures, m_gridDeformer.m_fakeSutures, m_gridDeformer.m_InternodeConstraints);
 	}
 }
 
@@ -298,8 +298,14 @@ void PDTetSolver<T, d>::solve()
 	}
 
 	for (IteratorType i(delta_X); !i.isEnd(); i.next())
-		if (i.value(m_gridDeformer.m_nodeType) == NodeType::Inactive)
-			i.value(delta_X) = VectorType();
+	 	if (i.value(m_gridDeformer.m_nodeType) == NodeType::Inactive)
+	 		i.value(delta_X) = VectorType();
+	for (int i = 0; i < invalidNodes.size(); ++i) {
+		m_gridDeformer.m_X[invalidNodes[i]] = VectorType();
+		for (int j = 0; j < invalidEmbedding[i].size(); ++j) {
+			m_gridDeformer.m_X[invalidNodes[i]] += invalidWeights[i][j] * m_gridDeformer.m_X[invalidEmbedding[i][j]];
+		}
+	}
 }
 
 template<class T, int d>
@@ -442,6 +448,10 @@ inline void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], c
 	m_gridDeformer.m_collisionConstraints.clear();
 	m_gridDeformer.m_sutures.clear();
 	m_gridDeformer.m_collisionSutures.clear();
+	m_gridDeformer.m_InternodeConstraints.clear();
+	invalidNodes.clear();
+	invalidEmbedding.clear();
+	invalidWeights.clear();
 
 
 	m_gridDeformer.m_X.resize(nNodes);
@@ -483,7 +493,7 @@ void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], const si
 	m_gridDeformer.m_sutures.clear();
 	m_gridDeformer.m_fakeSutures.clear();
 	m_gridDeformer.m_collisionSutures.clear();
-
+	m_gridDeformer.m_InternodeConstraints.clear();
 
 	int nNodes = 0;
 	m_gridDeformer.m_elements.resize(nEls);
@@ -530,6 +540,98 @@ void PDTetSolver<T, d>::initializeDeformer(const int(*elements)[d + 1], const si
 		}
 	}
 
+}
+
+template<class T, int d>
+void PDTetSolver<T, d>::initializeDeformer_multires(const int(*elements)[d + 1], const uint8_t* tetSizeMultipliers, const size_t nEls, const T gridSize)  // COURT - new version for multires tets
+{
+	static_assert(d == 3, "this operation only support 3 dimension");
+	using namespace PhysBAM;
+	// m_gridDeformer.deallocate();
+	m_gridDeformer.m_constraints.clear();
+	m_gridDeformer.m_collisionConstraints.clear();
+	m_gridDeformer.m_sutures.clear();
+	m_gridDeformer.m_fakeSutures.clear();
+	m_gridDeformer.m_collisionSutures.clear();
+	m_gridDeformer.m_InternodeConstraints.clear();
+
+	int nNodes = 0;
+	m_gridDeformer.m_elements.resize(nEls);
+	m_gridDeformer.m_muLow.resize(nEls, m_weightProportion * m_weightProportion * m_uniformMu);
+	m_gridDeformer.m_muHigh.resize(nEls, m_uniformMu);
+	m_gridDeformer.m_rangeMin.resize(nEls, m_rangeMin);
+	m_gridDeformer.m_rangeMax.resize(nEls, m_rangeMax);
+	for (int i = 0; i < nEls; i++)
+		for (int v = 0; v < d + 1; v++) {
+			m_gridDeformer.m_elements[i][v] = elements[i][v];
+			if (elements[i][v] > nNodes)
+				nNodes = elements[i][v];
+		}
+	nNodes++;
+	m_gridDeformer.m_X.resize(nNodes);
+	m_gridDeformer.m_nodeType.resize(nNodes);
+#if 0
+	for (int i = 0; i < nEls; i++)
+		for (int v = 0; v < d + 1; v++)
+			m_gridDeformer.m_nodeType[elements[i][v]] = NodeType::Active;
+#else
+	for (int i = 0; i < nNodes; i++)
+		m_gridDeformer.m_nodeType[i] = NodeType::Active;
+#endif
+
+#if 0
+	// make sure all nodes in x are active
+	for (int i = 0; i < nNodes; i++)
+		if (m_gridDeformer.m_nodeType[i] != NodeType::Active || m_gridDeformer.m_nodeType[i] != NodeType::Collision)
+			throw std::logic_error("node not active");
+	// assert(m_gridDeformer.m_nodeType[i] == NodeType::Active);
+#endif
+
+
+	m_gridDeformer.initializeDeformer();
+	{
+		m_gridDeformer.m_gradientMatrix.resize(nEls);
+		m_gridDeformer.m_elementRestVolume.resize(nEls);
+		for (int i = 0; i < nEls; i++) {
+			T sizeMult(tetSizeMultipliers[i]);
+			for (int v = 0; v < d; v++)
+				for (int w = 0; w < d; w++)
+					m_gridDeformer.m_gradientMatrix[i](v + 1, w + 1) = ::bccDmInv[(size_t)w * d + v] / (T(gridSize) * sizeMult);
+			m_gridDeformer.m_elementRestVolume[i] = T(::vol) * gridSize * gridSize * gridSize *sizeMult* sizeMult* sizeMult;  // COURT here
+		}
+	}
+}
+
+template<class T, int d>
+int PDTetSolver<T, d>::addInterNodeConstraint(const int microNode, int nMacros, const int *macroNodes, const T *macroWeights, const T stiffness) // Qisi: nodes that are actually completely internal
+{
+	m_gridDeformer.m_nodeType[microNode] = NodeType::Inactive;
+	std::vector<int> macroN;
+	std::vector<T> macroW;
+
+	for (int i = 0; i < nMacros; ++i) {
+		macroN.push_back(macroNodes[i]);
+		macroW.push_back(macroWeights[i]);
+	}
+	invalidEmbedding.push_back(macroN);
+	invalidWeights.push_back(macroW);
+	invalidNodes.push_back(microNode);
+
+	return invalidEmbedding.size() - 1;
+}
+
+template<class T, int d>
+int PDTetSolver<T, d>::addInterNodeConstraint(const int microNode, const int (&macroNodes)[d], const T(&barycentricWeight)[d],  const T stiffness) // COURT added 
+{
+	typename DeformerType::InternodeConstraint inC{};
+	inC.m_microNodeNumber = microNode;
+	inC.m_stiffness = stiffness;
+	for (int v = 0; v < d; v++)
+		inC.m_macroNodes[v] = macroNodes[v];
+	for (int v = 0; v < d; v++)
+		inC.m_macroWeights[v] = barycentricWeight[v];
+	m_gridDeformer.m_InternodeConstraints.push_back(inC);
+	return (int)m_gridDeformer.m_InternodeConstraints.size() - 1;
 }
 
 /* template<class T, int d>

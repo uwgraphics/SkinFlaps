@@ -1,141 +1,111 @@
 #include <assert.h>
 #include <set>
+#include <algorithm>
+#include "materialTriangles.h"
 #include "remapTetPhysics.h"
 
 void remapTetPhysics::getOldPhysicsData(vnBccTetrahedra *oldVnbt)
 {
 	_oldNodePositions.clear();
 	_oldNodePositions.reserve(oldVnbt->nodeNumber());
-	for (int n = oldVnbt->nodeNumber(), i = 0; i < n; ++i)
-		_oldNodePositions.push_back(oldVnbt->_nodeSpatialCoords[i]);
-//	_oldNodePositions = std::move(oldVnbt->_nodeSpatialCoords);
-	_oldFixedNodes.clear();
-	_oldFixedNodes.assign(oldVnbt->_fixedNodes.begin(), oldVnbt->_fixedNodes.end());
+//	_oldNodeLocs.clear();
+//	_oldNodeLocs.reserve(oldVnbt->nodeNumber());
+	for (int n = oldVnbt->nodeNumber(), i = 0; i < n; ++i) {
+//		const Vec3f& nsc = oldVnbt->nodeSpatialCoordinate(i);
+		_oldNodePositions.push_back(oldVnbt->nodeSpatialCoordinate(i));
+//		_oldNodeLocs.insert(std::make_pair(oldVnbt->_nodeGridLoci[i], nsc));
+	}
 	_oldTets.clear();
 	_oldTets.assign(oldVnbt->_tetNodes.begin(), oldVnbt->_tetNodes.end());  // just copy these as remakeNewTets() needs them.
-	_oldCentroids.clear();
-	_oldCentroids = std::move(oldVnbt->_tetCentroids);
+	_oldNodes.clear();
+	_oldNodes.assign(oldVnbt->_nodeGridLoci.begin(), oldVnbt->_nodeGridLoci.end());
 	_oldTetHash.clear();
 	_oldTetHash = std::move(oldVnbt->_tetHash);
-	_oldVertexTets.clear();
-	_oldVertexTets.assign(oldVnbt->_vertexTets.begin(), oldVnbt->_vertexTets.end());  // just copy these as remakeNewTets() needs them.
+//	_oldTetHash.insert(oldVnbt->_tetHash.begin(), oldVnbt->_tetHash.end());
+	_oldSurfaceTetLocs = std::move(_newSurfaceTetLocs);
+	materialTriangles* mt = oldVnbt->getMaterialTriangles();
+	for (auto& vtl : _oldSurfaceTetLocs)
+		mt->getVertexCoordinate(vtl.second.vertex, vtl.second.loc.xyz);
 }
 
 void remapTetPhysics::remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt)
-{  // all new physics nodes are clones of old ones.  After a pure topo change their spatial positions will remain identical as no new forces have yet been applied.
-	std::vector<int> newToOldTets;
-	newToOldTets.assign(newVnbt->tetNumber(), -1);
-	std::vector<char> oldTetsUsed;
-	oldTetsUsed.assign(_oldTets.size(), 0);
-	for (int n = _oldVertexTets.size(), j, i = 0; i < n; ++i){  // new verts won't have an identical old correspondence
-		// quickest first by using old vertex correspondence
-		j = _oldVertexTets[i];
-		if (j < 0)  		// handles deleted vertices after an excise
-			continue;
-		oldTetsUsed[j] = 1;
-		if (newToOldTets[newVnbt->_vertexTets[i]] < 0)
-			newToOldTets[newVnbt->_vertexTets[i]] = j;
-		else{
-			if (newToOldTets[newVnbt->_vertexTets[i]] != j)
-				int junk = 0;
-	//		assert(newToOldTets[newVnbt->_vertexTets[i]] == j);
+{  // with new multires tet formulation all new physics nodes are no longer clones of old ones following decimation.
+	// new low end nodes may be subnodes of larger tets.  Multithread?
+	materialTriangles *mt = newVnbt->getMaterialTriangles();
+	for (auto& vtl : _newSurfaceTetLocs)
+		mt->getVertexCoordinate(vtl.second.vertex, vtl.second.loc.xyz);
+	std::vector<char> nodes(newVnbt->_nodeGridLoci.size(), 0x00);
+	for (int n = newVnbt->_tetNodes.size(), i = 0; i < n; ++i) {
+		auto tc = newVnbt->_tetCentroids[i];
+		const auto& tn = newVnbt->_tetNodes[i];
+		auto pr = _oldTetHash.equal_range(tc);
+		int level = 1;
+		bool sameSize = true;
+		while (pr.first == pr.second && level <= newVnbt->_tetSubdivisionLevels) {
+			sameSize = false;
+			tc = newVnbt->centroidUpOneLevel(tc);
+			++level;
+			pr = _oldTetHash.equal_range(tc);
 		}
-	}
-	// next find singleton unused old tets and assign to new matching centroid tets
-	for (int n = oldTetsUsed.size(), i = 0; i < n; ++i){
-		if (oldTetsUsed[i])
-			continue;
-		auto npair = _oldTetHash.equal_range(_oldCentroids[i].ll);
-		if (std::distance(npair.first, npair.second) != 1){
-			continue;
+		assert(level < 5);
+		if (std::distance(pr.first, pr.second) > 1) {  // origin was virtual noded level 1 tet.
+			assert(sameSize);  // new tet must also be level 1
+			auto ntl = _newSurfaceTetLocs.find(i);
+			assert(ntl != _newSurfaceTetLocs.end());
+			int bestOldTet = -1;
+			float dsq, minD = FLT_MAX;
+			while (pr.first != pr.second) {
+				auto otl = _oldSurfaceTetLocs.find(pr.first->second);
+				assert(otl != _oldSurfaceTetLocs.end());
+				dsq = (otl->second.loc - ntl->second.loc).length2();
+				// unfortunately incisions can change triangles so they can't always be used for a match, but when they do dsq == 0
+				if (dsq < 1e-5f) {
+					bestOldTet = pr.first->second;
+					break;
+				}
+				if (minD > dsq) {
+					minD = dsq;
+					bestOldTet = pr.first->second;
+				}
+				++pr.first;
+			}
+			auto& oN = _oldTets[bestOldTet];
+			for (int j = 0; j < 4; ++j) {
+				if (nodes[tn[j]])
+					continue;
+				nodes[tn[j]] = 1;
+				newVnbt->_nodeSpatialCoords[tn[j]] = _oldNodePositions[oN[j]];
+			}
 		}
-		oldTetsUsed[i] = 1;  // ? nuke as not used anymore
-		npair = newVnbt->_tetHash.equal_range(_oldCentroids[i].ll);
-		// deleted cube from an excise operation can leave npair.first == npair.second
-		while (npair.first != npair.second){
-			if (newToOldTets[npair.first->second] < 0)
-				newToOldTets[npair.first->second] = i;
+		else if (pr.first != pr.second) {
+			auto& oN = _oldTets[pr.first->second];
+			if (sameSize) {
+				for (int j = 0; j < 4; ++j) {
+					if (nodes[tn[j]])
+						continue;
+					nodes[tn[j]] = 1;
+					newVnbt->_nodeSpatialCoords[tn[j]] = _oldNodePositions[oN[j]];
+				}
+			}
 			else {
-				if (newToOldTets[npair.first->second] != i)
-					int junk = 0;
-				//		assert(newToOldTets[newVnbt->_vertexTets[i]] == j);
-			}
-			++npair.first;
-		}
-	}
-	// get correspondence between new and old physics nodes found so far
-	_newToOldNodes.assign(newVnbt->nodeNumber(), -1);
-	for (int n = newToOldTets.size(), j, i = 0; i < n; ++i){
-		if (newToOldTets[i] < 0)
-			continue;
-		int *oldNodes = _oldTets[newToOldTets[i]].data(), *newNodes = newVnbt->_tetNodes[i].data();
-		for(j=0; j<4; ++j){
-			if (_newToOldNodes[newNodes[j]] < 0)
-				_newToOldNodes[newNodes[j]] = oldNodes[j];
-			else{  // above two tests pass, but this fails frequently
-				int junk = 0;
-				//				assert(oldNodes[j] == _newToOldNodes[newNodes[j]]);
-			}
-		}
-	}
-	// remaining original tets are intersected by the trianglulated surface, but don't contain a vertex
-	for (int n = newToOldTets.size(), i = 0; i < n; ++i){
-		if (newToOldTets[i] > -1)
-			continue;
-		int *newNodes = newVnbt->_tetNodes[i].data();
-		auto npair = _oldTetHash.equal_range(newVnbt->_tetCentroids[i].ll);
-		assert(npair.first != npair.second);
-		int *oldN;
-		if (std::distance(npair.first, npair.second) == 1){  // this singleton match is certain. Always replace.
-			oldN = _oldTets[npair.first->second].data();  // this singleton old tet was used for the _vertexTet match in the beginning
-			for (int j = 0; j < 4; ++j){
-#ifdef _DEBUG
-//				if (_newToOldNodes[newNodes[j]] > -1)
-//					assert(_newToOldNodes[newNodes[j]] == oldN[j]);
-#endif
-				_newToOldNodes[newNodes[j]] = oldN[j];
-			}
-		}
-		else{
-			// find best matched old cube. Last resort only replace node correspondence if desperate.
-			int matched, bestOldCube, nMatched = -1;
-			while (npair.first != npair.second){
-				oldN = _oldTets[npair.first->second].data();
-				matched = 0;
-				for (int j = 0; j < 4; ++j){
-					if (oldN[j] == _newToOldNodes[newNodes[j]])
-						++matched;
+				for (int j = 0; j < 4; ++j) {
+					if (nodes[tn[j]])
+						continue;
+					nodes[tn[j]] = 1;
+					Vec3f nodeLocus((const short(&)[3]) * newVnbt->_nodeGridLoci[tn[j]].data());
+					Vec3f bw, C;
+					newVnbt->gridLocusToBarycentricWeight(nodeLocus, tc, bw);
+					C = _oldNodePositions[oN[0]] * (1.0f - bw[0] - bw[1] - bw[2]);
+					C += _oldNodePositions[oN[1]] * bw[0];
+					C += _oldNodePositions[oN[2]] * bw[1];
+					C += _oldNodePositions[oN[3]] * bw[2];
+					newVnbt->_nodeSpatialCoords[tn[j]] = C;
 				}
-				if (matched > nMatched){
-					nMatched = matched;
-					bestOldCube = npair.first->second;
-				}
-				++npair.first;
-			}
-			assert(nMatched > 0);
-			oldN = _oldTets[bestOldCube].data();
-			for (int j = 0; j < 4; ++j){
-				if (_newToOldNodes[newNodes[j]] < 0)  // use only if no better one has been found
-					_newToOldNodes[newNodes[j]] = oldN[j];
 			}
 		}
+		else  // only doing further topo refinements during surgical simulation
+			throw(std::logic_error("Logic error in remapTetPhysics.\n"));
 	}
-	_oldTets.clear();
-	_oldCentroids.clear();
-	_oldTetHash.clear();
-	_oldVertexTets.clear();
-}
-
-void remapTetPhysics::restoreOldNodePositions(vnBccTetrahedra *newVnbt)
-{
-	// can't set new physics node fixation state.  Only old and new node positions match up after incisions, no real node corespondence.
-	// move new physics nodes to their last spatial position
-	for (int n = _newToOldNodes.size(), i = 0; i < n; ++i){
-		assert(_newToOldNodes[i] > -1);
-		newVnbt->_nodeSpatialCoords[i].set(_oldNodePositions[_newToOldNodes[i]]);
-	}
-	_newToOldNodes.clear();
-	_oldNodePositions.clear();
 }
 
 remapTetPhysics::remapTetPhysics()

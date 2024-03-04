@@ -262,6 +262,13 @@ public:
 			;
 	}
 
+	//		The callback function receives two - dimensional scroll offsets.
+	static void mouse_wheel_callback(GLFWwindow* window, double xoffset, double yoffset)
+	{ // The callback function receives two - dimensional scroll offsets.
+		if (wheelZoom)
+			igGl3w.mouseWheelEvent((float)yoffset);
+	}
+
 	static void window_size_callback(GLFWwindow* window, int width, int height)
 	{
 		windowWidth = width;
@@ -289,6 +296,7 @@ public:
 		igSurgAct.setGl3wGraphics(&igGl3w);
 		glfwSetMouseButtonCallback(FFwindow, &mouse_button_callback);
 		glfwSetCursorPosCallback(FFwindow, &cursor_position_callback);
+		glfwSetScrollCallback(FFwindow, mouse_wheel_callback);
 		glfwSetWindowSizeCallback(FFwindow, &window_size_callback);
 		glfwSetKeyCallback(FFwindow, &key_callback);
 		glfwGetFramebufferSize(FFwindow, &windowWidth, &windowHeight);
@@ -430,6 +438,16 @@ public:
 		user_message_flag = true;
 	}
 
+	static void handleThrow(const char* message) {
+		user_message = message;
+		std::string errHist = historyDirectory + "ERROR.hst";
+		igSurgAct.saveSurgicalHistory(errHist.c_str());
+		user_message.append("History to this point has been saved in ERROR.hst\n");
+		user_message_title = "Program exception thrown";
+		user_message_flag = true;
+		except_thrown_flag = true;
+	}
+
 	static void showHourglass() {
 		// from: https ://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples#Example-for-OpenGL-users
 		physicsDrag = true;
@@ -487,8 +505,9 @@ public:
 				modelDirectory = "C:\\Users\\SkinFlaps";
 			}
 			else {  // doing program building and testing
-				pos = modelDirectory.rfind("SkinFlaps");
-				modelDirectory.erase(modelDirectory.begin() + pos + 9, modelDirectory.end());
+				std::string projectFolder = "SkinFlaps";
+				pos = modelDirectory.rfind(projectFolder);  
+				modelDirectory.erase(modelDirectory.begin() + pos + projectFolder.size(), modelDirectory.end()); 
 				historyDirectory = modelDirectory;
 			}
 			modelDirectory.append("\\Model\\");
@@ -579,6 +598,19 @@ public:
 					else
 						igSurgAct.getBccTetScene()->setVisability(0, 2);
 				}
+				ImGui::Separator();
+				if (ImGui::BeginMenu("Zoom control"))
+				{
+					if (ImGui::MenuItem("Mouse Wheel", "", wheelZoom)) {
+						igGl3w.setMouseWheelZoom(true);
+						wheelZoom = true;
+					}
+					if (ImGui::MenuItem("Right Mouse", "", !wheelZoom)) {
+						igGl3w.setMouseWheelZoom(false);
+						wheelZoom = false;
+					}
+					ImGui::EndMenu();
+				}
 				ImGui::EndMenu();
 			}
 			ImGui::EndMainMenuBar();
@@ -635,8 +667,11 @@ public:
 		{
 			ImGui::Begin(user_message_title.c_str(), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);   // &user_message_flag  Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
 			ImGui::Text(user_message.c_str());
-			if (ImGui::Button("  Close  "))
+			if (ImGui::Button("  Close  ")) {
 				user_message_flag = false;
+				if (except_thrown_flag)
+					glfwSetWindowShouldClose(FFwindow, 1);
+			}
 			ImGui::End();
 		}
 		if (ImGuiFileDialog::Instance()->Display("FileDialogKey", ImGuiWindowFlags_NoCollapse, minFileDlgSize))  // , maxSize))
@@ -731,7 +766,7 @@ public:
 //	static std::string loadDir, loadFile;
 
 private:
-	static bool powerHooks, showToolbox, viewPhysics, viewSurface;
+	static bool powerHooks, showToolbox, viewPhysics, viewSurface, wheelZoom, except_thrown_flag;
 	static int csgToolstate;
 	static std::string historyDirectory, modelDirectory, objDirectory, modelFile, historyFile, user_message, user_message_title;
 	static unsigned char buttonsDown;

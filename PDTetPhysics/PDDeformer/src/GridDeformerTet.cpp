@@ -34,22 +34,22 @@ namespace PhysBAM {
             m_gradientMatrix.push_back(gradientMatrix);
             m_elementRestVolume.push_back(elementRestVolume);
         }
-#if 0
-        dumper::writeElementsByte<4>(m_elements);
-        dumper::writePositionsByte(m_X);
-#endif
     }
 
 	template<class dataType, int dim>
 	void GridDeformerTet<std::vector<VECTOR<dataType, dim>>>::initializeAuxiliaryStructures()
 	{
-		// allocate memory for reshaped data
+		 // dumper::writeElements(m_elements);
+		 // dumper::writePositions(m_X);
+
+	
+
 		int uncollisionSize = 0;
 		int collisionSize = 0;
 		for (const auto & f : m_elementFlags) {
 			if (f == ElementFlag::unCollisionEl) uncollisionSize++;
 			else if (f == ElementFlag::CollisionEl) collisionSize++;
-			else throw std::logic_error("elements must be either unCollisionEl or CollisionEl");
+			else if (f != ElementFlag::inActive) throw std::logic_error("elements must be inActive, unCollisionEl or CollisionEl");
 		}
 
 		m_nUncollisionBlocks = (uncollisionSize + (BlockWidth - 1)) / BlockWidth;
@@ -145,7 +145,7 @@ namespace PhysBAM {
 				m_reshapeCollisionRangeMin[numOfCollision / BlockWidth][numOfCollision % BlockWidth] = m_rangeMin[e];
 				numOfCollision++;
 			}
-			else throw std::logic_error("elements must be either unCollisionEl or CollisionEl");
+			else if(m_elementFlags[e] != ElementFlag::inActive) throw std::logic_error("elements must be inActive, unCollisionEl or CollisionEl");
 		}
 
 		// initialize auxiliary structure
@@ -172,7 +172,7 @@ namespace PhysBAM {
 				}
 				numOfCollision++;
 			}
-			else throw std::logic_error("elements must be either unCollisionEl or CollisionEl");
+			else if (m_elementFlags[e] != ElementFlag::inActive) throw std::logic_error("elements must be inActive, unCollisionEl or CollisionEl");
 		}
 
 		m_reshapeUncollisionIndicesOffsets.resize(m_X.size() + 1);
@@ -220,7 +220,7 @@ namespace PhysBAM {
 					m_reshapeCollisionElement[numOfCollision / BlockWidth][v][numOfCollision%BlockWidth] = m_elements[e][v];
 				numOfCollision++;
 			}
-			else throw std::logic_error("elements must be either unCollisionEl or CollisionEl");
+			else if (m_elementFlags[e] != ElementFlag::inActive) throw std::logic_error("elements must be inActive, unCollisionEl or CollisionEl");
 		}
 	}
 
@@ -324,7 +324,20 @@ namespace PhysBAM {
                 DiscretizationType::distributeForces(-x1, suture.m_elementIndex2, suture.m_weights2, f);
             }
         }
-
+#if 1
+		{
+			for (int c = 0; c < m_InternodeConstraints.size(); c++) {
+				const auto& nC = m_InternodeConstraints[c];
+				VectorType x1;
+				x1 = DiscretizationType::interpolateX(nC.m_macroNodes, nC.m_macroWeights, m_X);
+				auto x2 = m_X[nC.m_microNodeNumber];
+				x1 = x1 - x2;
+				x1 *= -nC.m_stiffness;
+				DiscretizationType::distributeForces(x1, nC.m_macroNodes, nC.m_macroWeights, f);
+				f[nC.m_microNodeNumber] -= x1;
+			}
+		}
+#endif
 		{
 			for (int c = 0; c < m_fakeSutures.size(); c+=2) {
 				VectorType x0, x1, x;
@@ -344,7 +357,7 @@ namespace PhysBAM {
     }
 
 	template<class dataType, int dim>
-	void GridDeformerTet<std::vector<VECTOR<dataType, dim>>>::initializeCollisionElements()
+	void GridDeformerTet<std::vector<VECTOR<dataType, dim>>>::initializeElementFlags()
 	{
 		for (int i = 0; i < m_elements.size(); i++) {
 			const auto& e = DiscretizationType::getElementIndex(m_elements[i]);
@@ -356,6 +369,15 @@ namespace PhysBAM {
 				}
 			if (isR2)
 				m_elementFlags[i] = ElementFlag::CollisionEl;
+		}
+
+		// remove element that has inactive nodes
+		for (int e = 0; e < m_elements.size(); ++e) {
+			for (const auto& v : m_elements[e])
+				if (m_nodeType[v] == NodeType::Inactive) {
+					m_elementFlags[e] = ElementFlag::inActive;
+					break;
+				}
 		}
 	}
 

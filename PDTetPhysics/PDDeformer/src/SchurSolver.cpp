@@ -74,8 +74,28 @@ namespace PhysBAM {
         }
     }
 
-   
 
+    template<class Discretization, class IntType>  // COURT added this debug subroutine to isolate Release only crash of physics thread
+    template<int elementNodesN>
+    inline void SchurSolver<Discretization, IntType>::
+        accumToTensor_debug(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix, const std::array<IndexType, elementNodesN>& elementIndex) {
+        using IteratorType = Iterator<NodeArrayType>;
+        for (int i = 0; i < elementNodesN; i++) {
+            int row = IteratorType::at(m_numbering, elementIndex[i]);
+            if (row >= 0) {
+                for (int j = 0; j < elementNodesN; j++) {
+                    int col = IteratorType::at(m_numbering, elementIndex[j]);
+                    if (col >= row) {
+                        if (m_tensor[row].find(col) == m_tensor[row].end())
+//                            ;
+                            m_tensor[row].insert(std::pair<int, T>(col, stiffnessMatrix(i + 1, j + 1)));
+                        else
+                            m_tensor[row][col] += stiffnessMatrix(i + 1, j + 1);
+                    }
+                }
+            }
+        }
+    }
 
 
 
@@ -230,8 +250,8 @@ namespace PhysBAM {
             const std::vector<ElementType>& elements,
             const std::vector<GradientMatrixType>& gradients,
             const std::vector<T>& restVol, const T mu,
-            //const std::vector<Constraint>& constraints, 
-            const std::vector<Suture>& sutures
+            const std::vector<Suture>& sutures,
+            const std::vector<InternodeConstraint>& microNodes
         ) {
 #if TIMING
         auto startStamp = std::chrono::steady_clock::now();
@@ -285,10 +305,31 @@ namespace PhysBAM {
             accumToTensor<elementNodes * 2>(stiffnessMatrix,
                 elementIndex);
         }
+
+        std::cout << "About to add microNode constraints in computeTensor()\n";  // COURT debug
+
+        for (const auto& c : microNodes) {
+            MATRIX_MXN<T> stiffnessMatrix;
+            std::array<IndexType, d + 1> elementIndex;
+            auto tmp = c;
+            tmp.m_stiffness = 0;
+            DiscretizationType::computeMicroNodeTensor(stiffnessMatrix, elementIndex, tmp);
+            accumToTensor_debug<d + 1>(stiffnessMatrix,
+                elementIndex);  // COURT created this routine to isolate Release only exception in accumToTensor()
+        }
+
+        std::cout << "Accumulated microNode constraints in computeTensor()\n";  // COURT debug
+
     }
 
     template<class Discretization, class IntType>
-    void SchurSolver<Discretization, IntType>::computeTensor(const std::vector<ElementType>& elements, const std::vector<GradientMatrixType>& gradients, const std::vector<T>& restVol, const std::vector<T>& muLow, const std::vector<T>& muHigh, const std::vector<Suture>& sutures)
+    void SchurSolver<Discretization, IntType>::computeTensor(const std::vector<ElementType>& elements, 
+        const std::vector<GradientMatrixType>& gradients, 
+        const std::vector<T>& restVol, 
+        const std::vector<T>& muLow, 
+        const std::vector<T>& muHigh, 
+        const std::vector<Suture>& sutures,
+        const std::vector<InternodeConstraint>& microNodes)
     {
         // only include things that will change the sparsity of stiffness matrix
 
@@ -327,15 +368,8 @@ namespace PhysBAM {
         LOG::cout << "        computeElTensor     Time : " << computeElTensorTime << std::endl;
         LOG::cout << "        accumElTensor       Time : " << accumElTensorTime << std::endl;
 #endif
-        /*
-         for (int c = 0; c < constraints.size(); c++) {
-             MATRIX_MXN<T> stiffnessMatrix;
-             computeConstraintTensor(stiffnessMatrix, constraints[c]);
 
-            accumToTensor<elementNodes>(stiffnessMatrix,
-              constraints[c].m_elementIndex);
-         }
-         */
+        // It seems that I don't actually need to compute the matrix here, just need the sparsity
         for (int c = 0; c < sutures.size(); c++) {
             MATRIX_MXN<T> stiffnessMatrix;
             std::array<IndexType, elementNodes * 2> elementIndex;
@@ -345,6 +379,17 @@ namespace PhysBAM {
             accumToTensor<elementNodes * 2>(stiffnessMatrix,
                 elementIndex);
         }
+
+        for (const auto& c:microNodes) {
+            MATRIX_MXN<T> stiffnessMatrix;
+            std::array<IndexType, d+1> elementIndex;
+            auto tmp = c;
+            tmp.m_stiffness = 0;
+            DiscretizationType::computeMicroNodeTensor(stiffnessMatrix, elementIndex, tmp);
+            accumToTensor_debug<d+1>(stiffnessMatrix,
+                elementIndex);
+        }
+
     }
 
 
@@ -352,7 +397,8 @@ namespace PhysBAM {
     inline void SchurSolver<Discretization, IntType>::initializePardiso(
         const std::vector<Constraint>& constraints,
         const std::vector<Suture>& sutures,
-        const std::vector<Constraint>& fakeSutures
+        const std::vector<Constraint>& fakeSutures, 
+        const std::vector<InternodeConstraint>& microNodes
     ) {
 
         IntType nnz = 0;
@@ -380,7 +426,7 @@ namespace PhysBAM {
             m_pardiso.schur = m_schur;
         m_pardiso.symbolicFact();
 
-        factPardiso(constraints, sutures, fakeSutures);
+        factPardiso(constraints, sutures, fakeSutures, microNodes);
 
         if (schurSize) {
             for (IntType i = 0; i < schurSize * schurSize; i++)
@@ -392,7 +438,7 @@ namespace PhysBAM {
     }
 
     template<class Discretization, class IntType>
-    void SchurSolver<Discretization, IntType>::factPardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures)
+    void SchurSolver<Discretization, IntType>::factPardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures, const std::vector<InternodeConstraint>& microNodes)
     {
         size_t idx = 0;
         for (const auto& r : m_tensor)
@@ -426,7 +472,16 @@ namespace PhysBAM {
                 accumToPardiso<elementNodes * 2>(stiffnessMatrix,
                     elementIndex);
             }
-
+#if 1
+        for (const auto& c:microNodes)
+            if (c.m_stiffness != 0) {
+                MATRIX_MXN<T> stiffnessMatrix;
+                std::array<IndexType, d+1> elementIndex;
+                DiscretizationType::computeMicroNodeTensor(stiffnessMatrix, elementIndex, c);
+                accumToPardiso<d+1>(stiffnessMatrix,
+                    elementIndex);
+            }
+#endif
         // dumper::writeCSRbyte(m_pardiso.n, m_pardiso.rowIndex, m_pardiso.column, m_pardiso.value, m_pardiso.n, "new_i.txt", "new_a.txt");
 
         m_pardiso.numericFact();

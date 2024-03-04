@@ -30,134 +30,134 @@ class Vec3d
 			struct {
 				value_type X, Y, Z;
 			};
-			value_type _v[3];
+			value_type xyz[3];
 		};
 
-        Vec3d() { _v[0]=0.0; _v[1]=0.0; _v[2]=0.0;}
-        Vec3d(value_type x,value_type y,value_type z) { _v[0]=x; _v[1]=y; _v[2]=z; }
-        Vec3d(value_type (&v)[3]) { _v[0]=v[0]; _v[1]=v[1]; _v[2]=v[2]; }
-		Vec3d(const float(&v)[3]) { _v[0] = (double)v[0]; _v[1] = (double)v[1]; _v[2] = (double)v[2]; }
-		Vec3d(const short(&v)[3]) { _v[0] = (double)v[0]; _v[1] = (double)v[1]; _v[2] = (double)v[2]; }
-		Vec3d(const unsigned short(&v)[3]) { _v[0] = (double)v[0]; _v[1] = (double)v[1]; _v[2] = (double)v[2]; }
+        Vec3d() { X=0.0; Y=0.0; Z=0.0;}
+        Vec3d(value_type x,value_type y,value_type z) { X=x; Y=y; Z=z; }
+        Vec3d(value_type (&v)[3]) { X=v[0]; Y=v[1]; Z=v[2]; }
+		Vec3d(const float(&v)[3]) { X = (double)v[0]; Y = (double)v[1]; Z = (double)v[2]; }
+		Vec3d(const short(&v)[3]) { X = (double)v[0]; Y = (double)v[1]; Z = (double)v[2]; }
+		Vec3d(const unsigned short(&v)[3]) { X = (double)v[0]; Y = (double)v[1]; Z = (double)v[2]; }
 		Vec3d(const Vec3f &v) { X = (double)v.X; Y = (double)v.Y; Z = (double)v.Z; }
 
-        inline bool operator == (const Vec3d& v) const { return _v[0]==v._v[0] && _v[1]==v._v[1] && _v[2]==v._v[2]; }
+        inline bool operator == (const Vec3d& v) const { return X==v.X && Y==v.Y && Z==v.Z; }
         
-        inline bool operator != (const Vec3d& v) const { return _v[0]!=v._v[0] || _v[1]!=v._v[1] || _v[2]!=v._v[2]; }
+        inline bool operator != (const Vec3d& v) const { return X!=v.X || Y!=v.Y || Z!=v.Z; }
 
-        inline value_type* ptr() { return _v; }
-        inline const value_type* ptr() const { return _v; }
+        inline value_type* ptr() { return xyz; }
+        inline const value_type* ptr() const { return xyz; }
 
         inline void set( value_type x, value_type y, value_type z)
         {
-            _v[0]=x; _v[1]=y; _v[2]=z;
+            X=x; Y=y; Z=z;
         }
 
         inline void set( const Vec3d& rhs)
         {
-            _v[0]=rhs._v[0]; _v[1]=rhs._v[1]; _v[2]=rhs._v[2];
+            X=rhs.X; Y=rhs.Y; Z=rhs.Z;
         }
 
 		inline void set(const short(&rhs)[3])
 		{
-			_v[0] = rhs[0]; _v[1] = rhs[1]; _v[2] = rhs[2];
+			X = rhs[0]; Y = rhs[1]; Z = rhs[2];
 		}
 
 		inline void set(const unsigned short(&rhs)[3])
 		{
-			_v[0] = rhs[0]; _v[1] = rhs[1]; _v[2] = rhs[2];
+			X = rhs[0]; Y = rhs[1]; Z = rhs[2];
 		}
 
 		inline void set(const double(&rhs)[3])
         {
-            _v[0]=rhs[0]; _v[1]=rhs[1]; _v[2]=rhs[2];
+            X=rhs[0]; Y=rhs[1]; Z=rhs[2];
         }
 
 		inline void set(const float(&rhs)[3])
 		{
-			_v[0] = (double)rhs[0]; _v[1] = (double)rhs[1]; _v[2] = (double)rhs[2];
+			X = (double)rhs[0]; Y = (double)rhs[1]; Z = (double)rhs[2];
 		}
 
 		inline void set(const Vec3f& rhs)
 		{
-			_v[0] = rhs._v[0]; _v[1] = rhs._v[1]; _v[2] = rhs._v[2];
+			X = rhs.X; Y = rhs.Y; Z = rhs.Z;
 		}
 
-		inline value_type& operator [] (int i) { return _v[i]; }
-        inline value_type operator [] (int i) const { return _v[i]; }
+		inline value_type& operator [] (int i) { return xyz[i]; }
+        inline value_type operator [] (int i) const { return xyz[i]; }
 
-        inline value_type& x() { return _v[0]; }
-        inline value_type& y() { return _v[1]; }
-        inline value_type& z() { return _v[2]; }
+        inline value_type& x() { return X; }
+        inline value_type& y() { return Y; }
+        inline value_type& z() { return Z; }
 
-        inline value_type x() const { return _v[0]; }
-        inline value_type y() const { return _v[1]; }
-        inline value_type z() const { return _v[2]; }
+        inline value_type x() const { return X; }
+        inline value_type y() const { return Y; }
+        inline value_type z() const { return Z; }
 
         inline bool valid() const { return !isNaN(); }
-		inline bool isNaN() const { return std::isnan(_v[0]) || std::isnan(_v[1]) || std::isnan(_v[2]); }
+		inline bool isNaN() const { return std::isnan(X) || std::isnan(Y) || std::isnan(Z); }
 
         /** Dot product. */
         inline value_type operator * (const Vec3d& rhs) const
         {
-            return _v[0]*rhs._v[0]+_v[1]*rhs._v[1]+_v[2]*rhs._v[2];
+            return X*rhs.X+Y*rhs.Y+Z*rhs.Z;
         }
 
 		inline value_type operator * (const Vec3f& rhs) const
 		{
-			return _v[0] * rhs._v[0] + _v[1] * rhs._v[1] + _v[2] * rhs._v[2];
+			return X * rhs.X + Y * rhs.Y + Z * rhs.Z;
 		}
 
 		/** Cross product. */
         inline const Vec3d operator ^ (const Vec3d& rhs) const
         {
-            return Vec3d(_v[1]*rhs._v[2]-_v[2]*rhs._v[1],
-                         _v[2]*rhs._v[0]-_v[0]*rhs._v[2] ,
-                         _v[0]*rhs._v[1]-_v[1]*rhs._v[0]);
+            return Vec3d(Y*rhs.Z-Z*rhs.Y,
+                         Z*rhs.X-X*rhs.Z,
+                         X*rhs.Y-Y*rhs.X);
         }
 
 		/** Cross product. */
 		inline const Vec3d operator ^ (const Vec3f& rhs) const
 		{
-			return Vec3d(_v[1] * rhs._v[2] - _v[2] * rhs._v[1],
-				_v[2] * rhs._v[0] - _v[0] * rhs._v[2],
-				_v[0] * rhs._v[1] - _v[1] * rhs._v[0]);
+			return Vec3d(Y * rhs.Z - Z * rhs.Y,
+				Z * rhs.X - X * rhs.Z,
+				X * rhs.Y - Y * rhs.X);
 		}
 
 		/** Multiply by scalar. */
         inline const Vec3d operator * (value_type rhs) const
         {
-            return Vec3d(_v[0]*rhs, _v[1]*rhs, _v[2]*rhs);
+            return Vec3d(X*rhs, Y*rhs, Z*rhs);
         }
 
         /** Unary multiply by scalar. */
         inline Vec3d& operator *= (value_type rhs)
         {
-            _v[0]*=rhs;
-            _v[1]*=rhs;
-            _v[2]*=rhs;
+            X*=rhs;
+            Y*=rhs;
+            Z*=rhs;
             return *this;
         }
 
         /** Divide by scalar. */
         inline const Vec3d operator / (value_type rhs) const
         {
-            return Vec3d(_v[0]/rhs, _v[1]/rhs, _v[2]/rhs);
+            return Vec3d(X/rhs, Y/rhs, Z/rhs);
         }
 
         /** Unary divide by scalar. */
         inline Vec3d& operator /= (value_type rhs)
         {
-            _v[0]/=rhs;
-            _v[1]/=rhs;
-            _v[2]/=rhs;
+            X/=rhs;
+            Y/=rhs;
+            Z/=rhs;
             return *this;
         }
 
         /** Binary vector add. */
         inline const Vec3d operator + (const Vec3d& rhs) const
         {
-            return Vec3d(_v[0]+rhs._v[0], _v[1]+rhs._v[1], _v[2]+rhs._v[2]);
+            return Vec3d(X+rhs.X, Y+rhs.Y, Z+rhs.Z);
         }
 
         /** Unary vector add. Slightly more efficient because no temporary
@@ -165,43 +165,43 @@ class Vec3d
         */
         inline Vec3d& operator += (const Vec3d& rhs)
         {
-            _v[0] += rhs._v[0];
-            _v[1] += rhs._v[1];
-            _v[2] += rhs._v[2];
+            X += rhs.X;
+            Y += rhs.Y;
+            Z += rhs.Z;
             return *this;
         }
 
         /** Binary vector subtract. */
         inline const Vec3d operator - (const Vec3d& rhs) const
         {
-            return Vec3d(_v[0]-rhs._v[0], _v[1]-rhs._v[1], _v[2]-rhs._v[2]);
+            return Vec3d(X-rhs.X, Y-rhs.Y, Z-rhs.Z);
         }
 
         /** Unary vector subtract. */
         inline Vec3d& operator -= (const Vec3d& rhs)
         {
-            _v[0]-=rhs._v[0];
-            _v[1]-=rhs._v[1];
-            _v[2]-=rhs._v[2];
+            X -=rhs.X;
+            Y -=rhs.Y;
+            Z -= rhs.Z;
             return *this;
         }
 
         /** Negation operator. Returns the negative of the Vec3d. */
         inline const Vec3d operator - () const
         {
-            return Vec3d (-_v[0], -_v[1], -_v[2]);
+            return Vec3d (-X, -Y, -Z);
         }
 
         /** Length of the vector = sqrt( vec . vec ) */
         inline value_type length() const
         {
-            return sqrt( _v[0]*_v[0] + _v[1]*_v[1] + _v[2]*_v[2] );
+            return sqrt( X*X + Y*Y + Z*Z );
         }
 
         /** Length squared of the vector = vec . vec */
         inline value_type length2() const
         {
-            return _v[0]*_v[0] + _v[1]*_v[1] + _v[2]*_v[2];
+            return X * X + Y * Y + Z * Z;
         }
 
         /** Normalize the vector so that it has length unity.
@@ -213,16 +213,30 @@ class Vec3d
             if (norm>0.0)
             {
                 value_type inv = 1.0f/norm;
-                _v[0] *= inv;
-                _v[1] *= inv;
-                _v[2] *= inv;
+                X *= inv;
+                Y *= inv;
+                Z *= inv;
             }                
             return( norm );
         }
 
+        inline void q_normalize() {  // does very fast, very approximate normalization (Quake algorithm).  Court added.  Better done in assembly code.
+            float l2 = length2();
+            union {
+                float    f;
+                uint32_t i;
+            } conv;
+            conv.f = l2;
+            conv.i = 0x5f3759df - (conv.i >> 1);
+            conv.f *= 1.5F - (l2 * 0.5F * conv.f * conv.f);
+            X *= conv.f;
+            Y *= conv.f;
+            Z *= conv.f;
+        }
+
 		inline const Vec3d floor() const
 		{
-			return Vec3d(std::floor(_v[0]), std::floor(_v[1]), std::floor(_v[2]));
+			return Vec3d(std::floor(X), std::floor(Y), std::floor(Z));
 		}
 
 		inline const Vec3d fraction() const

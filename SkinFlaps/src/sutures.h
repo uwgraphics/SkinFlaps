@@ -49,6 +49,10 @@ protected:
 class sutures
 {
 public:
+
+	int parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f& baryWeight);  // COURT - temporary hack for multires tets
+
+
 	int addUserSuture(materialTriangles *tri, int triangle0, int edge0, float param0);
 	int setSecondEdge(int sutureNumber, materialTriangles *tri, int triangle, int edge, float param);  // return 0= normal, 1=one sided suture, 2=one tet suture, 3=different soft bodies
 	void setSecondVertexPosition(int sutureNumber, float *position);	// updates this sutures second graphics. position[3]

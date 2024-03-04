@@ -2564,6 +2564,22 @@
     }
   },
   {
+    "addHook":{
+      "displacement":[
+        0.000000,
+        0.000000,
+        0.000000
+      ],
+      "historyTexture":[
+        0.575988,
+        0.156690
+      ],
+      "hookNum":14,
+      "material":4,
+      "strongHook":true
+    }
+  },
+  {
     "addSuture":{
       "displacement0":[
         0.501808,
@@ -2587,6 +2603,22 @@
       "material0":2,
       "material1":2,
       "sutureNum":28
+    }
+  },
+  {
+    "addHook":{
+      "displacement":[
+        0.391899,
+        0.245556,
+        -0.196487
+      ],
+      "historyTexture":[
+        0.400469,
+        0.772035
+      ],
+      "hookNum":15,
+      "material":4,
+      "strongHook":true
     }
   },
   {

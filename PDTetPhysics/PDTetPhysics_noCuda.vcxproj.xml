@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\MergedLevelSet.h" />
+    <ClInclude Include="include\pdTetPhysics.h" />
+    <ClInclude Include="include\PDTetSolver.h" />
+    <ClInclude Include="include\Utilities.h" />
+    <ClInclude Include="PDDeformer\include\Add_Force.h" />
+    <ClInclude Include="PDDeformer\include\Algebra.h" />
+    <ClInclude Include="PDDeformer\include\Discretization.h" />
+    <ClInclude Include="PDDeformer\include\dumper.h" />
+    <ClInclude Include="PDDeformer\include\Geometry.h" />
+    <ClInclude Include="PDDeformer\include\GridDeformerTet.h" />
+    <ClInclude Include="PDDeformer\include\Iterator.h" />
+    <ClInclude Include="PDDeformer\include\Map.h" />
+    <ClInclude Include="PDDeformer\include\MKLWrapper.h" />
+    <ClInclude Include="PDDeformer\include\PardisoWrapper.h" />
+    <ClInclude Include="PDDeformer\include\PDConstraints.h" />
+    <ClInclude Include="PDDeformer\include\ReshapeDataStructure.h" />
+    <ClInclude Include="PDDeformer\include\SchurSolver.h" />
+    <ClInclude Include="PDDeformer\include\SimulationFlags.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="PDDeformer\src\Add_Force.cpp" />
+    <ClCompile Include="PDDeformer\src\GridDeformerTet.cpp" />
+    <ClCompile Include="PDDeformer\src\PardisoWrapper.cpp" />
+    <ClCompile Include="PDDeformer\src\ReshapeDataStructure.cpp" />
+    <ClCompile Include="PDDeformer\src\SchurSolver.cpp" />
+    <ClCompile Include="src\MergedLevelSet.cpp" />
+    <ClCompile Include="src\PDTetSolver.cpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{93364FFE-71F2-4B8F-A597-5F2A1C5FDDDB}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseIntelMKL>Parallel</UseIntelMKL>
+    <UseIntelTBB>true</UseIntelTBB>
+    <UseInteloneTBB>true</UseInteloneTBB>
+    <InstrumentInteloneTBB>true</InstrumentInteloneTBB>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseIntelMKL>Parallel</UseIntelMKL>
+    <UseIntelTBB>true</UseIntelTBB>
+    <UseInteloneTBB>true</UseInteloneTBB>
+    <InstrumentInteloneTBB>true</InstrumentInteloneTBB>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <UseILP64Interfaces1A>false</UseILP64Interfaces1A>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(INTEL_LIB)\mkl\2022.0.0\include;$(Cuda_Path)\include;.\PDDeformer\include;..\simd-numeric-kernels-new;.\include;..\PhysBAM_subset\Common_Libraries;..\PhysBAM_subset\Public_Library;..\CleftSimPdTetPhysics\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ENABLE_AVX_INSTRUCTION_SET;WIN32;_WINDOWS;NDEBUG;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>cusparse.lib;cusolver.lib;cudart.lib;Public_Library.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>.\$(Platform)\$(Configuration);$(Cuda_Path)\lib\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <Lib>
+      <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Program Files %28x86%29\Intel\oneAPI\mkl\2022.0.0\include;$(Cuda_Path)\include;.\PDDeformer\include;..\simd-numeric-kernels-new;.\include;..\PhysBAM_subset\Common_Libraries;..\PhysBAM_subset\Public_Library;..\wxOpenGL;..\CleftSimPdTetPhysics\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ENABLE_AVX_INSTRUCTION_SET;WIN32;_WINDOWS;DEBUG;COMPILE_ID_TYPES_AS_INT;COMPILE_WITHOUT_DYADIC_SUPPORT;COMPILE_WITHOUT_RLE_SUPPORT;COMPILE_WITHOUT_ZLIB_SUPPORT</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>cusparse.lib;cusolver.lib;cudart.lib;Public_Library.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>.\$(Platform)\$(Configuration);$(Cuda_Path)\lib\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

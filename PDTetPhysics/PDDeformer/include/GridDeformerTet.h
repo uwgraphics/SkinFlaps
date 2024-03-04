@@ -51,6 +51,7 @@ namespace PhysBAM {
         using Constraint = SoftConstraint<VectorType, elementNodes, IndexType>;
         using Suture = SutureConstraint<VectorType, elementNodes, IndexType>;
         using CollisionSuture = SlidingConstraint<VectorType, elementNodes, IndexType>;
+        using InternodeConstraint = NodeToNodesConstraint<VectorType, IndexType>;  // COURT added
 
         static_assert(d == 2 || d == 3, "only 2D/3D discretizations supported");
 
@@ -85,6 +86,7 @@ namespace PhysBAM {
         std::vector<Constraint> m_collisionConstraints;
         std::vector<Suture> m_sutures;
         std::vector<CollisionSuture> m_collisionSutures;
+        std::vector<InternodeConstraint> m_InternodeConstraints;  // COURT added
 
         std::vector<GradientMatrixType> m_gradientMatrix;
 
@@ -158,7 +160,7 @@ namespace PhysBAM {
         }
 
         void deallocateAuxiliaryStructures();
-        void initializeCollisionElements();
+        void initializeElementFlags();
     };
 
 } // namespace PhysBAM

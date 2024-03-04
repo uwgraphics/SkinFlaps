@@ -99,24 +99,26 @@ int main(int, char**)
 		}
 		catch (const std::runtime_error& re)
 		{
-			// speciffic handling for runtime_error
-			ffg.sendUserMessage("Runtime error occurred.  Save history file for debug.", "Runtime error");
-			std::cerr << "Runtime error: " << re.what() << std::endl;
+			std::string err = "Program runtime error occurred.\n";
+			err += re.what();
+			ffg.handleThrow(err.c_str());
 		}
-		catch (const std::exception& ex)
+		catch (const std::logic_error& le)
 		{
-			// speciffic handling for all exceptions extending std::exception, except
-			// std::runtime_error which is handled explicitly
-			std::string err = "Logic error occurred. Save history file for debug.\n";
-			err += ex.what();
-			ffg.sendUserMessage(err.c_str(), "Logic error");
-			std::cerr << "Error occurred: " << ex.what() << std::endl;
+			std::string err = "Program logic error occurred.\n";
+			err += le.what();
+			ffg.handleThrow(err.c_str());
+		}
+		catch (const std::bad_alloc& ba)
+		{
+			std::string err = "Not enough memory in this machine to handle this program.\n";
+			err += ba.what();
+			ffg.handleThrow(err.c_str());
 		}
 		catch (...)
 		{
-			// catch any other errors (that we have no information about)
-			ffg.sendUserMessage("Unspecified error occurred.  Save history file for debug.", "Program error");
-			std::cerr << "Unknown failure occurred. Possible memory corruption" << std::endl;
+			// catch any other errors
+			ffg.handleThrow("Unspecified program error occurred.\n");
 		}
 		glfwSwapBuffers(ffg.FFwindow);
 	}

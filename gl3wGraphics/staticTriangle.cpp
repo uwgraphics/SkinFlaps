@@ -125,8 +125,8 @@ void staticTriangle::computeLocalBounds()
 	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i)
 		bb.Enlarge_To_Include_Point((const float(&)[3])(*_mt->vertexCoordinate(i)));
 	Vec3f vmin, vmax;
-	bb.Minimum_Corner(vmin._v);
-	bb.Maximum_Corner(vmax._v);
+	bb.Minimum_Corner(vmin.xyz);
+	bb.Maximum_Corner(vmax.xyz);
 	vmin += vmax;
 	vmin *= 0.5f;
 	GLfloat lc[3], radius;
@@ -207,7 +207,7 @@ std::shared_ptr<sceneNode> staticTriangle::createStaticSceneNode(materialTriangl
 
 void staticTriangle::computeNormalsTangents()
 {
-	_mt->findAdjacentTriangles(true, false);  // when teeth.obj fixed do next line instead
+	_mt->findAdjacentTriangles(true);  // when teeth.obj fixed do next line instead
 //	_mt.collectCreateTextureSeams();  // calls findAdjacentTriangles()
 	std::vector<GLfloat> xyz1, uv, normals, tangents;
 	std::vector<GLuint> tris;
@@ -215,38 +215,37 @@ void staticTriangle::computeNormalsTangents()
 	tris.clear();
 	xyz1.clear();
 	uv.clear();
-	std::vector<float>* mtta = _mt->getTextureArray();
-	uv.assign(mtta->begin(), mtta->end());
-	int n = (int)uv.size() >> 1;
+	auto mtta = _mt->getTextureArray();
+	int n = (int)mtta.size();
+	uv.reserve(n << 1);
+	for (auto& uvr : mtta) {
+		uv.push_back(uvr.X);
+		uv.push_back(uvr.Y);
+	}
 	xyz1.clear();
 	xyz1.assign(n << 2, 1.0f);
 	uvPos.clear();
 	uvPos.assign(n, -1);
-	const materialTriangles::matTriangle* trArr = _mt->getTriangleArray(n);
+
+//	const materialTriangles::matTriangle* trArr = _mt->getTriangleArray(n);
+	auto trPos = _mt->getTrianglePositionArray();
+	auto trTex = _mt->getTriangleTextureArray();
+	n = (int)trPos.size();
 	tris.reserve(n * 3);
 	for (int i = 0; i < n; ++i) {
 		// include possible deleted triangles so numbering matches up.
 		bool valid = true;
-		if (trArr[i].material < 0) {
+		if (_mt->triangleMaterial(i) < 0) {
 			tris.push_back(0xffffffff);
 			valid = false;
 		}
 		else
-			tris.push_back(trArr[i].tex[0]);
-		tris.push_back(trArr[i].tex[1]);
-		tris.push_back(trArr[i].tex[2]);
+			tris.push_back(trTex[i][0]);
+		tris.push_back(trTex[i][1]);
+		tris.push_back(trTex[i][2]);
 		if (valid) {
 			for (int j = 0; j < 3; ++j) {
-#ifdef DEBUG
-				if (uvPos[trArr[i].tex[j]] > -1) {
-
-				//	if (uvPos[trArr[i].tex[j]] != trArr[i].v[j])
-				//		int junk = 0;
-
-//					assert(uvPos[trArr[i].tex[j]] == trArr[i].v[j]);
-				}
-#endif
-				uvPos[trArr[i].tex[j]] = trArr[i].v[j];
+				uvPos[trTex[i][j]] = trPos[i][j];
 			}
 		}
 	}
@@ -303,7 +302,7 @@ void staticTriangle::computeNormalsTangents()
 			tangents[k + 2] += tanV[2];
 		}
 	}
-	auto oit = _mt->_oneMaterialSeams.begin();
+/*	auto oit = _mt->_oneMaterialSeams.begin();
 	while (oit != _mt->_oneMaterialSeams.end()) {
 		auto start = oit;
 		do {
@@ -323,7 +322,7 @@ void staticTriangle::computeNormalsTangents()
 			}
 			++start;
 		}
-	}
+	} */
 	auto invSqrt = [](float x) ->float { // Steve Pizer's version of the Quake algorithm
 		GLuint i = 0x5F1F1412 - (*(GLuint*)&x >> 1);
 		float tmp = *(float*)&i;

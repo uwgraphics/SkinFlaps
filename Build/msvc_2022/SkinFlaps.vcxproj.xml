@@ -160,38 +160,32 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\SkinFlaps\src\bccTetDecimator.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\bccTetScene.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\deepCut.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\FacialFlapsGui.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\fence.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\hooks.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\json.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\main.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\remapTetPhysics.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\skinCutUndermineTets.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\surgicalActions.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\sutures.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\tetCollisions.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\tetSubset.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutterTbb.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutter.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\vnBccTetrahedra.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\SkinFlaps\src\bccTetDecimator.h" />
     <ClInclude Include="..\..\SkinFlaps\src\bccTetScene.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\deepCut.h" />
     <ClInclude Include="..\..\SkinFlaps\src\delaunator.hpp" />
     <ClInclude Include="..\..\SkinFlaps\src\FacialFlapsGui.h" />
     <ClInclude Include="..\..\SkinFlaps\src\fence.h" />
     <ClInclude Include="..\..\SkinFlaps\src\hooks.h" />
     <ClInclude Include="..\..\SkinFlaps\src\json.h" />
     <ClInclude Include="..\..\SkinFlaps\src\prettyPrintJSON.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\remapTetPhysics.h" />
     <ClInclude Include="..\..\SkinFlaps\src\skinCutUndermineTets.h" />
     <ClInclude Include="..\..\SkinFlaps\src\surgicalActions.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\sutures.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\tetCollisions.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\tetSubset.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutterTbb.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\triTriIntersect_Shen.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\tri_tri_intersect_Guigue.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutter.h" />
     <ClInclude Include="..\..\SkinFlaps\src\vnBccTetrahedra.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

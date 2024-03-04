@@ -19,12 +19,12 @@ public:
 
     Mat2x2d(const Vec2d& column1,const Vec2d& column2)
     {
-		x[0]=column1._v[0];x[1]=column1._v[1];x[2]=column2._v[0];x[3]=column2._v[1];
+		x[0]=column1.xy[0];x[1]=column1.xy[1];x[2]=column2.xy[0];x[3]=column2.xy[1];
     }
 
     void Initialize_With_Column_Vectors(const Vec2d& column1,const Vec2d& column2)
 	{
-		x[0] = column1._v[0]; x[1] = column1._v[1]; x[2] = column2._v[0]; x[3] = column2._v[1];
+		x[0] = column1.xy[0]; x[1] = column1.xy[1]; x[2] = column2.xy[0]; x[3] = column2.xy[1];
 	}
 
     double& operator()(const int i,const int j)
@@ -84,7 +84,7 @@ public:
     {assert(a!=0);double s=1/a;return Mat2x2d(s*x[0],s*x[1],s*x[2],s*x[3]);}
     
     Vec2d operator*(const Vec2d& v) const
-    {return Vec2d(x[0]*v._v[0]+x[2]*v._v[1],x[1]*v._v[0]+x[3]*v._v[1]);}
+    {return Vec2d(x[0]*v.xy[0]+x[2]*v.xy[1],x[1]*v.xy[0]+x[3]*v.xy[1]);}
 
     double Determinant() const
     {return x[0]*x[3]-x[1]*x[2];}
@@ -106,8 +106,8 @@ public:
 	double determinant = x[0] * x[3] - x[1] * x[2];
 	if (fabs(determinant)<1e-8f) 	return false;
 	double s = 1 / determinant;
-	result._v[0] = (b._v[0] * x[3] - b._v[1] * x[2])*s;
-	result._v[1] = (x[0] * b._v[1] - x[1] * b._v[0])*s;
+	result.xy[0] = (b.xy[0] * x[3] - b.xy[1] * x[2])*s;
+	result.xy[1] = (x[0] * b.xy[1] - x[1] * b.xy[0])*s;
 	return true; }
 
 	Vec2d Robust_Solve_Linear_System(const Vec2d b, const double tolerance = 1e-8) const
@@ -115,7 +115,7 @@ public:
 		double determinant = x[0] * x[3] - x[1] * x[2];
 		if (fabs(determinant) < tolerance) determinant = determinant >= 0 ? tolerance : -tolerance;
 		double s = 1 / determinant;
-		return Vec2d((b._v[0] * x[3] - b._v[1] * x[2])*s, (x[0] * b._v[1] - x[1] * b._v[0])*s);
+		return Vec2d((b.xy[0] * x[3] - b.xy[1] * x[2])*s, (x[0] * b.xy[1] - x[1] * b.xy[0])*s);
 	}
     
     void Transpose()
@@ -140,7 +140,7 @@ public:
     {double c=cos(radians),s=sin(radians);return Mat2x2d(c,s,-s,c);}
 
     static Mat2x2d Outer_Product(const Vec2d& u,const Vec2d& v)
-    {return Mat2x2d(u._v[0]*v._v[0],u._v[1]*v._v[0],u._v[0]*v._v[1],u._v[1]*v._v[1]);}
+    {return Mat2x2d(u.xy[0]*v.xy[0],u.xy[1]*v.xy[0],u.xy[0]*v.xy[1],u.xy[1]*v.xy[1]);}
 
     static double Inner_Product(const Mat2x2d& A,const Mat2x2d& B)
     {return A.x[0]*B.x[0]+A.x[1]*B.x[1]+A.x[2]*B.x[2]+A.x[3]*B.x[3];}
@@ -156,7 +156,7 @@ inline Mat2x2d operator*(const double a,const Mat2x2d& A)
 {return A*a;}
 
 inline Vec2d operator*(const Vec2d& v,const Mat2x2d& A)
-{return Vec2d(v._v[0]*A.x[0]+v._v[1]*A.x[1],v._v[0]*A.x[2]+v._v[1]*A.x[3]);}
+{return Vec2d(v.xy[0]*A.x[0]+v.xy[1]*A.x[1],v.xy[0]*A.x[2]+v.xy[1]*A.x[3]);}
 
 //#####################################################################
 

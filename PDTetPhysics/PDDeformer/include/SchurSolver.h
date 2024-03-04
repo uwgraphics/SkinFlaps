@@ -43,6 +43,7 @@ template <class Discretization, class IntType> struct SchurSolver {
     using Constraint = SoftConstraint<VectorType, elementNodes, IndexType>;
     using Suture = SutureConstraint<VectorType, elementNodes, IndexType>;
     using CollisionSuture = SlidingConstraint <VectorType, elementNodes, IndexType>;
+    using InternodeConstraint = NodeToNodesConstraint<VectorType, IndexType>; 
 
 
     IntType schurSize = IntType(0);
@@ -61,6 +62,9 @@ template <class Discretization, class IntType> struct SchurSolver {
         const std::array<IndexType, elementNodesN>& elementIndex);
 
     template <int elementNodesN>
+    void accumToTensor_debug(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix, const std::array<IndexType, elementNodesN>& elementIndex);  // COURT added to separate out microNode crash in Release
+
+    template <int elementNodesN>
     void updateTensor(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix,
         const std::array<IndexType, elementNodesN>& elementIndex);
 
@@ -68,22 +72,27 @@ template <class Discretization, class IntType> struct SchurSolver {
         const std::vector<Constraint> &collisionConstraints,
         const std::vector<CollisionSuture>& collisionSutures
     );
-
+#if 0
     void computeTensor(const std::vector<ElementType> &elements,
                        const std::vector<GradientMatrixType> &gradients,
                        const std::vector<T> &restVol, const T mu,
-                      // const std::vector<Constraint> &constraints,
         const std::vector<Suture>& sutures);
+#endif
+    void computeTensor(const std::vector<ElementType>& elements, const std::vector<GradientMatrixType>& gradients, const std::vector<T>& restVol, const T mu, const std::vector<Suture>& sutures, const std::vector<InternodeConstraint>& microNodes);
 
+    void computeTensor(const std::vector<ElementType>& elements, const std::vector<GradientMatrixType>& gradients, const std::vector<T>& restVol, const std::vector<T>& muLow, const std::vector<T>& muHigh, const std::vector<Suture>& sutures, const std::vector<InternodeConstraint>& microNodes);
+
+
+#if 0 // add back when converting adaptive constraints to hard constraints
     void computeTensor(const std::vector<ElementType>& elements,
         const std::vector<GradientMatrixType>& gradients,
         const std::vector<T>& restVol, const std::vector<T>& muLow, const std::vector<T>& muHigh,
-        //const std::vector<Constraint> &constraints,
         const std::vector<Suture>& sutures
     );
+#endif
 
-    inline void reInitializePardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures) {
-        factPardiso(constraints, sutures, fakeSutures);  
+    inline void reInitializePardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures, const std::vector<InternodeConstraint>& microNodes) {
+        factPardiso(constraints, sutures, fakeSutures, microNodes);  
         if (schurSize) {
             for (IntType i = 0; i < schurSize * schurSize; i++)
                 m_originalValue[i] = m_pardiso.schur[i];
@@ -95,9 +104,9 @@ template <class Discretization, class IntType> struct SchurSolver {
     void accumToPardiso(const PhysBAM::MATRIX_MXN<T>& stiffnessMatrix,
         const std::array<IndexType, elementNodesN>& elementIndex);
 
-
+#if 0
     void initializePardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures);
-
+#endif
 
     void copyIn(const StateVariableType &f, const int v) const {
         // copy in x
@@ -168,12 +177,16 @@ template <class Discretization, class IntType> struct SchurSolver {
         }
     }
 
+    void initializePardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures, const std::vector<InternodeConstraint>& microNodes);
+
+    void factPardiso(const std::vector<Constraint>& constraints, const std::vector<Suture>& sutures, const std::vector<Constraint>& fakeSutures, const std::vector<InternodeConstraint>& microNodes);
+#if 0
     void factPardiso(
         const std::vector<Constraint>& constraints,
         const std::vector<Suture>& sutures,
         const std::vector<Constraint>& fakeSutures
     );
-
+#endif
 };
 
 

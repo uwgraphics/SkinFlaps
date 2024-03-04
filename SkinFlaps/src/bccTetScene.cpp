@@ -21,6 +21,7 @@
 #include "closestPointOnTriangle.h"
 #include "remapTetPhysics.h"
 #include <iostream>
+#include <cstdint>
 #include <chrono>
 #include <ctime>
 
@@ -130,7 +131,8 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 				_surgAct->sendUserMessage("Unable to load fixed materialTriangle .obj input file-", "Error Message");
 				return false;
 			}
-			_mt->collectCreateTextureSeams();  // must do this on load to register same material texture seams and create hard texture & normal seams between materials.
+			// same material texture seams processed in graphics,
+			// may want to create hard texture & normal seams between materials here.
 			_surgAct->getSurgGraphics()->setGl3wGraphics(_gl3w);
 			std::string vtxShd(dataDirectory), frgShd(dataDirectory);
 			vtxShd.append("mtVertexShader.txt");
@@ -192,18 +194,18 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			_tetCol.addFixedCollisionSet(lsPath, vIdx);
 		}
 	}
-	int maxDimSubdivs = 180;  // 0.5 million tets for cleft model
+	int nTetSizeLevels = 4, maxDimMegatetSubdivs = 31;  // Multires settings initial tet count 11,587 tets while old single res was0.5 million tets for cleft model
 	if ((oit = scnObj.find("tetrahedralProperties")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
 		float lowTetWeight, highTetWeight, strainMin, strainMax, collisionWeight, fixedWeight, periferalWeight, hookWeight, sutureWeight, autoSutureSpacing, selfCollisionWeight;
-		std::string lsFname(dataDirectory), collisionObject;
+//		std::string lsFname(dataDirectory), collisionObject;
 		for (suboit = hullObj.begin(); suboit != hullObj.end(); ++suboit) {
 			if (suboit->first == "minStrain")
 				strainMin = suboit->second.ToFloat();
 			else if (suboit->first == "maxStrain")
 				strainMax = suboit->second.ToFloat();
 			else if (suboit->first == "lowTetWeight")
-				lowTetWeight = suboit->second.ToFloat();
+				_lowTetWeight = lowTetWeight = suboit->second.ToFloat();
 			else if (suboit->first == "highTetWeight")
 				highTetWeight = suboit->second.ToFloat();
 			else if (suboit->first == "collisionWeight")
@@ -220,17 +222,19 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 				hookWeight = suboit->second.ToFloat();
 			else if (suboit->first == "autoSutureSpacing")
 				autoSutureSpacing = suboit->second.ToFloat();
-			else if (suboit->first == "collisionObject")
-				collisionObject = suboit->second.ToString();
-			else if (suboit->first == "maxDimSubdivisions")
-				maxDimSubdivs = suboit->second.ToInt();
+//			else if (suboit->first == "collisionObject")  // now done with "fixedCollisionSets"
+//				collisionObject = suboit->second.ToString();
+			else if (suboit->first == "maxDimMegatetSubdivs")
+				maxDimMegatetSubdivs = suboit->second.ToInt();
+			else if (suboit->first == "nTetSizeLevels")
+				nTetSizeLevels = suboit->second.ToInt();
 			else
 				_surgAct->sendUserMessage("Unknown tetrahedral property in scene file-", "File Error Message");
 		}
 		_ptp.setTetProperties(lowTetWeight, highTetWeight, strainMin, strainMax, collisionWeight, selfCollisionWeight, fixedWeight, periferalWeight);
 		_ptp.setHookSutureWeights(hookWeight, sutureWeight, 0.3f);
 		_surgAct->getSutures()->setAutoSutureSpacing(autoSutureSpacing);
-		lsFname += collisionObject;  //  "collision_proxy_5_4_20.obj";
+//		lsFname += collisionObject;  //  "collision_proxy_5_4_20.obj";
 	}
 	struct tetSubset {
 		std::string objFile;
@@ -268,15 +272,16 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 //	_mt->writeObjFile("objMat.obj");
 
 	// COURT - put back in after cutter debug!
-	createNewPhysicsLattice(maxDimSubdivs);  // now creating operable lattice on load
+	createNewPhysicsLattice(maxDimMegatetSubdivs, nTetSizeLevels);  // now creating operable lattice on load
 	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 	if (!_surgAct->getDeepCutPtr()->setDeepBed(_mt, deepBedFilepath.c_str(), &_vnTets)){
 		_surgAct->sendUserMessage("Undermine layer .bed file could not be found-", "Error Message");
 	}
 	if (!tetSubsets.empty()) {
-		for (auto& ts : tetSubsets)
-			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
-		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
+		// since multires tets added, this is flawed.  Rewrite later.
+//		for (auto& ts : tetSubsets)
+//			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
+//		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
 	}
 
 	_gl3w->frameScene(true);  // computes bounding spheres
@@ -284,68 +289,108 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 }
 
 void bccTetScene::updateOldPhysicsLattice()
-{  // at present regenerate.  May do incrementally later.
-	try {
-		remapTetPhysics rtp;
-		rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions
-		if(!_tc.remakeVnTets(_mt))
-			throw(std::logic_error("New recut of tet lattice failed.\n"));
-		rtp.remapNewPhysicsNodePositions(&_vnTets);
+{
+	_rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions.  Worst case example < 0.02 seconds - not worth multithreading.
+	_tc.addNewMultiresIncision();
+
+//	std::cout << "Tet number at this time is " << _vnTets.tetNumber() << "\n";
 
 #ifdef NO_PHYSICS
-		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
-		_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
+	_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
+	_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
 #else
-		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
-		_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
-#endif
-		rtp.restoreOldNodePositions(&_vnTets);
-		_tetCol.initSoftCollisions(_mt, &_vnTets);  // after every topo change
-		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
-		if (_forcesApplied) {  // _tetsModified not necessary as implied by calling this routine
-			initPdPhysics();
-			_tetsModified = true;
+	std::vector<uint8_t> tetSizeMult;
+	tetSizeMult.reserve(_vnTets.tetNumber());
+	for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
+		uint8_t sizeBit = 1;
+		auto& c = _vnTets.tetCentroid(i);
+		unsigned short ored = c[0] | c[1] | c[2];
+		while (true) {
+			if (ored & sizeBit)
+					break;
+			sizeBit <<= 1;
 		}
-		_physicsPaused = false;
-	}  // end try block
-	catch (char *e) {
-		_surgAct->sendUserMessage(e, "Exception thrown:", false);
+		tetSizeMult.push_back(sizeBit);
 	}
+	std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
+	_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
+#endif
+	_rtp.remapNewPhysicsNodePositions(&_vnTets);  // requires node spatial coordinate array pointer. Worst case example < 0.02 seconds - not worth multithreading.
+	std::vector<int> subNodes;
+	std::vector<std::vector<int> > macroNodes;
+	std::vector<std::vector<float> > macroBarys;
+	_vnTets.getTJunctionConstraints(subNodes, macroNodes, macroBarys);
+	_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
+
+	if (_forcesApplied) {  // _tetsModified not necessary as implied by calling this routine
+		initPdPhysics();
+		_tetsModified = true;
+	}
+	_physicsPaused = false;
 }
 
-void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
+void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSizeLevels)
 {
-//	std::chrono::time_point<std::chrono::system_clock> start, end;
-//	start = std::chrono::system_clock::now();
-
 	try {
 		_tetsModified = false;
-#ifdef _DEBUG
-		_tc.makeFirstVnTets(_mt, &_vnTets, 35);  // 30
-#else
-		_tc.makeFirstVnTets(_mt, &_vnTets, maximumDimensionSubdivisions); // 70 for cleft scene with Eigen solver gives 36K tets in 0.36 seconds, 100 for cleft scene with oldMKL solver gives 102K tets, 20 for sphere test.
-			// in release mode 180 subdivs gives 503,910 tets in 2.27 seconds without multithreading the tet cutter, 0.57 seconds multithreaded. 
-#endif
-		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
 
-		// COURT - could redo this only using nodes that are outside of boundary.  Revisit after periosteal undermining done.
-		// get fixed scene boundary nodes
-	//	for (int i = 0; i < (int)_fixedRegions.size(); ++i)
-	//		setFixedRegion(_fixedRegions[i].corners);
-	//	for (int i = 0; i < (int)_fixedMeshes.size(); ++i)
-	//		setFixedMesh(&_fixedMeshes[i]);
+//		std::chrono::time_point<std::chrono::system_clock> start, end;
+//		start = std::chrono::system_clock::now();
+
+		_tc.setRemapTetPhysics(&_rtp);
+		_tc.createFirstMacroTets(_mt, &_vnTets, nTetSizeLevels, maxDimMegatetSubdivs);
+		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
+		_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
+
+//		std::cout << "Tet number at this time is " << _vnTets.tetNumber() << "\n";
+
+		_surgAct->getHooks()->setSpringConstant(_lowTetWeight * 1.5f);  // COURT fix me after macrotet issue resolved
 
 #ifdef NO_PHYSICS
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
 		_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
 #else
-		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
+//		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
+
+		std::vector<uint8_t> tetSizeMult;
+		tetSizeMult.reserve(_vnTets.tetNumber());
+		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
+			// COURT may do faster with just first 2 nodes
+/*			auto tn = _vnTets.tetNodes(i);  // 3 lookups vs one
+			auto v0 = _vnTets.nodeGridLocation(tn[0]);
+			auto v1 = _vnTets.nodeGridLocation(tn[1]);
+			uint8_t sizeBit1;
+			if (v0[0] != v1[0])
+				sizeBit1 = (v1[0] - v0[0])>>1;
+			else if (v0[1] != v1[1])
+				sizeBit1 = (v1[1] - v0[1]) >> 1;
+			else
+				sizeBit1 = (v1[2] - v0[2]) >> 1; */
+
+			uint8_t sizeBit = 1;
+			auto& c = _vnTets.tetCentroid(i);
+			while (true) {
+				if (c[0] & sizeBit || c[1] & sizeBit || c[2] & sizeBit)
+					break;
+				sizeBit <<= 1;
+			}
+
+//			assert(sizeBit == sizeBit1);
+
+			tetSizeMult.push_back(sizeBit);
+		}
+		std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
 		_vnTets.setNodeSpatialCoordinatePointer(nodeSpatialCoords);  // vector created in _ptp
 #endif
+		_vnTets.materialCoordsToNodeSpatialVector();
 
-		_vnTets.materialCoordsToSpatialVector();
+		std::vector<int> subNodes;
+		std::vector<std::vector<int> > macroNodes;
+		std::vector<std::vector<float> > macroBarys;
+		_vnTets.getTJunctionConstraints(subNodes, macroNodes, macroBarys);
+		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
 
-		//			end = std::chrono::system_clock::now();
+//			end = std::chrono::system_clock::now();
 //			std::chrono::duration<double> elapsed_seconds = end - start;
 //			std::time_t end_time = std::chrono::system_clock::to_time_t(end);
 //			std::string message("Physics initial creation took ");
@@ -364,10 +409,11 @@ void bccTetScene::createNewPhysicsLattice(int maximumDimensionSubdivisions)
 }
 
 void bccTetScene::initPdPhysics()
-{
+{  // called after each new tet lattice created
 	fixPeriostealPeriferalVertices();
 	if (!_tetCol.empty()) {
 		_tetCol.updateFixedCollisions(_mt, &_vnTets);
+		_tetCol.initSoftCollisions(_mt, &_vnTets);
 	}
 #ifndef NO_PHYSICS
 	_surgAct->getHooks()->updateHookPhysics();
@@ -419,11 +465,11 @@ void bccTetScene::setVisability(char surface, char physics)
 void bccTetScene::updateSurfaceDraw()
 {
 	int nv;
-	float *fp = _mt->getPositionArray(nv);
+	auto pArr = _mt->getPositionArrayPtr();
+	nv = pArr->size();
 	for (int i = 0; i < nv; ++i) {
 		if (_vnTets.getVertexTetrahedron(i) > -1)  // an excision may have occurred leaving an empty vertex
-			_vnTets.getBarycentricTetPosition(_vnTets.getVertexTetrahedron(i), *(_vnTets.getVertexWeight(i)), (Vec3f &)*fp);
-		fp += 3;
+			_vnTets.getBarycentricTetPosition(_vnTets.getVertexTetrahedron(i), *(_vnTets.getVertexWeight(i)), pArr->at(i));
 	}
 	_surgAct->getSurgGraphics()->updatePositionsNormalsTangents();
 	if (_gl3w->getLines()->linesVisible())
@@ -432,38 +478,33 @@ void bccTetScene::updateSurfaceDraw()
 
  void bccTetScene::fixPeriostealPeriferalVertices()
 {  // this routine should be done only once after original lattice constructed
-	int numElem, i, k;
 	struct anchorPoint {
 		bool isPeriferal;
 		std::array<float, 3> baryWeight, pos;
 	}ap;
-	std::unordered_map<int, anchorPoint> fixPoints;  // key is tet index
+	std::unordered_map<int, anchorPoint> fixPoints;  // key is tet index. At present only oneper tet.
 	// fixed nodes take precedence over periferal nodes
 	// Fix all nodes surrounding a periosteal or periferalvertex.
-	materialTriangles::matTriangle *tr = _mt->getTriangleArray(numElem);
-	ap.isPeriferal = false;
-	for (i = 0; i < numElem; ++i) {
-		if (tr[i].material == 7) {  // periosteal triangle
-			for (k = 0; k < 3; ++k) {
-				const Vec3f* vp = _vnTets.getVertexWeight(tr[i].v[k]);
-				ap.baryWeight[0] = vp->X;
-				ap.baryWeight[1] = vp->Y;
-				ap.baryWeight[2] = vp->Z;
-				_vnTets.vertexMaterialCoordinate(tr[i].v[k], ap.pos);
-				fixPoints.insert(std::make_pair(_vnTets.getVertexTetrahedron(tr[i].v[k]), ap));
+	auto enterFixPoint = [&](int vId, bool periferal) {
+		const Vec3f* vp = _vnTets.getVertexWeight(vId);
+		ap.baryWeight[0] = vp->X;
+		ap.baryWeight[1] = vp->Y;
+		ap.baryWeight[2] = vp->Z;
+		_vnTets.vertexMaterialCoordinate(vId, ap.pos);
+		ap.isPeriferal = periferal;
+		fixPoints.insert(std::make_pair(_vnTets.getVertexTetrahedron(vId), ap));
+	};
+	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
+		if (_mt->triangleMaterial(i) == 7) {  // periosteal triangle
+			for (int k = 0; k < 3; ++k) {
+				int vIdx = _mt->triangleVertices(i)[k];
+				enterFixPoint(vIdx, false);
 			}
 		}
-	}
-	ap.isPeriferal = true;
-	for (i = 0; i < numElem; ++i) {
-		if (tr[i].material == 1) {  // soft border triangle
-			for (k = 0; k < 3; ++k) {
-				const Vec3f *vp = _vnTets.getVertexWeight(tr[i].v[k]);
-				ap.baryWeight[0] = vp->X;
-				ap.baryWeight[1] = vp->Y;
-				ap.baryWeight[2] = vp->Z;
-				_vnTets.vertexMaterialCoordinate(tr[i].v[k], ap.pos);
-				fixPoints.insert(std::make_pair(_vnTets.getVertexTetrahedron(tr[i].v[k]), ap));
+		if (_mt->triangleMaterial(i) == 1) {  // periosteal triangle
+			for (int k = 0; k < 3; ++k) {
+				int vIdx = _mt->triangleVertices(i)[k];
+				enterFixPoint(vIdx, true);
 			}
 		}
 	}
@@ -495,17 +536,17 @@ void bccTetScene::updateSurfaceDraw()
 
 void bccTetScene::setFixedRegion(const float(&corners)[6])
 {  // AFTER lattice has been created, physics nodes inside this zone are fixed
-	boundingBox<float> bb;
+/*	boundingBox<float> bb;
 	bb.Empty_Box();
 	bb.Enlarge_To_Include_Point((const float(&)[3])corners[0]);
 	bb.Enlarge_To_Include_Point((const float(&)[3])corners[3]);
 	Vec3f v;
 	for (int n = (int)_vnTets.nodeNumber(), i = 0; i < n; ++i) {
-		if (bb.Outside((const float(&)[3])v._v))
+		if (bb.Outside((const float(&)[3])v.xyz))
 			_vnTets.setNodeFixationState(i, false);
 		else
 			_vnTets.setNodeFixationState(i, true);
-	}
+	} */
 }
 
 void bccTetScene::createTetLatticeDrawing()
@@ -514,7 +555,7 @@ void bccTetScene::createTetLatticeDrawing()
 	_nodeGraphicsPositions.assign(_vnTets.nodeNumber() << 2, 1.0f);
 	GLfloat *ngp = &_nodeGraphicsPositions[0];
 	for (int n = _vnTets.nodeNumber(), i = 0; i < n; ++i){
-		float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
+		const float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
 		*(ngp++) = fp[0];
 		*(ngp++) = fp[1];
 		*(ngp++) = fp[2];
@@ -558,7 +599,7 @@ void bccTetScene::drawTetLattice()
 		return;
 	GLfloat *ngp = &_nodeGraphicsPositions[0];
 	for (int n = _vnTets.nodeNumber(), i = 0; i < n; ++i){
-		float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
+		const float *fp = _vnTets.nodeSpatialCoordinatePtr(i);
 		*(ngp++) = fp[0];
 		*(ngp++) = fp[1];
 		*(ngp++) = fp[2];
