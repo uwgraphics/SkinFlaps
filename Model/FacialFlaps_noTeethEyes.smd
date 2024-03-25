@@ -31,7 +31,8 @@
         "hookWeight" : 500.0,
         "sutureWeight" : 2000.0,
         "autoSutureSpacing" : 0.14,
-        "maxDimSubdivisions" : 222
+        "nTetSizeLevels" : 4,
+        "maxDimMegatetSubdivs" : 34
     },
     "tetrahedralSubsets" : {
         "nasalCartilage.obj" : {

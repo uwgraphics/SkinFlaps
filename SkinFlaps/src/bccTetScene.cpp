@@ -8,6 +8,8 @@
 //    physBAM(Fedkiw, Teran, Sifakis, et al.), corotated linear elasticity(Teran, Sifakis, Mitchell) and
 //    the shape matching code of Rivers and James.
 //    Copyright 2019 - All rights reserved at the present time.
+// Revised: 11/1/2024
+// Description: This revision uses the multiresolution bcc tet classes to drop tet count.
 ///////////////////////////////////////////////////////////////////
 
 #include "bccTetScene.h"
@@ -50,8 +52,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		_surgAct->sendUserMessage("Module file not in correct JSON format-", "Error Message");
 		return false;
 	}
-	//	_fixedMeshes.clear();
-	//	_fixedRegions.clear();
 	json::Object scnObj = my_data.ToObject();
 	json::Object::ValueMap::iterator oit, suboit, suboit2;
 	// get texture files first
@@ -154,40 +154,17 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		}
 	}
 	if ((oit = scnObj.find("fixedGeometry")) != scnObj.end()) {
-		json::Object fixObj = oit->second.ToObject();
-		for (suboit = fixObj.begin(); suboit != fixObj.end(); ++suboit) {
-			if (suboit->first == "mesh") {
-				json::Array meshArr = suboit->second.ToArray();
-				json::Array::ValueVector::iterator ait;
-				for (ait = meshArr.begin(); ait != meshArr.end(); ++ait) {
-					path = dataDirectory + ait->ToString();
-					//					_fixedMeshes.push_back(staticTriangle());
-					//					staticTriangle *tuv = &_fixedMeshes.back();
-					//					if (tuv->readObjFile(path.c_str())) {
-					//						_fixedMeshes.pop_back();
-					//						_surgAct->sendUserMessage("Unable to load fixed geometry mesh file-", "Error Message");
-					//						return false;
-					//					}
-					//					tuv->setName(ait->ToString().c_str());
-				}
-			}
-			//			if (suboit->first == "region") {  // currently unused
-			//				json::Array bbArr;
-			//				bbArr = suboit->second.ToArray();
-			//				_fixedRegions.push_back(boundingBox3());
-			//				for (int i = 0; i < 6; ++i)
-			//					_fixedRegions.back().corners[i] = bbArr[i];
-			//			}
-		}
+		// now using fixedCollisionSets instead
+		throw(std::logic_error("Model .smd file sent to simulator uses an old fixedGeometry specifier that is no longer supported.\n"));
 	}
 	if ((oit = scnObj.find("fixedCollisionSets")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
 		std::string lsPath;
-		std::vector<int> vIdx;
 		for (suboit = hullObj.begin(); suboit != hullObj.end(); ++suboit) {
 			lsPath = dataDirectory + suboit->first;
 			json::Array polyArr;
 			polyArr = suboit->second.ToArray();
+			std::vector<int> vIdx;
 			vIdx.reserve(polyArr.size());
 			for (int i = 0; i < polyArr.size(); ++i)
 				vIdx.push_back( polyArr[i].ToInt());
@@ -198,7 +175,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 	if ((oit = scnObj.find("tetrahedralProperties")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
 		float lowTetWeight, highTetWeight, strainMin, strainMax, collisionWeight, fixedWeight, periferalWeight, hookWeight, sutureWeight, autoSutureSpacing, selfCollisionWeight;
-//		std::string lsFname(dataDirectory), collisionObject;
 		for (suboit = hullObj.begin(); suboit != hullObj.end(); ++suboit) {
 			if (suboit->first == "minStrain")
 				strainMin = suboit->second.ToFloat();
@@ -222,8 +198,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 				hookWeight = suboit->second.ToFloat();
 			else if (suboit->first == "autoSutureSpacing")
 				autoSutureSpacing = suboit->second.ToFloat();
-//			else if (suboit->first == "collisionObject")  // now done with "fixedCollisionSets"
-//				collisionObject = suboit->second.ToString();
 			else if (suboit->first == "maxDimMegatetSubdivs")
 				maxDimMegatetSubdivs = suboit->second.ToInt();
 			else if (suboit->first == "nTetSizeLevels")
@@ -234,7 +208,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		_ptp.setTetProperties(lowTetWeight, highTetWeight, strainMin, strainMax, collisionWeight, selfCollisionWeight, fixedWeight, periferalWeight);
 		_ptp.setHookSutureWeights(hookWeight, sutureWeight, 0.3f);
 		_surgAct->getSutures()->setAutoSutureSpacing(autoSutureSpacing);
-//		lsFname += collisionObject;  //  "collision_proxy_5_4_20.obj";
 	}
 	struct tetSubset {
 		std::string objFile;
@@ -242,7 +215,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		float highTetWeight;
 		float strainMin;
 		float strainMax;
-//		std::list<std::string> objFiles;
 	};
 	std::list<tetSubset> tetSubsets;
 	if ((oit = scnObj.find("tetrahedralSubsets")) != scnObj.end()) {
@@ -268,9 +240,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 	}
 	else
 		;
-
-//	_mt->writeObjFile("objMat.obj");
-
 	// COURT - put back in after cutter debug!
 	createNewPhysicsLattice(maxDimMegatetSubdivs, nTetSizeLevels);  // now creating operable lattice on load
 	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
@@ -283,7 +252,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 //			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
 //		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
 	}
-
 	_gl3w->frameScene(true);  // computes bounding spheres
 	return true;
 }
@@ -350,8 +318,6 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 		_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
 		_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
 #else
-//		std::array<float, 3> *nodeSpatialCoords = _ptp.createBccTetStructure(_vnTets.getTetNodeArray(), (float)_vnTets.getTetUnitSize());
-
 		std::vector<uint8_t> tetSizeMult;
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
@@ -416,9 +382,12 @@ void bccTetScene::initPdPhysics()
 		_tetCol.initSoftCollisions(_mt, &_vnTets);
 	}
 #ifndef NO_PHYSICS
+	if (_surgAct->getHooks()->getNumberOfHooks() < 1 && _surgAct->getSutures()->getNumberOfSutures() < 1)
+		throw(std::logic_error("Trying to initialize physics without applying any forces.\n"));
 	_surgAct->getHooks()->updateHookPhysics();
 	_surgAct->getSutures()->updateSuturePhysics();
-	_ptp.initializePhysics();
+	if (_surgAct->getHooks()->getNumberOfHooks() < 1)  // fake sutures don't initialize physics
+		_ptp.initializePhysics();
 #endif
 }
 
@@ -534,23 +503,10 @@ void bccTetScene::updateSurfaceDraw()
 #endif
 }
 
-void bccTetScene::setFixedRegion(const float(&corners)[6])
-{  // AFTER lattice has been created, physics nodes inside this zone are fixed
-/*	boundingBox<float> bb;
-	bb.Empty_Box();
-	bb.Enlarge_To_Include_Point((const float(&)[3])corners[0]);
-	bb.Enlarge_To_Include_Point((const float(&)[3])corners[3]);
-	Vec3f v;
-	for (int n = (int)_vnTets.nodeNumber(), i = 0; i < n; ++i) {
-		if (bb.Outside((const float(&)[3])v.xyz))
-			_vnTets.setNodeFixationState(i, false);
-		else
-			_vnTets.setNodeFixationState(i, true);
-	} */
-}
-
 void bccTetScene::createTetLatticeDrawing()
 {
+	if (_nodeGraphicsPositions.size() == _vnTets.nodeNumber())
+		return;
 	_nodeGraphicsPositions.clear();
 	_nodeGraphicsPositions.assign(_vnTets.nodeNumber() << 2, 1.0f);
 	GLfloat *ngp = &_nodeGraphicsPositions[0];

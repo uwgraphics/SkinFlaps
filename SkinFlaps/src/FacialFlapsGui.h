@@ -587,8 +587,10 @@ public:
 			if (ImGui::BeginMenu("View"))
 			{
 				if (ImGui::MenuItem("View Physics", NULL, &viewPhysics, true)) {
-					if (viewPhysics)
+					if (viewPhysics) {
+						igSurgAct.getBccTetScene()->createTetLatticeDrawing();
 						igSurgAct.getBccTetScene()->setVisability(2, 1);
+					}
 					else
 						igSurgAct.getBccTetScene()->setVisability(2, 0);
 				}

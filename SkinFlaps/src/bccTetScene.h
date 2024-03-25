@@ -33,7 +33,6 @@ public:
 	void updateOldPhysicsLattice();
 	inline void nonTetPhysicsUpdate() {_ptp.initializePhysics();}
 	void updatePhysics();
-	void setFixedRegion(const float(&corners)[6]);
 	void fixPeriostealPeriferalVertices();
 	void updateSurfaceDraw();
 	pdTetPhysics* getPdTetPhysics_2(){ return &_ptp; }

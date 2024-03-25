@@ -59,7 +59,6 @@ public:
 	void setGLmatrices(GLmatrices *GLm) {_glm=GLm;}
 	void setPhysicsLattice(pdTetPhysics *pdtp) { _ptp = pdtp; }
 	void setVnBccTetrahedra(vnBccTetrahedra *vnt) { _vnt = vnt; }
-//	void setIncisions(deepCut *dc) { _deepCut = dc; }
 	bool empty() { return _hooks.empty(); }
 	hooks();
 	~hooks();
@@ -68,10 +67,6 @@ private:
 	GLmatrices *_glm;
 	pdTetPhysics *_ptp;
 	vnBccTetrahedra *_vnt;
-
-//	deepCut *_deepCut;
-	skinCutUndermineTets* _deepCut;  // replace later with above
-
 	shapes *_shapes;
 	typedef std::map<unsigned int, hookConstraint> HOOKMAP;
 	HOOKMAP _hooks;
@@ -80,8 +75,6 @@ private:
 	static float _springConstant;
 	static float _hookSize;
 	static GLfloat _selectedColor[4], _unselectedColor[4];  // , _insideSkullColor[4];
-
-//	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus);
 };
 
 #endif	// __HOOKS_H__

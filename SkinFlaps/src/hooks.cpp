@@ -132,7 +132,7 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 	axisAngleRotateMatrix4x4(om, axis.xyz, angle);
 	translateMatrix4x4(om,xyz[0],xyz[1],xyz[2]);
 	Vec3f gridLocus, bw;
-	if (_deepCut->getMaterialTriangles() != nullptr && _ptp->solverInitialized()) {  // COURT - won't need second condition
+	if (_vnt->getMaterialTriangles() != nullptr && _ptp->solverInitialized()) {  // COURT - won't need second condition
 		int tetIdx = _vnt->parametricTriangleTet(triangle, uv, gridLocus);
 		if (tetIdx < 0){
 			--_hookNow;
@@ -177,42 +177,6 @@ bool hooks::updateHookPhysics(){
 	// don't call _ptp->reInitializePhysics() here as done in bccTetScene::updateOldPhysicsLattice() where this routine is called
 	return true;
 }
-
-/* int hooks::parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus)
-{  // in material coords
-	int* tr = _vnt->_mt->triangleVertices(mtTriangle);
-	Vec3f tV[3];
-	for (int i = 0; i < 3; ++i)
-		_vnt->vertexGridLocus(tr[i], tV[i]);
-	gridLocus = tV[0] * (1.0f - uv[0] - uv[1]) + tV[1] * uv[0] + tV[2] * uv[1];
-	bccTetCentroid tC;
-	_vnt->gridLocusToTetCentroid(gridLocus, tC);
-	for (int i = 0; i < 3; ++i) {
-		if (tC.ll == _vnt->tetCentroid(_vnt->_vertexTets[tr[i]])->ll)
-			return _vnt->_vertexTets[tr[i]];
-	}
-	// find candidate cubes
-	std::list<int> cc, tp;
-	auto pr = _vnt->_tetHash.equal_range(tC.ll);
-	while (pr.first != pr.second) {
-		cc.push_back(pr.first->second);
-		++pr.first;
-	}
-	if (cc.size() < 1) {
-		assert(false);
-		return -1;
-	}
-	if (cc.size() < 2)
-		return cc.front();
-	for (auto c : cc) {
-		for (int i = 0; i < 3; ++i) {
-			if (_vnt->decreasingCentroidPath(c, _vnt->_vertexTets[tr[i]], tp))
-				return c;
-		}
-	}
-	assert(false);
-	return -1;
-} */
 
 hooks::hooks()
 {

@@ -119,7 +119,6 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_hooks.setGLmatrices(_gl3w->getGLmatrices());
 			_hooks.setPhysicsLattice(_bts.getPdTetPhysics_2());
 			_hooks.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-//			_hooks.setIncisions(&_incisions);
 		}
 
 		// COURT visual debug use
@@ -432,7 +431,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		_historyIt = _historyArray.end();
 		_incisions.excise(triangle);
 		physicsDone = false;
-		//		_ffg->physicsDrag = true;
+		_ffg->physicsDrag = true;
 		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 			_bts.updateOldPhysicsLattice();
 			newTopology = true;
@@ -1795,7 +1794,6 @@ void surgicalActions::nextHistoryAction()
 				_hooks.setGLmatrices(_gl3w->getGLmatrices());
 				_hooks.setPhysicsLattice(_bts.getPdTetPhysics_2());
 				_hooks.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-//				_hooks.setIncisions(&_incisions);
 			}
 			hookNum = -1;
 			bool strongHook = false;
@@ -2006,6 +2004,9 @@ void surgicalActions::nextHistoryAction()
 		{
 			json::Object sutureObj = (*_historyIt)["addSuture"].ToObject();
 			int edge, sutNum = sutureObj["sutureNum"].ToInt();
+
+			std::cout << "Last suture was " << sutNum << "\n";
+
 			float param, uv[2], xyz[3];
 			if (_sutures.getNumberOfSutures() < 1) {	// initialize sutures
 				_sutures.setSutureSize(_sg.getSceneNode()->getRadius()*0.003f);

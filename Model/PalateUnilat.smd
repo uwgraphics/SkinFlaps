@@ -27,7 +27,8 @@
         "hookWeight" : 65.0,
         "sutureWeight" : 1200.0,
         "autoSutureSpacing" : 0.02,
-        "maxDimSubdivisions" : 180
+        "nTetSizeLevels" : 3,
+        "maxDimMegatetSubdivs" : 31
     },
     "incisionWidth" : 0.01
 }

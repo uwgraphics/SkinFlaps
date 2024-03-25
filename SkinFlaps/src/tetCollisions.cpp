@@ -333,7 +333,7 @@ void tetCollisions::updateFixedCollisions(materialTriangles *mt, vnBccTetrahedra
 				continue;
 			tets.push_back(tet);
 			const Vec3f* v3 = _vnt->getVertexWeight(v);
-			std::array<float, 3> va = { v3->Y, v3->X,v3->Z };
+			std::array<float, 3> va = { v3->X, v3->Y, v3->Z };
 			weights.push_back(va);
 		}
 		_ptp->addFixedCollisionSet(fc.levelSetFilename, tets, weights);
