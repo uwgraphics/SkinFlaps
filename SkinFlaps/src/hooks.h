@@ -11,9 +11,7 @@
 #include "shapes.h"
 #include "Vec3f.h"
 
-// #include "deepCut.h"
 #include "skinCutUndermineTets.h"
-
 #include "pdTetPhysics.h"
 
 // forward declarations
@@ -59,7 +57,9 @@ public:
 	void setGLmatrices(GLmatrices *GLm) {_glm=GLm;}
 	void setPhysicsLattice(pdTetPhysics *pdtp) { _ptp = pdtp; }
 	void setVnBccTetrahedra(vnBccTetrahedra *vnt) { _vnt = vnt; }
-	bool empty() { return _hooks.empty(); }
+	inline bool empty() { return _hooks.empty(); }
+	inline void setGroupPhysicsInit(bool groupInit) { _groupPhysicsInit = groupInit; }
+
 	hooks();
 	~hooks();
 
@@ -75,6 +75,7 @@ private:
 	static float _springConstant;
 	static float _hookSize;
 	static GLfloat _selectedColor[4], _unselectedColor[4];  // , _insideSkullColor[4];
+	bool _groupPhysicsInit;
 };
 
 #endif	// __HOOKS_H__

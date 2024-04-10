@@ -21,6 +21,7 @@ private:
 	T m_sutureWeight{ 0 };
 	T m_fixedWeight{ 0 };
 	T m_peripheralWeight{ 0 };
+	T m_tJunctionWeight{ 0 };
 
 	T m_stressLimit{ 1 };
 
@@ -56,7 +57,7 @@ public:
 			m_solver.updateCollisionSutures(topTets.size(), topTets.data(), bottomTets.data(), topBarys[0].data(), bottomBarys[0].data(), collisionNormals[0].data());
 	}
 
-	inline void setTetProperties(const float lowTetWeight, const float highTetWeight, const float strainMin, const float strainMax, const float collisionWeight, const float selfCollisionWeight, const float fixedWeight, const float peripheralWeight) {
+	inline void setTetProperties(const float lowTetWeight, const float highTetWeight, const float TJunctionWeight, const float strainMin, const float strainMax, const float collisionWeight, const float selfCollisionWeight, const float fixedWeight, const float peripheralWeight) {
 		// guard against reset tetProperties
 		if (m_tetPropsSet)
 			throw std::logic_error("tet properties can only be set once");
@@ -64,6 +65,7 @@ public:
 			m_tetPropsSet = true;
 		m_fixedWeight = fixedWeight;
 		m_peripheralWeight = peripheralWeight;
+		m_tJunctionWeight = TJunctionWeight;
 		m_solver.setParameters(highTetWeight / 2, lowTetWeight / highTetWeight, strainMin, strainMax, collisionWeight, selfCollisionWeight);
 	}
 
@@ -97,7 +99,7 @@ public:
 	// Next routine for inputting nodes on the face separating a large tet from possible multiple smaller ones. The subnodes input are present on a smaller tet, but not on the larger one.
 	// These are constrained by internodeWeight to be barycentrically located on the larger face by faceNodes.  With multiple levels of physics resolution faceNodes and their
 	// corresponding barycentric multipliers can number more than three for a single subtet.
-	void addInterNodeConstraints(const std::vector<int>& subNodes, const std::vector<std::vector<int> >& faceNodes, const std::vector<std::vector<float> >& faceBarycentrics, const float internodeWeight) {
+	void addInterNodeConstraints(const std::vector<int>& subNodes, const std::vector<std::vector<int> >& faceNodes, const std::vector<std::vector<float> >& faceBarycentrics) {
 		int sns = subNodes.size();
 		assert(sns == faceNodes.size() && sns == faceBarycentrics.size());
 		for (int i = 0; i < sns; i++) {
@@ -108,7 +110,7 @@ public:
 				int l = faceNodes[i].size() < 3 ? faceNodes[i].size() : 3;
 				int fN[3]{}; for (int v = 0; v < l; ++v) fN[v] = faceNodes[i][v];
 				float bC[3]{}; for (int v = 0; v < l; ++v) bC[v] = faceBarycentrics[i][v];
-				int handle = m_solver.addInterNodeConstraint(subNodes[i], fN, bC, internodeWeight);
+				int handle = m_solver.addInterNodeConstraint(subNodes[i], fN, bC, m_tJunctionWeight);
 			}
 		}
 	}
@@ -155,7 +157,7 @@ public:
 			number = m_solver.addConstraint(tet, reinterpret_cast<const T(&)[d]>(barycentricWeight), reinterpret_cast<const T(&)[d]>(hookPosition), m_hookWeight*200.0f, m_stressLimit*2000.0f);
 		else
 			number = m_solver.addConstraint(tet, reinterpret_cast<const T(&)[d]>(barycentricWeight), reinterpret_cast<const T(&)[d]>(hookPosition), m_hookWeight, m_stressLimit);
-		initializePhysics();
+//		initializePhysics();  // don't do this here.  Do in calling routine due to group initilization.
 		return number;
 	}
 
@@ -181,6 +183,8 @@ public:
 
 	/* returns constraint index */
 	inline int addSuture(const int(&tets)[2], const std::array<float, 3>(&barycentricWeights)[2]) {
+		// unlike hooks doesn't call initializePhysics() here due to suture group entry.
+		// Must call initializePhysics() in calling routine handling individual versus group entry.
 		if (!m_deformerInited)
 			throw std::logic_error("need to init tet topology before addSuture");
 		// m_solverInited = false;

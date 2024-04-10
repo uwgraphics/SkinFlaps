@@ -16,8 +16,10 @@ public:
 	typedef std::array<unsigned short, 3> bccTetCentroid;
 	void getOldPhysicsData(vnBccTetrahedra *oldVnbt);
 	void remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt);  // done before new physics library made
-	inline void clearVnTetVerts() {_newSurfaceTetLocs.clear();}
-	inline void insertSurfaceTetVertex(int oldTet, int vertex) { vnTetVert vtv; vtv.vertex = vertex; _newSurfaceTetLocs.insert(std::make_pair(oldTet, vtv)); }
+//	inline void clearVnTetVerts() {_newVnTetLocs.clear();}
+//	inline void insertVnTetVertex(int oldTet, int vertex) { vnTetVert vtv; vtv.vertex = vertex; _newVnTetLocs.insert(std::make_pair(oldTet, vtv)); }
+	inline void clearVnTetTris() { _newVnTetTris.clear(); }
+	inline void insertVnTetTris(int oldTet, std::vector<int> tris) {_newVnTetTris.insert(std::make_pair(oldTet, tris)); }
 	remapTetPhysics();
 	~remapTetPhysics();
 	
@@ -59,8 +61,11 @@ private:
 		int vertex;
 		Vec3f loc;
 	};
-	std::unordered_multimap<int, vnTetVert> _oldSurfaceTetLocs, _newSurfaceTetLocs;
+	std::unordered_multimap<int, std::vector<int> > _oldVnTetTris, _newVnTetTris;
+//	std::unordered_multimap<int, vnTetVert> _oldVnTetLocs, _newVnTetLocs;
 	std::vector<Vec3f> _oldNodePositions;
+	std::vector<int> _oldVertexTets;
+	std::vector< bccTetCentroid> _oldTetCentroids;
 	std::unordered_multimap<bccTetCentroid, int, vnBccTetrahedra::bccTetCentroidHasher> _oldTetHash;
 	std::vector<std::array<int, 4> > _oldTets;
 	std::vector<std::array<short, 3> > _oldNodes;

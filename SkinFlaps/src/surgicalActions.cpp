@@ -294,7 +294,6 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 			_sutures.setGLmatrices(_gl3w->getGLmatrices());
 			_sutures.setPhysicsLattice(_bts.getPdTetPhysics_2());
 			_sutures.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-			_sutures.setDeepCut(&_incisions);
 			_sutures.setSurgicalActions(this);
 		}
 		int i = 0, edg, triMat = tr->triangleMaterial(triangle);
@@ -1957,14 +1956,14 @@ void surgicalActions::nextHistoryAction()
 			std::this_thread::sleep_for(std::chrono::milliseconds(800));
 			_incisions.undermineSkin();
 			_undermineTriangles.clear();
-//			physicsDone = false;
-//			_ffg->physicsDrag = true;
-//			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+			physicsDone = false;
+			_ffg->physicsDrag = true;
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
 				physicsDone = true;
-//				}
-//			);
+				}
+			);
 			++_historyIt;
 		}
 		else if (_historyIt->HasKey("excise"))
@@ -2014,7 +2013,6 @@ void surgicalActions::nextHistoryAction()
 				_sutures.setGLmatrices(_gl3w->getGLmatrices());
 				_sutures.setPhysicsLattice(_bts.getPdTetPhysics_2());
 				_sutures.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-				_sutures.setDeepCut(&_incisions);
 				_sutures.setSurgicalActions(this);
 			}
 			materialTriangles *tr = _sg.getMaterialTriangles();
@@ -2120,6 +2118,8 @@ void surgicalActions::nextHistoryAction()
 					param = 1.0f - uv[1];
 				}
 			}
+			if (sutureObj["linked"].ToBool())
+				_sutures.setLinked(sn, true);
 			int sRet = _sutures.setSecondEdge(sn, tr, eTri, edge, param);
 			_bts.setForcesAppliedFlag();
 			if (sRet < 1)
@@ -2133,8 +2133,7 @@ void surgicalActions::nextHistoryAction()
 			}
 			else
 				assert(false);
-			if (sutureObj["linked"].ToBool()) {
-				_sutures.setLinked(sn, true);
+			if(_sutures.isLinked(sn)){
 				physicsDone = false;
  				_ffg->physicsDrag = true;
 //				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {

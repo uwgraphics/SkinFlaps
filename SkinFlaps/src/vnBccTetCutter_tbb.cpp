@@ -316,10 +316,10 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	}
 	eNodes.clear();
 
-	int firstInteriorTet = _vbt->_tetNodes.size();
+	_vbt->_firstInteriorTet = _vbt->_tetNodes.size();
 	fillInteriorMicroTets(_vnCentroids);
 	// wed seams between macrotets and recut regions with T junctions
-	decimateInteriorMicroTets(firstInteriorTet, boundingTris);  // Also gets all T junctions. Does own pack().
+	decimateInteriorMicroTets(_vbt->_firstInteriorTet, boundingTris);  // Also gets all T junctions. Does own pack().
 	_vbt->_tetHash.clear();
 	_vbt->_tetHash.reserve(_vbt->_tetNodes.size());
 	for (int n = _vbt->_tetNodes.size(), i = 0; i < n; ++i)  // firstInteriorTet
@@ -387,10 +387,13 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	_interiorNodes.clear();
 	_surfaceCentroids.clear();
 	if (_rtp != nullptr) {  // will need this for fast remapTetPhysics class
-		_rtp->clearVnTetVerts();
+		_rtp->clearVnTetTris();
 		for (auto& ct : _centroidTriangles) {
+			if (ct.second.size() < 2)
+				continue;
 			for (auto& tt : ct.second)
-				_rtp->insertSurfaceTetVertex(tt.tetIdx, _mt->triangleVertices(tt.tris.front())[0]);
+				_rtp->insertVnTetTris(tt.tetIdx, tt.tris);
+			//				_rtp->insertVnTetVertex(tt.tetIdx, _mt->triangleVertices(tt.tris.front())[0]);
 		}
 	}
 	_centroidTriangles.clear();  // only reused in makeFirst(), but not again.

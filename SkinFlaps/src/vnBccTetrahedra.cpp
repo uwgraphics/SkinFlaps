@@ -708,6 +708,9 @@ int vnBccTetrahedra::vertexSolidLinePath(const int vertex, const Vec3f materialT
 
 void vnBccTetrahedra::getTJunctionConstraints(std::vector<int>& subNodes, std::vector<std::vector<int> >& macroNodes, std::vector<std::vector<float> >& macroBarycentrics) {
 	size_t snSize = _tJunctionConstraints.size();
+
+	std::cout << "In updateOldPhysicsLattice() we have " << snSize << " tjunctions.\n";
+
 	subNodes.clear();
 	macroNodes.clear();
 	macroBarycentrics.clear();

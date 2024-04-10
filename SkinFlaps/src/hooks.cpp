@@ -141,7 +141,9 @@ int hooks::addHook(materialTriangles *tri, int triangle, float(&uv)[2], bool tin
 		}
 		_vnt->gridLocusToBarycentricWeight(gridLocus, _vnt->tetCentroid(tetIdx), bw);
 #ifndef NO_PHYSICS
-		hpr.first->second._constraintId = _ptp->addHook(tetIdx, reinterpret_cast<const std::array<float, 3>&>(bw), reinterpret_cast<const std::array<float, 3>&>(xyz), tiny);  // COURT - slow. ?put in thread?
+		hpr.first->second._constraintId = _ptp->addHook(tetIdx, reinterpret_cast<const std::array<float, 3>&>(bw), reinterpret_cast<const std::array<float, 3>&>(xyz), tiny);
+		if (!_groupPhysicsInit)
+			_ptp->initializePhysics();
 #else
 		hpr.first->second._constraintId = -1;  // signal that this is a dummy hook that needs a constraint later
 #endif
@@ -178,7 +180,7 @@ bool hooks::updateHookPhysics(){
 	return true;
 }
 
-hooks::hooks()
+hooks::hooks() : _groupPhysicsInit(false)
 {
 	_hookNow=0;
 	_selectedHook=-1;

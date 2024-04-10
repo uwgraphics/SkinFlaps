@@ -1,7 +1,7 @@
 // File: sutures.h
 // Author: Court Cutting
 // Date: 2/20/12
-// Update: 6/10/2019 for bcc tetrahedra
+// Update: 4/10/2024 for multires bcc tetrahedra
 // Purpose: Class for handling sutures and associated graphics
 
 #ifndef __SUTURES_H__
@@ -49,10 +49,6 @@ protected:
 class sutures
 {
 public:
-
-	int parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f& baryWeight);  // COURT - temporary hack for multires tets
-
-
 	int addUserSuture(materialTriangles *tri, int triangle0, int edge0, float param0);
 	int setSecondEdge(int sutureNumber, materialTriangles *tri, int triangle, int edge, float param);  // return 0= normal, 1=one sided suture, 2=one tet suture, 3=different soft bodies
 	void setSecondVertexPosition(int sutureNumber, float *position);	// updates this sutures second graphics. position[3]
@@ -75,11 +71,10 @@ public:
 	inline void setGLmatrices(GLmatrices *GLm) {_glm=GLm;}
 	inline void setPhysicsLattice(pdTetPhysics *ptp) { _ptp = ptp; }
 	inline void setVnBccTetrahedra(vnBccTetrahedra *vbt) { _vbt = vbt; }
-	inline void setDeepCut(deepCut *dc){ _dc = dc; }
 	inline void setSurgicalActions(surgicalActions* sa) { _surgAct = sa; }
 	inline static void setAutoSutureSpacing(float spacing) { _sutureSpanGap = spacing; }
 	inline bool empty() { return _sutures.empty(); }
-	void clear()	{_sutures.clear(); }
+	inline void clear()	{_sutures.clear(); }
 
 	inline int userToBaseSutureNumber(const int userSutureNumber) {
 		auto us = _userSutures.find(userSutureNumber);
@@ -97,12 +92,12 @@ public:
 		}
 		return -1;
 	}
+	inline void setGroupPhysicsInit(bool groupInit) { _groupPhysicsInit = groupInit; }
 
 	sutures();
 	~sutures();
 
 private:
-	deepCut *_dc;
 	pdTetPhysics *_ptp;
 	vnBccTetrahedra *_vbt;
 	surgicalActions* _surgAct;
@@ -116,6 +111,7 @@ private:
 	static float _sutureSpanGap;
 	static float _sutureSize;
 	static GLfloat _selectedColor[4], _unselectedColor[4], _userColor[4];
+	bool _groupPhysicsInit;
 	int addSuture(materialTriangles *tri, int triangle0, int edge0, float param0);
 };
 

@@ -1,7 +1,7 @@
 // File: sutures.cpp
 // Author: Court Cutting
 // Date: 2/20/12
-// Update: 6/10/2019 for bcc tetrahedra
+// Update: 4/10/2024 for multires bcc tetrahedra
 // Purpose: Class for handling sutures and associated graphics
 
 #include <vector>
@@ -10,7 +10,6 @@
 #include <Vec3d.h>
 #include "materialTriangles.h"
 #include "vnBccTetrahedra.h"
-// #include "deepCut.h"
 #include "surgicalActions.h"
 #include "GLmatrices.h"
 // #include <tbb/task_arena.h>
@@ -182,23 +181,23 @@ int sutures::setSecondEdge(int sutureNumber, materialTriangles *tri, int triangl
 	sit->second._edges[1] = edge;
 	sit->second._params[1] = param;
 	if (tri == sit->second._tri)	{	// true for now. May change later.
-		Vec3f bw, gridLocus;
 		for (int i = 0; i < 2; ++i){
-
-			sit->second._tetIdx[i] = parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], sit->second._baryWeights[i]);  // COURT temporary multires fix
-
-
-/*			sit->second._tetIdx[i] = _dc->parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], gridLocus);
-			if (sit->second._tetIdx[i] < 0){
+			int* tr = _vbt->getMaterialTriangles()->triangleVertices(sit->second._tris[i]);
+			Vec3f gl;
+			sit->second._tetIdx[i] =  _vbt->parametricEdgeTet(tr[sit->second._edges[i]], tr[(sit->second._edges[i] + 1) % 3], sit->second._params[i], gl);
+			if (sit->second._tetIdx[i] < 0) {
 				--_sutureNow;
 				assert(_sutureNow == sutureNumber);
 				deleteSuture(sutureNumber);
-				return 2;
+				return 1;
 			}
-			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(sit->second._tetIdx[i]), sit->second._baryWeights[i]); */
+			_vbt->gridLocusToBarycentricWeight(gl, _vbt->tetCentroid(sit->second._tetIdx[i]), sit->second._baryWeights[i]);
 		}
-		if (_ptp->solverInitialized())
+		if (_ptp->solverInitialized()) {
 			sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));
+			if (sit->second._type == 0 && !_groupPhysicsInit)  // won't get this as a group later
+				_ptp->initializePhysics();
+		}
 		else
 			sit->second._constraintId = -1;  // stub until forces applied
 		return 0;
@@ -210,28 +209,16 @@ void sutures::updateSuturePhysics(){  // call after a topology change
 	auto sit = _sutures.begin();
 	while (sit != _sutures.end()){
 		unsigned int sutNow = sit->first;
-		Vec3f bw, gridLocus;
-		int i;
-		for (i = 0; i < 2; ++i){
-
-			sit->second._tetIdx[i] = parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], sit->second._baryWeights[i]);  // COURT temporary multires fix
-
-
-/*/			sit->second._tetIdx[i] = _dc->parametricMTedgeTet(sit->second._tris[i], sit->second._edges[i], sit->second._params[i], gridLocus);
-			_vbt->gridLocusToBarycentricWeight(gridLocus, *_vbt->tetCentroid(sit->second._tetIdx[i]), bw);
-			if (sit->second._tetIdx[i] < 0){
-				++sit;
+		for (int i = 0; i < 2; ++i) {
+			int* tr = _vbt->getMaterialTriangles()->triangleVertices(sit->second._tris[i]);
+			Vec3f gl;
+			sit->second._tetIdx[i] = _vbt->parametricEdgeTet(tr[sit->second._edges[i]], tr[(sit->second._edges[i] + 1) % 3], sit->second._params[i], gl);
+			if (sit->second._tetIdx[i] < 0)
 				deleteSuture(sutNow);
-				break;
-			}
-			sit->second._baryWeights[i].set(bw.xyz);  // COURT - old bw was likely fine. Only tetIdx can change */
+			_vbt->gridLocusToBarycentricWeight(gl, _vbt->tetCentroid(sit->second._tetIdx[i]), sit->second._baryWeights[i]);
 		}
-		if (i < 2)
-			sit = _sutures.erase(sit);
-		else{
-			sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));
-			++sit;
-		}
+		sit->second._constraintId = _ptp->addSuture(sit->second._tetIdx, reinterpret_cast<const std::array<float, 3>(&)[2]>(sit->second._baryWeights));  // don't call 	_ptp->initializePhysics() here as done in group in bccTetScene::initPdPhysics()
+		++sit;
 	}
 }
 
@@ -487,7 +474,8 @@ void sutures::laySutureLine(int suture2)
 			}
 		}
 	}
-	_ptp->initializePhysics();
+	if(!_groupPhysicsInit)  // don't do it if part of a group reinit of physics
+		_ptp->initializePhysics();  // called here for the group
 }
 
 void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &edge, float &param)
@@ -543,20 +531,7 @@ void sutures::nearestSkinIncisionEdge(const float triUv[2], int &triangle, int &
 	return;
 }
 
-
-
-int sutures::parametricMTedgeTet(const int triangle, const int edge, const float param, Vec3f& baryWeight) {  // COURT - temporary hack for multires tets
-	const materialTriangles *mt = _vbt->getMaterialTriangles();
-	int v = mt->triangleVertices(triangle)[param < 0.5f ? edge : (edge + 1) % 3];
-	baryWeight = *_vbt->getVertexWeight(v);
-	return _vbt->getVertexTetrahedron(v);
-}
-
-
-
-
-
-sutures::sutures()
+sutures::sutures() : _groupPhysicsInit(false)
 {
 	_sutureNow=0;
 	_userSutureNext = 0;

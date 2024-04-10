@@ -18,7 +18,7 @@
 #include "pdTetPhysics.h"
 #include "tetSubset.h"
 
-// COURT - with multires tets this approach is flawed.  Perhaps should do only in lowest level centroids and have only subcut volumes exhibit this behavior.  Fix later.
+// COURT - with multires tets this approach is flawed.  Perhaps should do only in lowest level centroids and have only subcut volumes exhibit this behavior. Currently inactive. Fix later.
 
 bool tetSubset::createSubset(vnBccTetrahedra* vbt, const std::string objFile, float lowTetWeight, float highTetWeight, float strainMin, float strainMax) {
 	materialTriangles mt;

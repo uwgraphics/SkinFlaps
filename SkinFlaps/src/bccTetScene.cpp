@@ -174,7 +174,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 	int nTetSizeLevels = 4, maxDimMegatetSubdivs = 31;  // Multires settings initial tet count 11,587 tets while old single res was0.5 million tets for cleft model
 	if ((oit = scnObj.find("tetrahedralProperties")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
-		float lowTetWeight, highTetWeight, strainMin, strainMax, collisionWeight, fixedWeight, periferalWeight, hookWeight, sutureWeight, autoSutureSpacing, selfCollisionWeight;
+		float lowTetWeight, highTetWeight, TJunctionWeight, strainMin, strainMax, collisionWeight, fixedWeight, periferalWeight, hookWeight, sutureWeight, autoSutureSpacing, selfCollisionWeight;
 		for (suboit = hullObj.begin(); suboit != hullObj.end(); ++suboit) {
 			if (suboit->first == "minStrain")
 				strainMin = suboit->second.ToFloat();
@@ -184,6 +184,10 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 				_lowTetWeight = lowTetWeight = suboit->second.ToFloat();
 			else if (suboit->first == "highTetWeight")
 				highTetWeight = suboit->second.ToFloat();
+
+			else if (suboit->first == "TJunctionWeight")
+				TJunctionWeight = suboit->second.ToFloat();
+
 			else if (suboit->first == "collisionWeight")
 				collisionWeight = suboit->second.ToFloat();
 			else if (suboit->first == "selfCollisionWeight")
@@ -205,7 +209,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			else
 				_surgAct->sendUserMessage("Unknown tetrahedral property in scene file-", "File Error Message");
 		}
-		_ptp.setTetProperties(lowTetWeight, highTetWeight, strainMin, strainMax, collisionWeight, selfCollisionWeight, fixedWeight, periferalWeight);
+		_ptp.setTetProperties(lowTetWeight, highTetWeight, TJunctionWeight, strainMin, strainMax, collisionWeight, selfCollisionWeight, fixedWeight, periferalWeight);
 		_ptp.setHookSutureWeights(hookWeight, sutureWeight, 0.3f);
 		_surgAct->getSutures()->setAutoSutureSpacing(autoSutureSpacing);
 	}
@@ -240,7 +244,6 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 	}
 	else
 		;
-	// COURT - put back in after cutter debug!
 	createNewPhysicsLattice(maxDimMegatetSubdivs, nTetSizeLevels);  // now creating operable lattice on load
 	_surgAct->getDeepCutPtr()->setMaterialTriangles(_mt);
 	if (!_surgAct->getDeepCutPtr()->setDeepBed(_mt, deepBedFilepath.c_str(), &_vnTets)){
@@ -248,9 +251,9 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 	}
 	if (!tetSubsets.empty()) {
 		// since multires tets added, this is flawed.  Rewrite later.
-//		for (auto& ts : tetSubsets)
-//			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
-//		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
+		for (auto& ts : tetSubsets)
+			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
+		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
 	}
 	_gl3w->frameScene(true);  // computes bounding spheres
 	return true;
@@ -288,7 +291,7 @@ void bccTetScene::updateOldPhysicsLattice()
 	std::vector<std::vector<int> > macroNodes;
 	std::vector<std::vector<float> > macroBarys;
 	_vnTets.getTJunctionConstraints(subNodes, macroNodes, macroBarys);
-	_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
+	_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys);
 
 	if (_forcesApplied) {  // _tetsModified not necessary as implied by calling this routine
 		initPdPhysics();
@@ -354,7 +357,7 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 		std::vector<std::vector<int> > macroNodes;
 		std::vector<std::vector<float> > macroBarys;
 		_vnTets.getTJunctionConstraints(subNodes, macroNodes, macroBarys);
-		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys, _lowTetWeight);
+		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys);
 
 //			end = std::chrono::system_clock::now();
 //			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -384,10 +387,13 @@ void bccTetScene::initPdPhysics()
 #ifndef NO_PHYSICS
 	if (_surgAct->getHooks()->getNumberOfHooks() < 1 && _surgAct->getSutures()->getNumberOfSutures() < 1)
 		throw(std::logic_error("Trying to initialize physics without applying any forces.\n"));
+	_surgAct->getHooks()->setGroupPhysicsInit(true);  // instead of individual inits, add all hooks and sutures then initialize physics only once.
+	_surgAct->getSutures()->setGroupPhysicsInit(true);
 	_surgAct->getHooks()->updateHookPhysics();
 	_surgAct->getSutures()->updateSuturePhysics();
-	if (_surgAct->getHooks()->getNumberOfHooks() < 1)  // fake sutures don't initialize physics
-		_ptp.initializePhysics();
+	_ptp.initializePhysics();
+	_surgAct->getHooks()->setGroupPhysicsInit(false);
+	_surgAct->getSutures()->setGroupPhysicsInit(false);
 #endif
 }
 
