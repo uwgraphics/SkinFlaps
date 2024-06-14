@@ -46,6 +46,10 @@ bool surgicalActions::saveSurgicalHistory(const char *fullFilePath)
 	else
 		hstStr = Serialize(_historyArray);
 	std::ofstream outf(fullFilePath);
+	if (!outf.is_open()) {
+		_ffg->sendUserMessage("Can't save to this filename (demos are read only).\n\nPlease create another name for your history file-\n", "History Save Error");
+		return false;
+	}
 	prettyPrintJSON pp;
 	pp.convert(hstStr.c_str(), ppStr);
 	outf.write(ppStr.c_str(), ppStr.size());

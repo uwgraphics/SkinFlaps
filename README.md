@@ -51,8 +51,9 @@ A YouTube video by Dr. Cutting will demonstrate how to use the program in *[User
 
 ##### Surgical physics library - Qisi Wang and Eftychios Sifakis
 
-##### Surgical interface, tools an graphics - @ccuttingmd
+##### Surgical interface, tools and graphics - @ccuttingmd
 
+#### The authors wish to thank the team at AdvancedInstaller Inc. for the use of their excellent Windows software installer.
 
 ### **License**
 
@@ -61,7 +62,7 @@ A YouTube video by Dr. Cutting will demonstrate how to use the program in *[User
 <img align="right" src="http://opensource.org/trademarks/opensource/OSI-Approved-License-100x137.png">
 </a>
 
-	Copyright 2014-2022 Qisi Wang, Court Cutting, Eftychios Sifakis
+	Copyright 2014-2024 Qisi Wang, Court Cutting, Eftychios Sifakis
 	
 	Redistribution and use in source and binary forms, with or without modification,
 	are permitted provided that the following conditions are met (BSD-2-Clause license):

@@ -494,24 +494,90 @@ public:
 		modelFile = modelFileName;
 	}
 
+	static std::wstring RegGetString(HKEY hKey, const std::wstring& subKey, const std::wstring& value)
+	{
+		DWORD dataSize{};
+		// First call to get dataSize
+		LONG retCode = ::RegGetValue(
+			hKey,
+			subKey.c_str(),
+			value.c_str(),
+			RRF_RT_REG_SZ,
+			nullptr,
+			nullptr,
+			&dataSize
+		);
+
+		if (retCode < ERROR_SUCCESS)
+		{
+			return std::wstring();
+		}
+
+		std::wstring data;
+		data.resize(dataSize / sizeof(wchar_t));
+
+		retCode = ::RegGetValue(
+			hKey,
+			subKey.c_str(),
+			value.c_str(),
+			RRF_RT_REG_SZ,
+			nullptr,
+			&data[0],
+			&dataSize
+		);
+
+		if (retCode != ERROR_SUCCESS)
+		{
+			return std::wstring();
+		}
+
+		DWORD stringLengthInWchars = dataSize / sizeof(wchar_t);
+		stringLengthInWchars--; // Exclude the NUL written by the Win32 API
+		data.resize(stringLengthInWchars);
+
+		return data;
+	}
+
+
 	static void setDefaultDirectories() {
 		if (historyDirectory.empty() || modelDirectory.empty()) {
-			char buff[400];
-			GetCurrentDir(buff, 400);
-			modelDirectory.assign(buff);
-			size_t pos = modelDirectory.rfind("Build");
-			if (pos == std::string::npos) {  // not part of program build. Use install dir.
-				historyDirectory = "C:\\Users\\SkinFlaps";
-				modelDirectory = "C:\\Users\\SkinFlaps";
+			char buff[200];
+			HKEY hKey = HKEY_LOCAL_MACHINE;
+			std::wstring ret, subKey = L"SOFTWARE\\SkinFlaps", value = L"ModelDir";
+			ret = RegGetString(hKey, subKey, value);
+			if (!ret.empty()) {
+				size_t i;
+				wcstombs_s(&i, buff, (size_t)200, ret.c_str(), (size_t)199); // -1 so the appended NULL doesn't fall outside the allocated buffer
+				modelDirectory = buff;
 			}
-			else {  // doing program building and testing
-				std::string projectFolder = "SkinFlaps";
-				pos = modelDirectory.rfind(projectFolder);  
-				modelDirectory.erase(modelDirectory.begin() + pos + projectFolder.size(), modelDirectory.end()); 
-				historyDirectory = modelDirectory;
+			else
+				modelDirectory.clear();
+			subKey = L"SOFTWARE\\SkinFlaps", value = L"HistoryDir";
+			ret = RegGetString(hKey, subKey, value);
+			if (!ret.empty()) {
+				size_t i;
+				wcstombs_s(&i, buff, (size_t)200, ret.c_str(), (size_t)199); // -1 so the appended NULL doesn't fall outside the allocated buffer
+				historyDirectory = buff;
 			}
-			modelDirectory.append("\\Model\\");
-			historyDirectory.append("\\History\\");
+			else
+				historyDirectory.clear();
+			if (modelDirectory.empty() || historyDirectory.empty()) {
+				GetCurrentDir(buff, 200);
+				modelDirectory.assign(buff);
+				size_t pos = modelDirectory.rfind("Build");
+				if (pos == std::string::npos) {  // not part of program build. Use install dir.
+					historyDirectory = "C:\\Users\\SkinFlaps";
+					modelDirectory = "C:\\ProgramData\\SkinFlaps";
+				}
+				else {  // doing program building and testing
+					std::string projectFolder = "SkinFlaps";
+					pos = modelDirectory.rfind(projectFolder);
+					modelDirectory.erase(modelDirectory.begin() + pos + projectFolder.size(), modelDirectory.end());
+					historyDirectory = modelDirectory;
+				}
+				modelDirectory.append("\\Model\\");
+				historyDirectory.append("\\History\\");
+			}
 			igSurgAct.setModelDirectory(modelDirectory.c_str());
 			igSurgAct.setHistoryDirectory(historyDirectory.c_str());
 		}
