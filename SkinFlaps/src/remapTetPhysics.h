@@ -16,8 +16,6 @@ public:
 	typedef std::array<unsigned short, 3> bccTetCentroid;
 	void getOldPhysicsData(vnBccTetrahedra *oldVnbt);
 	void remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt);  // done before new physics library made
-//	inline void clearVnTetVerts() {_newVnTetLocs.clear();}
-//	inline void insertVnTetVertex(int oldTet, int vertex) { vnTetVert vtv; vtv.vertex = vertex; _newVnTetLocs.insert(std::make_pair(oldTet, vtv)); }
 	inline void clearVnTetTris() { _newVnTetTris.clear(); }
 	inline void insertVnTetTris(int oldTet, std::vector<int> tris) {_newVnTetTris.insert(std::make_pair(oldTet, tris)); }
 	remapTetPhysics();

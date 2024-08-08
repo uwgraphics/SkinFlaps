@@ -14,8 +14,8 @@
     <ClCompile Include="..\..\SkinFlaps\src\sutures.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\tetCollisions.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\tetSubset.cpp" />
-    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutter_tbb.cpp" />
     <ClCompile Include="..\..\SkinFlaps\src\vnBccTetrahedra.cpp" />
+    <ClCompile Include="..\..\SkinFlaps\src\vnBccTetCutter_tbb.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\SkinFlaps\src\bccTetScene.h" />
@@ -32,8 +32,8 @@
     <ClInclude Include="..\..\SkinFlaps\src\sutures.h" />
     <ClInclude Include="..\..\SkinFlaps\src\tetCollisions.h" />
     <ClInclude Include="..\..\SkinFlaps\src\tetSubset.h" />
-    <ClInclude Include="..\..\SkinFlaps\src\triTriIntersect_Shen.h" />
     <ClInclude Include="..\..\SkinFlaps\src\vnBccTetCutter_tbb.h" />
     <ClInclude Include="..\..\SkinFlaps\src\vnBccTetrahedra.h" />
+    <ClInclude Include="..\..\SkinFlaps\src\triTriIntersect_ShenD.h" />
   </ItemGroup>
 </Project>

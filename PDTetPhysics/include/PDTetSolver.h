@@ -151,6 +151,10 @@ private:
 	void updateCollisionConstraints();
 public:
 	void updateCollisionSutures(const int length, const int* topI, const int* botI, const T* topW, const T* botW, const T* normal); // this should be private and handled by PDSolver it self in future iterations
+	inline void clearCollisionSutures() {  // COURT added
+		for (auto& c : m_gridDeformer.m_collisionSutures)
+			c.m_stiffness = 0;
+	}
 
 	inline void releaseSolver() {
 		if (m_gridDeformer.m_collisionConstraints.size()) {

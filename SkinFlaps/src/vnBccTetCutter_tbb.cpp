@@ -8,7 +8,7 @@
 #include "Mat2x2f.h"
 #include "Mat3x3f.h"
 #include "Mat3x3d.h"
-#include "triTriIntersect_Shen.h"
+#include "triTriIntersect_ShenD.h"
 
 #include <chrono>
 #include <ctime>  
@@ -39,7 +39,6 @@ void vnBccTetCutter_tbb::addNewMultiresIncision() {
 				_vbt->gridLocusToLowestTetCentroid(_vMatCoords[tr[j]], _vertexTetCentroids[tr[j]]);  // All tri vertices must be converted to lowest.  This invalidates next step.
 		}
 	};
-
 	for (int n = _mt->numberOfTriangles(), i = _lastTriangleSize; i < n; ++i) // all new triangles part of an incision
 		getTriangleVertexCentroids(i);
 	// COURT 4x faster than single thread using tbb hash container requiring no reduction. tbb version ~30% faster than omp before reduction and reduction using critical section. tbb hash container very helpful.
@@ -91,13 +90,13 @@ void vnBccTetCutter_tbb::addNewMultiresIncision() {
 			}
 		}
 	}
-
 	incisMegaCentroids.clear();
 	std::vector<int> borderTris(_vnTris.begin(), _vnTris.end());
 	for (auto t : borderTris) {
 		assert(t < _lastTriangleSize);
 		getTriangleVertexCentroids(t);
 	}
+
 #if defined( _DEBUG )
 	for (int i = 0; i < borderTris.size(); ++i) {
 		if (_mt->triangleMaterial(borderTris[i]) < 0)	// signals a deleted triangle
@@ -123,7 +122,8 @@ void vnBccTetCutter_tbb::addNewMultiresIncision() {
 		_vnTris.insert(i);
 	}
 
-	_centroidTriangles.clear();
+	_surfaceCentroids.clear();
+	_surfaceTetTris.clear();
 	_vbt->_tetNodes.erase(_vbt->_tetNodes.begin() + _vbt->_nMegatets, _vbt->_tetNodes.end());
 	_vbt->_tetCentroids.erase(_vbt->_tetCentroids.begin() + _vbt->_nMegatets, _vbt->_tetCentroids.end());
 	_vbt->_nodeGridLoci.erase(_vbt->_nodeGridLoci.begin() + _meganodeSize, _vbt->_nodeGridLoci.end());
@@ -141,8 +141,9 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	for (int n = _vbt->_tetCentroids.size(), i = 0; i < n; ++i)
 		_vbt->_tetHash.insert(std::make_pair(_vbt->_tetCentroids[i], i));  // at this time only hash unique megatets
 	// get unique tet faces at the boundary of object and of the virtual noded tets that were removed in contact with tets that remain.
-	std::vector<std::array<int, 3> > boundingTris; // Of unique tet on border of a virtual noded tet
-	std::unordered_map<int, std::set<int> > bnTris;
+	_megatetBounds.clear();
+	_megatetBounds.reserve(_vnCentroids.size() << 2);  // COURT check rough guess later
+	std::unordered_map<int, std::set<tetTris*> > bnTris;
 	bnTris.reserve(_vnCentroids.size() << 2);  // COURT check rough guess later
 	for (auto& vnc : _vnCentroids) {
 		for (int j = 0; j < 4; ++j) {
@@ -152,22 +153,23 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 				auto mttit = _megatetTetTris.find(adjTc);
 				if (mttit != _megatetTetTris.end()) {
 					auto& tn = _vbt->_tetNodes[mttit->second.tetIdx];
-					std::array<int, 3> tri;
-					tri[1] = tn[(adjFace + 1) & 3];
+					megatetFace mf;
+					mf.nodes[1] = tn[(adjFace + 1) & 3];
 					if (adjFace & 1) {
-						tri[0] = tn[adjFace];
-						tri[2] = tn[(adjFace + 2) & 3];
+						mf.nodes[0] = tn[adjFace];
+						mf.nodes[2] = tn[(adjFace + 2) & 3];
 					}
 					else {
-						tri[2] = tn[adjFace];
-						tri[0] = tn[(adjFace + 2) & 3];
+						mf.nodes[2] = tn[adjFace];
+						mf.nodes[0] = tn[(adjFace + 2) & 3];
 					}
-					for (auto& t : tri) {
-						auto bntIt = bnTris.insert(std::make_pair(t, std::set<int>())).first;
+					mf.tris = &mttit->second.tris;
+					_megatetBounds.push_back(mf);
+					for (auto& t : mf.nodes) {
+						auto bntIt = bnTris.insert(std::make_pair(t, std::set<tetTris*>())).first;
 						if (!mttit->second.tris.empty())
-							bntIt->second.insert(mttit->second.tris.begin(), mttit->second.tris.end());
+							bntIt->second.insert(&mttit->second);
 					}
-					boundingTris.push_back(std::move(tri));
 				}
 			}
 		}
@@ -176,9 +178,8 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	_boundingNodeData.reserve(bnTris.size() * 1.1f);
 	for (auto& bnt : bnTris) {
 		auto pr = _boundingNodeData.insert(std::make_pair(_vbt->_nodeGridLoci[bnt.first], boundingNodeTris()));
-		pr->second.node = bnt.first;
-		if (!bnt.second.empty())
-			pr->second.tris.assign(bnt.second.begin(), bnt.second.end());
+		pr.first->second.node = bnt.first;
+		pr.first->second.megaTetTris.assign(bnt.second.begin(), bnt.second.end());
 	}
 	bnTris.clear();
 
@@ -222,16 +223,14 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	_surfaceCentroids.clear();
 	_surfaceCentroids.reserve(_centTris.size());
 	for (auto ctit = _centTris.begin(); ctit != _centTris.end(); ++ctit) {
-		_surfaceCentroids.insert(ctit->first);
+		_surfaceCentroids.insert(std::make_pair(ctit->first, std::vector<int>()));
 		tetTriVec.push_back(tetTriangles());
 		tetTriVec.back().tc = ctit->first;
 		tetTriVec.back().tris = std::move(ctit->second);
 	}
 	_centTris.clear();
-
 	_interiorNodes.clear();
 	createInteriorMicronodes();
-
 	// Some of the _tetTris may be invalid if they are outside the recut volume.
 	for (int n = tetTriVec.size(), i = 0; i < n; ++i) {
 		auto tc = tetTriVec[i].tc;
@@ -241,6 +240,8 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 			tetTriVec[i].tc[0] = USHRT_MAX;
 	}
 	_nSurfaceTets.store(_vbt->_tetNodes.size());  // this atomic must not step on any megatets that have already been created. Atomic used to multithread next section
+	_newTets.clear();
+	_ntsHash.clear();
 #if defined( _DEBUG )
 	for (int i = 0; i<tetTriVec.size(); ++i) {
 		if (tetTriVec[i].tc[0] == USHRT_MAX)
@@ -261,55 +262,47 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	tetTriVec.clear();
 
 	// vbt->_tetCentroids has the megatets remaining
-	_vbt->_tetCentroids.reserve(_vbt->_tetCentroids.size() + (_newTets.size() << 1));    // COURT recheck this guess.
-	_vbt->_tetNodes.reserve(_vbt->_tetCentroids.size());    // COURT recheck this guess.
 	int incr = _nSurfaceTets - _vbt->_tetCentroids.size();
 	_vbt->_tetCentroids.insert(_vbt->_tetCentroids.end(), incr, bccTetCentroid());
 	_vbt->_tetNodes.insert(_vbt->_tetNodes.end(), incr, std::array<int, 4>());
+	_surfaceTetTris.assign(incr, tetTris());
 	for (auto& nt : _newTets) {
 		_vbt->_tetCentroids[nt.tetIdx] = nt.tc;  // COURT don't hash them here
 		_vbt->_tetNodes[nt.tetIdx] = std::move(nt.tetNodes);
 		_vbt->_tetHash.insert(std::make_pair(nt.tc, nt.tetIdx));
-		auto pr = _centroidTriangles.insert(std::make_pair(nt.tc, std::list<tetTris>()));
-		pr.first->second.push_back(tetTris());
-		pr.first->second.back().tetIdx = nt.tetIdx;
-		pr.first->second.back().tris = std::move(nt.tris);
+		auto scit = _surfaceCentroids.find(nt.tc);
+		assert(scit != _surfaceCentroids.end());
+		scit->second.push_back(nt.tetIdx);
+		_surfaceTetTris[nt.tetIdx - _vbt->_nMegatets].tetIdx = nt.tetIdx;  // if careful indexing don't need theis
+		_surfaceTetTris[nt.tetIdx - _vbt->_nMegatets].tris = std::move(nt.tris);
 	}
 	_newTets.clear();
 	// _centroidTriangles will be used later for vertex tetId and multires version, so don't delete
-	int nNts = _ntsHash.size();
-	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> nts_global;
-	std::vector< std::list<nodeTetSegment> > nts_vec;
-	std::vector< std::array<short, 3> > nts_locs;
-	nts_global.reserve(nNts);
-	nts_vec.reserve(nNts);
-	nts_locs.reserve(nNts);
+	struct extNodeLoc {
+		std::array<short, 3> loc;
+		std::list<nodeTetSegment> tetNodes;
+	};
+	std::vector<extNodeLoc> extNodeLocs;
+	extNodeLocs.reserve(_ntsHash.size());
 	for (auto& ns : _ntsHash) {
-		auto pr = nts_global.insert(std::make_pair(ns.first, -1));
-		if (pr.second) {
-			pr.first->second = nts_vec.size();
-			nts_vec.push_back(std::move(ns.second));
-			nts_locs.push_back(pr.first->first);
-		}
-		else {
-			auto& vr = nts_vec[pr.first->second];
-			for (auto& nr : ns.second)
-				vr.push_back(std::move(nr));
-		}
+		extNodeLoc enl;
+		enl.loc = ns.first;
+		enl.tetNodes = std::move(ns.second);
+		extNodeLocs.push_back(enl);
 	}
 	_ntsHash.clear();
 
 	_firstNewExteriorNode = _vbt->_nodeGridLoci.size();
 	oneapi::tbb::concurrent_vector<extNode> eNodes;
 #if defined( _DEBUG )
-	for (int i = 0; i<nts_vec.size(); ++i)
-		assignExteriorTetNodes(nts_locs[i], nts_vec[i], eNodes);
+	for (int i = 0; i < extNodeLocs.size(); ++i)
+		assignExteriorTetNodes(extNodeLocs[i].loc, extNodeLocs[i].tetNodes, eNodes);
 #else
 	tbb::parallel_for(
-		tbb::blocked_range<size_t>(0, nts_vec.size()),
+		tbb::blocked_range<size_t>(0, extNodeLocs.size()),
 		[&](tbb::blocked_range<size_t> r) {
 			for (size_t i = r.begin(); i != r.end(); ++i)
-				assignExteriorTetNodes(nts_locs[i], nts_vec[i], eNodes);
+				assignExteriorTetNodes(extNodeLocs[i].loc, extNodeLocs[i].tetNodes, eNodes);
 		});
 #endif
 	for (auto& en : eNodes) {
@@ -322,8 +315,8 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 
 	_vbt->_firstInteriorTet = _vbt->_tetNodes.size();
 	fillInteriorMicroTets(_vnCentroids);
-	// wed seams between macrotets and recut regions with T junctions
-	decimateInteriorMicroTets(_vbt->_firstInteriorTet, boundingTris);  // Also gets all T junctions. Does own pack().
+	// wed seams between macrotets and recut microtet regions with T junctions
+	linkMicrotetsToMegatets();
 	_vbt->_tetHash.clear();
 	_vbt->_tetHash.reserve(_vbt->_tetNodes.size());
 	for (int n = _vbt->_tetNodes.size(), i = 0; i < n; ++i)  // firstInteriorTet
@@ -348,10 +341,12 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 			if (std::distance(vtet.first, vtet.second) < 2)
 				_vbt->_vertexTets[v] = vtet.first->second;
 			else {
-				auto ct = _centroidTriangles.find(_vertexTetCentroids[v]);
-				assert(ct != _centroidTriangles.end());
+				auto ct = _surfaceCentroids.find(_vertexTetCentroids[v]);
+				assert(ct != _surfaceCentroids.end());
 				int i;
-				for (auto& tt : ct->second) {
+				for (auto& ti : ct->second) {
+					auto& tt = _surfaceTetTris[ti - _vbt->_nMegatets];
+					assert(tt.tetIdx == ti);
 					for (auto& tri : tt.tris) {
 						const int* tr = _mt->triangleVertices(tri);
 						for (i = 0; i < 3; ++i) {
@@ -389,19 +384,22 @@ void vnBccTetCutter_tbb::macrotetRecutCore() {
 	// clean up
 	// keep _vMatCoords and _vertexTetCentroids for augmentation with each new incision
 	_interiorNodes.clear();
-	_surfaceCentroids.clear();
 	if (_rtp != nullptr) {  // will need this for fast remapTetPhysics class
 		_rtp->clearVnTetTris();
-		for (auto& ct : _centroidTriangles) {
+		for (auto& ct : _surfaceCentroids) {
 			if (ct.second.size() < 2)
 				continue;
-			for (auto& tt : ct.second)
+			for (auto& ti : ct.second) {
+				auto &tt = _surfaceTetTris[ti - _vbt->_nMegatets];
+				assert(tt.tetIdx == ti);
 				_rtp->insertVnTetTris(tt.tetIdx, tt.tris);
-			//				_rtp->insertVnTetVertex(tt.tetIdx, _mt->triangleVertices(tt.tris.front())[0]);
+			}
 		}
 	}
-	_centroidTriangles.clear();  // only reused in makeFirst(), but not again.
+	_surfaceCentroids.clear();
+	_surfaceTetTris.clear();  // only reused in makeFirst(), but not again.
 	_boundingNodeData.clear();
+	_megatetBounds.clear();
 	_lastTriangleSize = _mt->numberOfTriangles();
 	_lastVertexSize = _mt->numberOfVertices();
 	_vbt->_tetNodes.shrink_to_fit();
@@ -422,24 +420,28 @@ void vnBccTetCutter_tbb::createFirstMacroTets(materialTriangles* mt, vnBccTetrah
 	_vnTris.reserve(_mt->numberOfTriangles() >> 2);  // COURT revisit this guess
 	_megatetTetTris.clear();
 	_megatetTetTris.reserve(_vbt->_tetNodes.size());
-	for (auto& ct : _centroidTriangles) {  // left in place after makeFirstVnTets()
+	for (auto& ct : _surfaceCentroids) {  // left in place after makeFirstVnTets()
 		auto tc = ct.first;
 		for (int i = 0; i < 3; ++i)
 			tc[i] <<= shiftUp;
 		if (ct.second.size() > 1) {
 			_vnCentroids.push_back(tc);
-			for (auto& tl : ct.second) {
+			for (auto& ti : ct.second) {
+				auto& tl = _surfaceTetTris[ti];
+				assert(tl.tetIdx == ti);
 				_vbt->_tetNodes[tl.tetIdx][0] = -1;  // mark for deletion
 				_vnTris.insert(tl.tris.begin(), tl.tris.end());
 			}
 		}
 		else {
 			assert(ct.second.size() == 1);
-			_vbt->_tetCentroids[ct.second.front().tetIdx] = tc;
-			_megatetTetTris.insert(std::make_pair(tc, std::move(ct.second.front())));
+			auto& tt = _surfaceTetTris[ct.second.front()];
+			_vbt->_tetCentroids[tt.tetIdx] = tc;
+			_megatetTetTris.insert(std::make_pair(tc, std::move(tt)));
 		}
 	}
-	_centroidTriangles.clear();
+	_surfaceCentroids.clear();
+	_surfaceTetTris.clear();
 	// now add interior megatets not penetrated by a triangle
 	for (int n = _vbt->tetNumber(), i = _vbt->_firstInteriorTet; i < n; ++i) {
 		tetTris tt;
@@ -512,6 +514,7 @@ bool vnBccTetCutter_tbb::makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra*
 	// This is essential. findAdjacentTriangles() is the closest test this routine provides.  Test externally.
 	_mt = mt;
 	_vbt = vbt;
+	_vbt->_nMegatets = 0;
 	_vbt->_mt = mt;
 	_vbt->_barycentricWeights.clear();
 	_vbt->_barycentricWeights.assign(mt->numberOfVertices(), Vec3f());
@@ -551,7 +554,7 @@ bool vnBccTetCutter_tbb::makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra*
 	_surfaceCentroids.reserve(_centTris.size());
 	int count = 0;
 	for (auto ctit = _centTris.begin(); ctit != _centTris.end(); ++ctit) {
-		_surfaceCentroids.insert(ctit->first);
+		_surfaceCentroids.insert(std::make_pair(ctit->first, std::vector<int>()));
 		tetTriVec[count].tc = ctit->first;
 		tetTriVec[count++].tris = std::move(ctit->second);
 	}
@@ -563,31 +566,15 @@ bool vnBccTetCutter_tbb::makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra*
 			evenXy[ziv.x][ziv.y].insert(std::make_pair(ziv.zInt, ziv.flags));
 	}
 	_zIntr.clear();
-
-	//	end = std::chrono::system_clock::now();
-	//	std::chrono::duration<double> elapsed_seconds = end - start;
-	//	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-	//	std::string message("Inputting triangles took ");
-	//	message += std::to_string(elapsed_seconds.count());
-	//	message += " seconds for ";
-	//	message += std::to_string(_vbt->_tetNodes.size());
-	//	message += " tets.";
-	//	std::cout << message << "\n";
-
-		// create and hash all interior nodes.  Very fast (< 0.002 sec) so don't bother multithreading
+	// create and hash all interior nodes.  Very fast (< 0.002 sec) so don't bother multithreading
 	createInteriorNodes();
 	//	evenXy.clear(); oddXy.clear();  // am reusing these structures for remakeVnTets()
 	_interiorNodes.clear();  // only nodes created thus far are interior nodes
 	_interiorNodes.reserve(_vbt->_nodeGridLoci.size());
 	for (int n = _vbt->_nodeGridLoci.size(), j = 0; j < n; ++j)
 		_interiorNodes.insert(std::make_pair(_vbt->_nodeGridLoci[j], j));
-	_vbt->_tetCentroids.clear();
-	_vbt->_tetCentroids.reserve(tetTriVec.size() >> 1);    // COURT perhaps assign() for multi threading
-
-	//	start = std::chrono::system_clock::now();
-
-	_centroidTriangles.clear();
-	_nSurfaceTets.store(_vbt->_tetNodes.size());  // this atomic must not step on any megatets that have already been created. Atomic used to multithread next section
+	_surfaceTetTris.clear();
+	_nSurfaceTets.store(0);  // this atomic must not step on any megatets that have already been created. In this routine there are none.  Atomic used to multithread next section
 
 #ifdef _DEBUG
 	for (int i = 0; i < tetTriVec.size(); ++i)
@@ -601,107 +588,76 @@ bool vnBccTetCutter_tbb::makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra*
 		});
 #endif
 
-	//	end = std::chrono::system_clock::now();
-	//	elapsed_seconds = end - start;
-	//	end_time = std::chrono::system_clock::to_time_t(end);
-	//	message.assign("Getting connected components took ");
-	//	message += std::to_string(elapsed_seconds.count());
-	//	message += " seconds for ";
-	//	message += std::to_string(_vbt->_tetNodes.size());
-	//	message += " tets.";
-	//	std::cout << message << "\n";
-
 	_vbt->_tetCentroids.assign(_nSurfaceTets, bccTetCentroid());
 	_vbt->_tetNodes.assign(_nSurfaceTets, std::array<int, 4>());
+	_surfaceTetTris.assign(_nSurfaceTets, tetTris());
 	for (auto& nt : _newTets) {
 		_vbt->_tetCentroids[nt.tetIdx] = nt.tc;  // COURT don't hash them here
 		_vbt->_tetNodes[nt.tetIdx] = std::move(nt.tetNodes);
-		auto pr = _centroidTriangles.insert(std::make_pair(nt.tc, std::list<tetTris>()));
-		pr.first->second.push_back(tetTris());
-		pr.first->second.back().tetIdx = nt.tetIdx;
-		pr.first->second.back().tris = std::move(nt.tris);
+		auto scit = _surfaceCentroids.find(nt.tc);
+		assert(scit != _surfaceCentroids.end());
+		scit->second.push_back(nt.tetIdx);
+		_surfaceTetTris[nt.tetIdx].tetIdx = nt.tetIdx;  // COURT if careful indexing don't need this
+		_surfaceTetTris[nt.tetIdx].tris = std::move(nt.tris);
 	}
 	_newTets.clear();
 	// _centroidTriangles will be used later for vertex tetId and multires version, so don't delete
-	int nNts = _ntsHash.size();
-	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> nts_global;
-	std::vector< std::list<nodeTetSegment> > nts_vec;
-	std::vector< std::array<short, 3> > nts_locs;
-	nts_global.reserve(nNts);
-	nts_vec.reserve(nNts);
-	nts_locs.reserve(nNts);
+	struct extNodeLoc {
+		std::array<short, 3> loc;
+		std::list<nodeTetSegment> tetNodes;
+	};
+	std::vector<extNodeLoc> extNodeLocs;
+	extNodeLocs.reserve(_ntsHash.size());
 	for (auto& ns : _ntsHash) {
-		auto pr = nts_global.insert(std::make_pair(ns.first, -1));
-		if (pr.second) {
-			pr.first->second = nts_vec.size();
-			nts_vec.push_back(std::move(ns.second));
-			nts_locs.push_back(pr.first->first);
-		}
-		else {
-			auto& vr = nts_vec[pr.first->second];
-			for (auto& nr : ns.second)
-				vr.push_back(std::move(nr));
-		}
+		extNodeLoc enl;
+		enl.loc = ns.first;
+		enl.tetNodes = std::move(ns.second);
+		extNodeLocs.push_back(enl);
 	}
 	_ntsHash.clear();
 	// get tets where vertices reside
 	_vbt->_vertexTets.clear();
 	_vbt->_vertexTets.assign(_mt->numberOfVertices(), -1);
 	for (int n = _mt->numberOfVertices(), i = 0; i < n; ++i) {
-		auto ci = _centroidTriangles.find(_vertexTetCentroids[i]);
-		if (ci == _centroidTriangles.end())
-			throw(std::logic_error("Couldn't find a tetrahedron containing a vertex.\n"));
-		else if (ci->second.size() < 2)
-			_vbt->_vertexTets[i] = ci->second.front().tetIdx;
+		auto ct = _surfaceCentroids.find(_vertexTetCentroids[i]);
+		assert(ct != _surfaceCentroids.end());
+		if(ct->second.size() < 2)
+			_vbt->_vertexTets[i] = _surfaceTetTris[ct->second.front()].tetIdx;
 		else {
-			auto ltit = ci->second.begin();
-			while (ltit != ci->second.end()) {
-				auto tit = ltit->tris.begin();
-				while (tit != ltit->tris.end()) {
-					int* tr = _mt->triangleVertices(*tit);
+			for (auto& ti : ct->second) {
+				auto& tt = _surfaceTetTris[ti];
+				assert(tt.tetIdx == ti);
+				for (auto& tri : tt.tris) {
+					int* tr = _mt->triangleVertices(tri);
 					int j;
 					for (j = 0; j < 3; ++j) {
 						if (tr[j] == i) {
-							_vbt->_vertexTets[i] = ltit->tetIdx;
+							_vbt->_vertexTets[i] = tt.tetIdx;
 							break;
 						}
 					}
 					if (j < 3)
 						break;
-					++tit;
 				}
-				if (tit != ltit->tris.end())
+				if (_vbt->_vertexTets[i] > -1)
 					break;
-				++ltit;
 			}
 			assert(_vbt->_vertexTets[i] > -1);
 		}
 	}
 
-	//	start = std::chrono::system_clock::now();
-
 	oneapi::tbb::concurrent_vector<extNode> eNodes;
 #ifdef _DEBUG
-	for (int i = 0; i < nts_vec.size(); ++i)
-		assignExteriorTetNodes(nts_locs[i], nts_vec[i], eNodes);
+	for (int i = 0; i < extNodeLocs.size(); ++i)
+		assignExteriorTetNodes(extNodeLocs[i].loc, extNodeLocs[i].tetNodes, eNodes);
 #else
 	tbb::parallel_for(
-		tbb::blocked_range<size_t>(0, nts_vec.size()),
+		tbb::blocked_range<size_t>(0, extNodeLocs.size()),
 		[&](tbb::blocked_range<size_t> r) {
 			for (size_t i = r.begin(); i != r.end(); ++i)
-				assignExteriorTetNodes(nts_locs[i], nts_vec[i], eNodes);
+				assignExteriorTetNodes(extNodeLocs[i].loc, extNodeLocs[i].tetNodes, eNodes);
 		});
 #endif
-
-	//	end = std::chrono::system_clock::now();
-	//	elapsed_seconds = end - start;
-	//	end_time = std::chrono::system_clock::to_time_t(end);
-	//	message.assign("Assigning exterior nodes took ");
-	//	message += std::to_string(elapsed_seconds.count());
-	//	message += " seconds for ";
-	//	message += std::to_string(_vbt->_tetNodes.size());
-	//	message += " tets.";
-	//	std::cout << message << "\n";
 
 	for (auto& en : eNodes) {
 		int eNode = _vbt->_nodeGridLoci.size();
@@ -711,19 +667,8 @@ bool vnBccTetCutter_tbb::makeFirstVnTets(materialTriangles* mt, vnBccTetrahedra*
 	}
 	eNodes.clear();
 
-	//	end = std::chrono::system_clock::now();
-	//	elapsed_seconds = end - start;
-	//	end_time = std::chrono::system_clock::to_time_t(end);
-	//	message.assign("Assigning exterior nodes took ");
-	//	message += std::to_string(elapsed_seconds.count());
-	//	message += " seconds for ";
-	//	message += std::to_string(_vbt->_tetNodes.size());
-	//	message += " tets.";
-	//	std::cout << message << "\n";
-
 	_vbt->_firstInteriorTet = _vbt->_tetNodes.size();
 	fillNonVnTetCenter();  // fast. Don't bother multithreading
-	_surfaceCentroids.clear();
 	_interiorNodes.clear();  // COURT perhaps keep this and delete vn tet interiors
 	_vbt->_tetNodes.shrink_to_fit();
 	_vbt->_tetCentroids.shrink_to_fit();
@@ -790,89 +735,7 @@ void vnBccTetCutter_tbb::pack(){
 	}
 }
 
-void vnBccTetCutter_tbb::decimateInteriorMicroTets(int firstInteriorMicroTet, std::vector<std::array<int, 3> >& boundingTris) {
-	// tets were created in nested subdiv order, making hierarchical decimation easier
-	_decimatedNodes.clear();
-	int n = _vbt->_tetCentroids.size(), i = firstInteriorMicroTet, nDec = 0;
-/*	for (int level = 2; level < _vbt->_tetSubdivisionLevels; ++level) {  // decimate to one below megatet level
-		while (i < n) {
-			bccTetCentroid subTc[8], tcUp = _vbt->centroidUpOneLevel(_vbt->_tetCentroids[i]);
-			_vbt->subtetCentroids(tcUp, subTc);  // invalid subtet outside positive octant labelled as all USHRT_MAX
-			if (i + 7 < _vbt->_tetCentroids.size() && subTc[7] == _vbt->_tetCentroids[i + 7]) { // valid decimation block
-				std::array<int, 4> newTet;
-				newTet[0] = _vbt->_tetNodes[i][0];  // there will be no out of range entries
-				newTet[1] = _vbt->_tetNodes[i + 1][1];
-				newTet[2] = _vbt->_tetNodes[i + 2][2];
-				newTet[3] = _vbt->_tetNodes[i + 3][3];
-				DNIT dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[i][1], std::make_pair(newTet[0], newTet[1]))).first;
-				dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[i][2], std::make_pair(newTet[0], newTet[2]))).first;
-				dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[i][3], std::make_pair(newTet[0], newTet[3]))).first;
-				dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[i + 2][3], std::make_pair(newTet[2], newTet[3]))).first;
-				dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[i + 2][1], std::make_pair(newTet[1], newTet[2]))).first;
-				dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[i + 3][1], std::make_pair(newTet[1], newTet[3]))).first;
-				// mark subtets deleted and add macroTet
-				_vbt->_tetNodes.push_back(std::move(newTet));
-				_vbt->_tetCentroids.push_back(tcUp);
-				for (int j = 0; j < 8; ++j) {
-					_vbt->_tetNodes[i + j][0] = -1;
-					_vbt->_tetCentroids[i + j][0] = USHRT_MAX;
-				}
-				++nDec;
-				i += 8;
-			}
-			else
-				++i;
-		}
-		i = n;
-		n = _vbt->_tetCentroids.size(); */
-
-		// do one more level of decimation the hard way to validate algorithm - DONE
-/*		auto makeMacrotet = [&](bccTetCentroid& tcUp, int(&subtets)[8]) {
-			std::array<int, 4> newTet;
-			newTet[0] = _vbt->_tetNodes[subtets[0]][0];  // there will be no out of range entries
-			newTet[1] = _vbt->_tetNodes[subtets[1]][1];
-			newTet[2] = _vbt->_tetNodes[subtets[2]][2];
-			newTet[3] = _vbt->_tetNodes[subtets[3]][3];
-			DNIT dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[subtets[0]][1], std::make_pair(newTet[0], newTet[1]))).first;
-			dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[subtets[0]][2], std::make_pair(newTet[0], newTet[2]))).first;
-			dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[subtets[0]][3], std::make_pair(newTet[0], newTet[3]))).first;
-			dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[subtets[2]][3], std::make_pair(newTet[2], newTet[3]))).first;
-			dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[subtets[2]][1], std::make_pair(newTet[1], newTet[2]))).first;
-			dn = _decimatedNodes.insert(std::make_pair(_vbt->_tetNodes[subtets[3]][1], std::make_pair(newTet[1], newTet[3]))).first;
-			// mark subtets deleted and add macroTet
-			_vbt->_tetNodes.push_back(std::move(newTet));
-
-			tcL1.insert(std::make_pair(tcUp, _vbt->_tetCentroids.size()));
-
-			_vbt->_tetCentroids.push_back(tcUp);
-			for (int j = 0; j < 8; ++j) {
-				_vbt->_tetNodes[subtets[j]][0] = -1;
-				_vbt->_tetCentroids[subtets[j]][0] = USHRT_MAX;
-			}
-			++nDec;
-			};
-		while (i < n) {
-			if (_vbt->_tetNodes[i][0] < 0) {
-				++i;
-				continue;
-			}
-			bccTetCentroid subTc[8], tcUp = _vbt->centroidUpOneLevel(_vbt->_tetCentroids[i]);
-			_vbt->subtetCentroids(tcUp, subTc);  // invalid subtet outside positive octant labelled as all USHRT_MAX
-			int j, subTets[8];
-			for (j = 0; j < 8; ++j) {
-				auto tit = tcL1.find(subTc[j]);
-				if (tit == tcL1.end())
-					break;
-				subTets[j] = tit->second;
-			}
-			if (j > 7) {
-				makeMacrotet(tcUp, subTets);
-			}
-			++i;
-		} */
-//	}
-
-
+void vnBccTetCutter_tbb::linkMicrotetsToMegatets(){
 	// pack decimated tets and nodes
 	std::vector<int> nodeMap;
 	nodeMap.assign(_vbt->_nodeGridLoci.size(), -1);
@@ -898,7 +761,7 @@ void vnBccTetCutter_tbb::decimateInteriorMicroTets(int firstInteriorMicroTet, st
 	for (int n = nodeMap.size(), i = _meganodeSize; i < n; ++i) {
 		if (nodeMap[i] > -1) {
 			nodeMap[i] = offset;
-			if(offset < i)
+			if (offset < i)
 				_vbt->_nodeGridLoci[offset] = _vbt->_nodeGridLoci[i];
 			++offset;
 		}
@@ -914,115 +777,21 @@ void vnBccTetCutter_tbb::decimateInteriorMicroTets(int firstInteriorMicroTet, st
 			tn[j] = nodeMap[tn[j]];
 		}
 	}
-	// binary tree structure for decimated nodes follows.  Only need closest parents.
-	struct leafNode {
-		int child;
-		int parent0;
-		int parent1;
-		float depth;
-	};
-	std::list<leafNode> parents, leaves;
-	auto processLeaf = [&]() {
-		auto ln = leaves.begin();
-		leafNode parent;
-		parent.depth = ln->depth * 0.5f;
-		parent.child = ln->parent0;
-		if (nodeMap[parent.child] > -1)
-			parents.push_back(parent);
-		else {
-			DNIT nit = _decimatedNodes.find(parent.child);
-			parent.parent0 = nit->second.first;
-			parent.parent1 = nit->second.second;
-			leaves.push_back(parent);
-		}
-		parent.child = ln->parent1;
-		if (nodeMap[parent.child] > -1)
-			parents.push_back(parent);
-		else {
-			DNIT nit = _decimatedNodes.find(parent.child);
-			parent.parent0 = nit->second.first;
-			parent.parent1 = nit->second.second;
-			leaves.push_back(parent);
-		}
-		leaves.erase(ln);
-	};
-
 	_vbt->_tJunctionConstraints.clear();
-	std::vector<char> possibleTJunction;
-	possibleTJunction.assign(_vbt->_nodeGridLoci.size(), 0x01);
-	int ntj = 0;
-
-	int ic2 = 0, ic3 = 0, ic4 = 0;
-	for (auto dn = _decimatedNodes.begin(); dn != _decimatedNodes.end(); ++dn) {
-		assert(dn->first > -1);
-		if (dn->first < 0)
-			continue;
-		int dNode = nodeMap[dn->first];
-		if (dNode > -1) {  // used. A T-junction exists here
-			possibleTJunction[dNode] = 0;
-			++ntj;
-			parents.clear();
-			leaves.clear();
-			// collect leaves of binary tree of decimated nodes
-			leafNode bud;
-			bud.depth = 1.0f;
-			bud.child = dn->first;
-			bud.parent0 = dn->second.first;
-			bud.parent1 = dn->second.second;
-			leaves.push_back(bud);
-			while (!leaves.empty())
-				processLeaf();
-			auto dnc = _vbt->_tJunctionConstraints.insert(std::make_pair(dNode, vnBccTetrahedra::decimatedFaceNode()));
-			auto& fn = dnc.first->second.faceNodes;
-			auto& fp = dnc.first->second.faceBarys;
-			if (parents.size() < 3) {
-				fn.reserve(2);
-				fn.push_back(nodeMap[parents.front().child]);
-				fn.push_back(nodeMap[parents.back().child]);
-				fp.assign(2, 0.5f);
-				++ic2;
-			}
-			else {
-				std::map<int, float> dnVerts;
-				for (auto& p : parents) {
-					auto pr = dnVerts.insert(std::make_pair(p.child, p.depth));
-					if (!pr.second)
-						pr.first->second += p.depth;
-				}
-
-				if (dnVerts.size() == 2)
-					++ic2;
-				if (dnVerts.size() == 3)
-					++ic3;
-				if (dnVerts.size() > 3) {
-					assert(false);
-					++ic4;
-				}
-
-				fn.reserve(dnVerts.size());
-				fp.reserve(dnVerts.size());
-				for (auto& dnv : dnVerts) {
-					fn.push_back(nodeMap[dnv.first]);
-					fp.push_back(dnv.second);
-				}
-			}
-		}
-	}
-
-	std::cout << "Model has " << ic2 << " two macroNode, " << ic3 << " three macroNode, and " << ic4 << " four or greater macronode internode constraints.\n";
-	_decimatedNodes.clear();
-
 	struct boundingTri {
 		Vec3f N, tv[3];
 		float d;
 		Mat2x2f M;
+		std::vector<int>* tris;
 	};
 	std::vector < boundingTri> bt;
-	bt.reserve(boundingTris.size());
-	for (int n = boundingTris.size(), i = 0; i < n; ++i) {
+	//	bt.reserve(boundingTris.size());
+	bt.reserve(_megatetBounds.size());
+	for (int n = _megatetBounds.size(), i = 0; i < n; ++i) {
 		boundingTri t;
+		t.tris = _megatetBounds[i].tris;
 		for (int j = 0; j < 3; ++j)
-			t.tv[j] = (short (&)[3])*_vbt->_nodeGridLoci[boundingTris[i][j]].data();
+			t.tv[j] = (short(&)[3]) * _vbt->_nodeGridLoci[_megatetBounds[i].nodes[j]].data();
 		t.tv[1] -= t.tv[0];
 		t.tv[2] -= t.tv[0];
 		t.N = t.tv[1] ^ t.tv[2];
@@ -1031,7 +800,39 @@ void vnBccTetCutter_tbb::decimateInteriorMicroTets(int firstInteriorMicroTet, st
 		t.M.x[2] = t.M.x[1];
 		bt.push_back(std::move(t));
 	}
-	auto isTjunct = [&](const int node, int &tri, Vec2f& bary) ->bool {
+	auto addTJunction = [&](const int node, int& tri, Vec2f& bary) {
+		auto dnc = _vbt->_tJunctionConstraints.insert(std::make_pair(node, vnBccTetrahedra::decimatedFaceNode()));
+		if (dnc.second) {
+			if (bary[1] < 1e-5f) {
+				dnc.first->second.faceNodes.assign(_megatetBounds[tri].nodes.begin(), _megatetBounds[tri].nodes.begin() + 2);
+				dnc.first->second.faceBarys.reserve(2);
+				dnc.first->second.faceBarys.push_back(1.0f - bary[0]);
+				dnc.first->second.faceBarys.push_back(bary[0]);
+			}
+			else if (bary[0] < 1e-5f) {
+				dnc.first->second.faceNodes.reserve(2);
+				dnc.first->second.faceNodes.push_back(_megatetBounds[tri].nodes.front());
+				dnc.first->second.faceNodes.push_back(_megatetBounds[tri].nodes.back());
+				dnc.first->second.faceBarys.reserve(2);
+				dnc.first->second.faceBarys.push_back(1.0f - bary[1]);
+				dnc.first->second.faceBarys.push_back(bary[1]);
+			}
+			else if (bary[0] + bary[1] > 0.99995f) {
+				dnc.first->second.faceNodes.assign(_megatetBounds[tri].nodes.begin() + 1, _megatetBounds[tri].nodes.end());
+				dnc.first->second.faceBarys.reserve(2);
+				dnc.first->second.faceBarys.push_back(bary[0]);
+				dnc.first->second.faceBarys.push_back(bary[1]);
+			}
+			else {
+				dnc.first->second.faceNodes.assign(_megatetBounds[tri].nodes.begin(), _megatetBounds[tri].nodes.end());
+				dnc.first->second.faceBarys.reserve(3);
+				dnc.first->second.faceBarys.push_back(1.0f - bary[0] - bary[1]);
+				dnc.first->second.faceBarys.push_back(bary[0]);
+				dnc.first->second.faceBarys.push_back(bary[1]);
+			}
+		}
+	};
+	auto isTjunct = [&](const int node, int& tri, Vec2f& bary, std::vector<int>* triTest) ->bool {
 		Vec3f P = (short(&)[3]) * _vbt->_nodeGridLoci[node].data();
 		for (tri = 0; tri < bt.size(); ++tri) {
 			auto& b = bt[tri];
@@ -1040,52 +841,53 @@ void vnBccTetCutter_tbb::decimateInteriorMicroTets(int firstInteriorMicroTet, st
 				bary = b.M.Robust_Solve_Linear_System(Vec2f(V * b.tv[1], V * b.tv[2]));
 				if (bary[0] < 0.0f || bary[1] < 0.0f || bary[0] > 1.0f || bary[1] > 1.0f || bary[0] + bary[1] > 1.0f)
 					continue;
-				return true;
+				if (triTest == nullptr)
+					return true;
+				else {
+					auto bit = b.tris->begin();
+					auto tit = triTest->begin();
+					while (bit != b.tris->end()) {
+						if (*bit < *tit)
+							++bit;
+						else if (*tit < *bit) {
+							while ((*tit < *bit)) {
+								++tit;
+								if (tit == triTest->end())
+									return false;
+							}
+						}
+						else {
+							assert(*tit == *bit);
+							return true;
+						}
+					}
+					return false;
+				}
 			}
 		}
 		return false;
 	};
-	int newT = 0;
-	for (int i = _meganodeSize; i < _vbt->_nodeGridLoci.size(); ++i) {  //   _firstNewExteriorNode    can't use exterior nodes since a virtual node could link across to wrong side?  COURT check this
-		if (possibleTJunction[i]) {
-			int tri;
-			Vec2f bary;
-			if (isTjunct(i, tri, bary)) {
-				auto dnc = _vbt->_tJunctionConstraints.insert(std::make_pair(i, vnBccTetrahedra::decimatedFaceNode()));
-				if (dnc.second) {
-					if (bary[1] < 1e-5f) {
-						dnc.first->second.faceNodes.assign(boundingTris[tri].begin(), boundingTris[tri].begin()+2);
-						dnc.first->second.faceBarys.reserve(2);
-						dnc.first->second.faceBarys.push_back(1.0f - bary[0]);
-						dnc.first->second.faceBarys.push_back(bary[0]);
-					}
-					else if (bary[0] < 1e-5f) {
-						dnc.first->second.faceNodes.reserve(2);
-						dnc.first->second.faceNodes.push_back(boundingTris[tri].front());
-						dnc.first->second.faceNodes.push_back(boundingTris[tri].back());
-						dnc.first->second.faceBarys.reserve(2);
-						dnc.first->second.faceBarys.push_back(1.0f - bary[1]);
-						dnc.first->second.faceBarys.push_back(bary[1]);
-					}
-					else if (bary[0] + bary[1] > 0.99995f) {
-						dnc.first->second.faceNodes.assign(boundingTris[tri].begin() + 1, boundingTris[tri].end());
-						dnc.first->second.faceBarys.reserve(2);
-						dnc.first->second.faceBarys.push_back(bary[0]);
-						dnc.first->second.faceBarys.push_back(bary[1]);
-					}
-					else {
-						dnc.first->second.faceNodes.assign(boundingTris[tri].begin(), boundingTris[tri].end());
-						dnc.first->second.faceBarys.reserve(3);
-						dnc.first->second.faceBarys.push_back(1.0f - bary[0] - bary[1]);
-						dnc.first->second.faceBarys.push_back(bary[0]);
-						dnc.first->second.faceBarys.push_back(bary[1]);
-					}
-				}
-				++newT;
-			}
+	for (int i = _meganodeSize; i < _firstNewExteriorNode; ++i) {  //       can't use exterior nodes since a virtual node could link across to wrong side?  COURT check this
+		int tri;
+		Vec2f bary;
+		if (isTjunct(i, tri, bary, nullptr)) {
+			addTJunction(i, tri, bary);
 		}
-		else {
-			assert(_vbt->_tJunctionConstraints.find(i) != _vbt->_tJunctionConstraints.end());
+	}
+
+	std::vector<char> ctOpen;
+	ctOpen.assign(_vbt->_nodeGridLoci.size() - _firstNewExteriorNode, 0xff);
+	for (auto& tt : _surfaceTetTris) {
+		auto &tn = _vbt->_tetNodes[tt.tetIdx];
+		for (int j = 0; j < 4; ++j) {
+			if (tn[j] >= _firstNewExteriorNode && ctOpen[tn[j] - _firstNewExteriorNode]) {
+				ctOpen[tn[j] - _firstNewExteriorNode] = 0x00;
+				int tri;
+				Vec2f bary;
+				if (isTjunct(tn[j], tri, bary, &tt.tris)) {
+					addTJunction(tn[j], tri, bary);
+				}
+			}
 		}
 	}
 	// don't rehash _vbt->_tetHash here
@@ -1181,18 +983,6 @@ void vnBccTetCutter_tbb::createInteriorNodes() {
 			mm.clear();
 			return true;
 		}
-
-#if defined(_DEBUG )
-		bool solid = true, inTets = true;
-		if(mm.size() & 1)
-			std::cout << "Error in createInteriorNodes()\n";
-		for (auto mit = mm.begin(); mit != mm.end(); ++mit) {
-			if (mit->second.solidBegin != inTets)
-				std::cout << "Error in createInteriorNodes()\n";
-			inTets = !inTets;
-		}
-#endif
-
 		return false;
 	};
 	auto runInteriorNodes = [&](std::multimap<double, zIntersectFlags>& mm, bool evenLine) {
@@ -1333,24 +1123,8 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 			mm.clear();
 			return true;
 		}
-
-#if defined( _DEBUG )
-		bool solid = true;
-		for (auto mit = mm.begin(); mit != mm.end(); ++mit) {
-			if (mit->second.surfaceTri) {
-				if (mit->second.solidBegin != solid)
-					std::cout << "Error in createInteriorNodes()\n";
-				solid = !solid;
-			}
-			else {
-				if (solid || (1 & (short)mit->first) != (1 & s3[0]))
-					std::cout << "Error in createInteriorNodes()\n";
-			}
-		}
-#endif
-
 		return false;
-		};
+	};
 	auto runInteriorNodes = [&](std::multimap<double, zIntersectFlags>& mm, bool evenLine) {
 		bool inSolid = false;
 		auto mit = mm.begin();
@@ -1402,82 +1176,68 @@ void vnBccTetCutter_tbb::createInteriorMicronodes() {
 	}
 }
 
-void vnBccTetCutter_tbb::assignExteriorTetNodes(std::array<short, 3> &locus, std::list<nodeTetSegment> &tetNodeIds, oneapi::tbb::concurrent_vector<extNode>& eNodes) {
-	struct tetIndex {
-		int tet;
-		int nodeIndex;
-	};
-	struct tetTris {
-		std::set<int> tris;
-		std::list<tetIndex> tetIndices;
-	};
-	std::list<tetTris> triPools;
-	auto tetsConnect = [&](const std::vector<int>& tris0, const std::set<int> &poolTris) ->bool{
-		for (auto t : tris0) {
-			if (poolTris.find(t) != poolTris.end())
-				return true;
-		}
-		return false;
-	};
-	triPools.clear();
-	for (auto nit = tetNodeIds.begin(); nit != tetNodeIds.end(); ++nit) {
-		bool makeNewPool = true;
-		auto firstConnectedPool = triPools.end();
-		auto pit = triPools.begin();
-		while ( pit != triPools.end()) {
-			if (tetsConnect(nit->tetNodeTris, pit->tris)) {
-				if (firstConnectedPool == triPools.end()) {
-					firstConnectedPool = pit;
-					tetIndex ti;
-					ti.tet = nit->tetIdx;
-					ti.nodeIndex = nit->tetNodeIndex;
-					firstConnectedPool->tetIndices.push_back(ti);
-					firstConnectedPool->tris.insert(nit->tetNodeTris.begin(), nit->tetNodeTris.end());
-					++pit;
+void vnBccTetCutter_tbb::assignExteriorTetNodes(std::array<short, 3>& locus, std::list<nodeTetSegment>& tetNodeIds, oneapi::tbb::concurrent_vector<extNode>& eNodes) {
+	std::list<std::list<nodeTetSegment* > > tetPools;
+	auto tnit = tetNodeIds.begin();
+	while (tnit != tetNodeIds.end()) {
+		std::list<std::list<nodeTetSegment* > * > poolLinks;
+		for (auto &tp : tetPools) {
+			for (auto &pe : tp) {
+				assert(tnit->tetIdx != pe->tetIdx);  // obvious nuke me
+				if (sortedVectorsIntersect(_surfaceTetTris[tnit->tetIdx - _vbt->_nMegatets].tris, _surfaceTetTris[pe->tetIdx - _vbt->_nMegatets].tris)) {
+					poolLinks.push_back(&tp);
+					break;
 				}
-				else {
-					// merge pools
-					firstConnectedPool->tris.insert(pit->tris.begin(), pit->tris.end());
-					firstConnectedPool->tetIndices.splice(firstConnectedPool->tetIndices.end(), pit->tetIndices);
-					pit = triPools.erase(pit);
-				}
-				makeNewPool = false;
 			}
-			else
+		}
+		if (poolLinks.size() < 1) {
+			tetPools.push_back(std::list<nodeTetSegment* >());
+			tetPools.back().push_back(&(*tnit));
+		}
+		else if (poolLinks.size() < 2) {
+			poolLinks.front()->push_back(&(*tnit));
+		}
+		else {
+			auto pit = poolLinks.begin();
+			(*pit)->push_back(&(*tnit));
+			++pit;
+			while (pit != poolLinks.end()) {
+				poolLinks.front()->splice(poolLinks.front()->end(), **pit);
+				for (auto tpit = tetPools.begin(); tpit != tetPools.end(); ++tpit) {
+					if (&(*tpit) == *pit) {
+						tetPools.erase(tpit);
+						break;
+					}
+				}
 				++pit;
+			}
 		}
-		if(makeNewPool){
-			tetTris tt;
-			tt.tris.insert(nit->tetNodeTris.begin(), nit->tetNodeTris.end());
-			tetIndex ti;
-			ti.tet = nit->tetIdx;
-			ti.nodeIndex = nit->tetNodeIndex;
-			tt.tetIndices.push_back(ti);
-			triPools.push_back(tt);
-		}
+		++tnit;
 	}
-	// any remaining triPools should get their own exterior, possibly virtual, node
-	for (auto tp = triPools.begin(); tp != triPools.end(); ++tp) {  // not multithreaded
+	// each tetPool should get its own exterior, possibly virtual, node
+	for (auto &tp : tetPools) {
 		extNode en;
 		en.node = -1;
 		en.loc = locus;
 		if (!_boundingNodeData.empty()) {
-			auto pr = _boundingNodeData.equal_range(locus);
-			if (pr.first == pr.second)
-				;
-			else {
-				auto bnit = pr.first;
-				while (bnit != pr.second) {
-					if (tetsConnect(bnit->second.tris, tp->tris)) {
-						en.node = bnit->second.node;
-						break;
+			auto bnit = _boundingNodeData.find(locus);
+			if (bnit != _boundingNodeData.end()) {
+				for (auto& bt : bnit->second.megaTetTris) {
+					auto tpit = tp.begin();
+					while (tpit != tp.end()) {
+						if (sortedVectorsIntersect(bt->tris, (*tpit)->tetNodeTris)) {
+							en.node = bnit->second.node;
+							break;
+						}
+						++tpit;
 					}
-					++bnit;
+					if (tpit != tp.end())
+						break;
 				}
 			}
 		}
-		for (auto& ti : tp->tetIndices)
-			en.tiPairs.push_back(std::make_pair(ti.tet, ti.nodeIndex));
+		for (auto& ntsp : tp)
+			en.tiPairs.push_back(std::make_pair(ntsp->tetIdx, ntsp->tetNodeIndex));
 		eNodes.push_back(en);
 	}
 }
@@ -1520,56 +1280,195 @@ int vnBccTetCutter_tbb::nearestRayPatchHit(const Vec3d &rayBegin, Vec3d rayEnd, 
 		return 0;
 }
 
-
-bool vnBccTetCutter_tbb::isInsidePatch(const Vec3d& P, const std::vector<int>& tris, Vec3d &closestP) {
-	double d, minD = DBL_MAX;
-	Vec3d N;
-	for (auto t : tris) {
-		int* tr = _mt->triangleVertices(t);
-		Vec3d T[3], Q;
-		for (int i = 0; i < 3; ++i)
-			T[i].set(_vMatCoords[tr[i]]);
-		T[1] -= T[0];
-		T[2] -= T[0];
-		Mat2x2d M(T[1] * T[1], T[1] * T[2], 0.0, T[2] * T[2]);
-		M.x[2] = M.x[1];
-		Q = P - T[0];
-		Vec2d R = M.Robust_Solve_Linear_System(Vec2d(T[1] * Q, T[2] * Q));
-		if (R[0] < 0.02)
-			R[0] = 0.02;
-		else if (R[0] > 0.98)
-			R[0] = 0.98;
-		else;
-		if (R[1] < 0.02)
-			R[1] = 0.02;
-		else if (R[1] > 0.98)
-			R[1] = 0.98;
-		else;
-		if (R[0] + R[1] > 0.98) {
-			double d = 0.98/(R[0] + R[1]);
-			R[0] *= d;
-			R[1] *= d;
-		}
-		Q = T[0] + T[1] * R[0] + T[2] * R[1];
-		d = (P - Q).length2();
-		if (minD > d) {
-			minD = d;
-			closestP = Q;
-			N = T[1] ^ T[2];
+void vnBccTetCutter_tbb::processHoles(std::list<patch>& patches, std::list<hole>& holes, const Vec3d(&tetNodes)[4], int(&inodes)[4]) {
+	std::list<patch*> outerP;
+	for (auto& p : patches) {
+		auto hit = holes.begin();
+		for (; hit != holes.end(); ++hit)
+			if (hit->pptr == &p)
+				break;
+		if (hit == holes.end()) {
+			for (int i = 0; i < 4; ++i) {
+				if (p.tetNodes[i] > -1)
+					inodes[i] = -1;
+			}
+			outerP.push_back(&p);
 		}
 	}
-	return N * (closestP - P) >= 0.0;
+	auto surrounds = [&](const patch* outer, const hole* h, const Vec3d &lineN, double& lineT) ->bool {
+		lineT = DBL_MAX;
+		Vec3d minTriN;
+		bool pathEnclosed = false;
+		if (outer->tetNodes[h->penetratedFace] > -1) {
+			lineT = 1.0;
+			pathEnclosed = true;
+		}
+		for (auto& t : outer->tris) {
+			int* tn = _mt->triangleVertices(t);
+			Vec3d V[3];
+			for (int i = 0; i < 3; ++i)
+				V[i].set((const float(&)[3])_vMatCoords[tn[i]]);
+			V[1] -= V[0];
+			V[2] -= V[0];
+			Mat3x3d M(V[1], V[2], -lineN);
+			Vec3d R = M.Robust_Solve_Linear_System(h->outerPoint - V[0]);
+			if (R[2] <= 0.0 || R[2] >= 1.0 || R[0] < 0.0 || R[0] >= 1.0 || R[1] < 0.0 || R[1] >= 1.0 || R[0] + R[1] >= 1.0)  // coincident surfaces managed in isHole()
+				continue;
+			if (lineT > R[2]) {
+				lineT = R[2];
+				minTriN = V[1] ^ V[2];
+				pathEnclosed = (minTriN * lineN > 0.0);
+			}
+		}
+		return pathEnclosed;
+	};
+	auto encloseHole = [&](patch *enclosingPatch, hole *hole) {
+		std::vector<int> mergeVec(enclosingPatch->tris.size() + hole->pptr->tris.size());
+		std::merge(enclosingPatch->tris.begin(), enclosingPatch->tris.end(), hole->pptr->tris.begin(), hole->pptr->tris.end(), mergeVec.begin());
+		enclosingPatch->tris = std::move(mergeVec);
+		hole->pptr->tris.clear();
+		auto pit = patches.begin();
+		while (pit != patches.end()) {
+			if (&(*pit) == hole->pptr) {
+				patches.erase(pit);
+				break;
+			}
+			++pit;
+		}
+	};
+	auto hit = holes.begin();
+	while (hit != holes.end()) {
+		double minT = DBL_MAX;
+		patch* enclosingP = nullptr;
+		Vec3d toCorner = tetNodes[hit->penetratedFace] - hit->outerPoint;
+		for (auto& op : outerP) {
+			double t;
+			if (surrounds(op, &(*hit), toCorner, t)) {
+				if (t < minT) {
+					minT = t;
+					enclosingP = op;
+				}
+			}
+		}
+		if (enclosingP) {
+			encloseHole(enclosingP, &(*hit));
+			hit = holes.erase(hit);
+		}
+		else
+			++hit;
+	}
+	if (!holes.empty()) {
+		// any holes within holes would have been enclosed in an outerP, so these are independent.
+		// Any outerP must be inside a hole
+		if (inodes[0] < 0) {  // outerP must be enclosing a hole with a coincident surface
+			assert(inodes[1] < 0 && inodes[2] < 0 && inodes[3] < 0 && outerP.size() == 1);
+		}
+		else {
+			assert(inodes[1] > -1 && inodes[2] > -1 && inodes[3] > -1);
+			auto hit = holes.begin();
+			for (int i = 0; i < 4; ++i)
+				hit->pptr->tetNodes[i] = inodes[i];
+			++hit;
+			while (hit != holes.end()) {
+				encloseHole(holes.front().pptr, &(*hit));
+				hit = holes.erase(hit);
+			}
+		}
+	}
 }
+
+bool vnBccTetCutter_tbb::isHole(const patch* patch, const bccTetCentroid& tc, const Vec3d(&tetNodes)[4], Vec3d& patchPoint, int& tetFaceHit) {
+	Vec3d tetFaceN[4];
+	double tetD[4];
+	for (tetFaceHit = 0; tetFaceHit < 4; ++tetFaceHit) {  // will also be intersected face #
+		Vec3d F[3];
+		F[0] = tetNodes[tetFaceHit];
+		F[1] = tetNodes[(tetFaceHit + 1) & 3];
+		F[2] = tetNodes[(tetFaceHit + 2) & 3];
+		F[1] -= F[0];
+		F[2] -= F[0];
+		if (tetFaceHit & 1)  // outward facing tet normal. Clockwiseness alternates.
+			tetFaceN[tetFaceHit] = F[1] ^ F[2];
+		else
+			tetFaceN[tetFaceHit] = F[2] ^ F[1];
+		tetD[tetFaceHit] = tetFaceN[tetFaceHit] * F[0];
+	}
+	int startTri;
+	for (startTri = 0; startTri < patch->tris.size(); ++startTri) {
+		int j, *tn = _mt->triangleVertices(patch->tris[startTri]);
+		for (tetFaceHit = 0; tetFaceHit < 4; ++tetFaceHit) {
+			for (j = 0; j < 3; ++j) {
+				if (tetFaceN[tetFaceHit] * Vec3d(_vMatCoords[tn[j]]) - tetD[tetFaceHit] > 0.0)
+					break;
+			}
+			if (j < 3)
+				break;
+		}
+		if (tetFaceHit < 4)
+			break;
+	}
+	if (tetFaceHit > 3)
+		throw(std::logic_error("Program error in isHole().\n"));
+	// Can have nested closed polygons (e.g. tip of pipette), so must search all tris for outermost.
+	double minDsq = DBL_MAX;
+	Vec3d minTriN;
+	for (int n = patch->tris.size(), i = startTri; i < n; ++i) {
+		double td[3];
+		Vec3d tV[3];
+		int* tn = _mt->triangleVertices(patch->tris[i]);
+		bool allInside = true;
+		for (int j = 0; j < 3; ++j) {
+			tV[j].set(_vMatCoords[tn[j]]);
+			td[j] = tetFaceN[tetFaceHit] * tV[j] - tetD[tetFaceHit];
+			if (td[j] > 0.0)
+				allInside = false;
+		}
+		if (allInside)
+			continue;
+		Vec3d I[2];
+		int v2 = 0, count = 0;
+		for (int j = 2; j > -1; --j) {
+			if ((td[v2] > 0.0) != (td[j] > 0.0)) {
+				double s = td[v2] / (td[v2] - td[j]);
+				I[count++] = tV[j] * s + tV[v2] * (1.0 - s);
+				if (count > 1)
+					break;
+			}
+			v2 = j;
+		}
+		I[1] -= I[0];
+		double den = I[1] * I[1];
+		if (den > 1e-20) {
+			double s = ((tetNodes[tetFaceHit] - I[0]) * I[1]) / den;
+			if (s < 1e-5)
+				s = 1e-5;
+			else if (s > 0.99999)
+				s = 0.99999;
+			else;
+			I[0] += I[1] * s;
+			double dsq = (tetNodes[tetFaceHit] - I[0]).length2();
+			if (minDsq > dsq) {
+				minDsq = dsq;
+				patchPoint = I[0];
+				minTriN = (tV[1] - tV[0]) ^ (tV[2] - tV[0]);
+			}
+		}
+	}
+	Vec3d toCorner = tetNodes[tetFaceHit] - patchPoint;
+	if (toCorner * minTriN > 0.0)
+		return false;
+	// pull facePoint slightly inside solid to eliminate coincident surface problem between patches.
+	toCorner.q_normalize();
+	patchPoint += toCorner * 1e-5;
+	return true;
+}
+
 
 void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::tbb::concurrent_vector<newTet>& nt_vec, NTS_HASH& local_nts) {
 	// for this centroid split its triangles into single solid connected components
 	std::set<int> trSet, ts;
 	trSet.insert(tt.tris.begin(), tt.tris.end());
-	struct patch {
-		std::vector<int> tris;
-		int tetIndex;
-		std::array<int, 4> tetNodes;
-	}p;
+	patch p;
 	std::list<patch> patches;
 	typedef std::list<patch>::iterator PListIt;
 	p.tetNodes = { -1, -1, -1, -1 };
@@ -1597,7 +1496,7 @@ void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::
 				tList.push_front(at[i]);
 			}
 		}
-		trVec->assign(ts.begin(), ts.end());
+		trVec->assign(ts.begin(), ts.end());  // this leaves all patch triangles in a sorted vector
 		if (!trSet.empty()) {
 			patches.push_back(p);
 			trVec = &patches.back().tris;
@@ -1625,10 +1524,18 @@ void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::
 			bool nextOutside;
 			patch* pptr;
 		};
-		std::list<patch*> unsolvedInsidePatches;
+		std::list<hole> tetFaceHoles;
 		std::multimap<double, edgeIntrsct> edges[6];
+		auto removePatch = [&](patch* p) {
+			for (auto pi = patches.begin(); pi != patches.end(); ++pi)
+				if (&(*pi) == p) {
+					patches.erase(pi);
+					break;
+				}
+		};
+		bool edgeCut = false;  // interior face intersects or edge cut patches present
 		for (auto pit = patches.begin(); pit != patches.end(); ++pit) {
-			bool edgeCut = false;
+			pit->noEdgeCut = true;
 			for (auto& t : pit->tris) {
 				int* tr = _mt->triangleVertices(t);
 				Vec3d T[3], P, Q;
@@ -1647,7 +1554,7 @@ void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::
 					ei.pptr = &(*pit);
 					ei.nextOutside = (T[1] ^ T[2]) * (Q - P) >= 0;
 					edges[edge].insert(std::make_pair(R[2], ei));
-					edgeCut = true;
+					pit->noEdgeCut = false;
 				};
 				P = tetNodes[3];
 				for (int i = 0; i < 4; ++i) {
@@ -1662,13 +1569,17 @@ void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::
 				Q = tetNodes[3];
 				getEdgeIntersect(5);
 			}
-			if (!edgeCut) {  // This patch is interior to all edges
+			if (pit->noEdgeCut) {  // This patch is interior to all edges
 				// if facing exterior to any tet node, must be independent of all patches with an edge intersection processed above and must be exterior to all tet nodes.
 				// if interior could be interior to any existing solid
-				Vec3d P;
-				if (isInsidePatch(tetNodes[0], pit->tris, P))  // interior faces all nodes.
-					unsolvedInsidePatches.push_back(&(*pit));
+				hole h;
+				if (isHole(&(*pit), tt.tc, tetNodes, h.outerPoint, h.penetratedFace)) {  // may be a hole inside a solid patch, otherwise a spike will always bound its own tet solid.
+					h.pptr = &(*pit);
+					tetFaceHoles.push_back(h);
+				}
 			}
+			else
+				edgeCut = true;
 		}
 		std::list<std::set<patch*> > combineP;
 		bool interiorLinks[2][4] = { false,false,false,false,false,false,false,false }, zeroEmpty = true, secondPair = false;
@@ -1696,218 +1607,180 @@ void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::
 			else if (edge < 5) { idx0 = 0; idx1 = 2; }
 			else { idx0 = 1; idx1 = 3; }
 		};
-		int nbegin, nend;
-		double sameHit = std::max({ _vbt->_gridSize[0], _vbt->_gridSize[1], _vbt->_gridSize[2] }) * 6e-4;
-		for (int i = 0; i < 6; ++i) {
-			getEdgeNodeIndices(i, nbegin, nend);
-			if (!edges[i].empty()) {
-				bool inSolid = inodes[nbegin] > -1;
-				auto eit = edges[i].begin();
-				auto enext = eit;
-				++enext;
-				while (enext != edges[i].end()) {
-					if (enext->first - eit->first < sameHit) {  // possible coincident surface or minor collision hit.  Both sides guaranteed inside.
-						if (eit->second.nextOutside == enext->second.nextOutside) {  // possible surface edge or vertex multi hit
-							if (inSolid != eit->second.nextOutside) {
-								edges[i].erase(enext);
-								enext = eit;
-								++enext;
-								if (enext == edges[i].end())
-									break;
+		if (edgeCut) {  // unnecessary if no edge was cut
+			int nbegin, nend;
+			double sameHit = std::max({ _vbt->_gridSize[0], _vbt->_gridSize[1], _vbt->_gridSize[2] }) * 6e-4;
+			for (int i = 0; i < 6; ++i) {
+				getEdgeNodeIndices(i, nbegin, nend);
+				if (!edges[i].empty()) {
+					bool inSolid = inodes[nbegin] > -1;
+					auto eit = edges[i].begin();
+					auto enext = eit;
+					++enext;
+					while (enext != edges[i].end()) {
+						if (enext->first - eit->first < sameHit) {  // possible coincident surface or minor collision hit.  Both sides guaranteed inside.
+							if (eit->second.nextOutside == enext->second.nextOutside) {  // possible surface edge or vertex multi hit
+								if (inSolid != eit->second.nextOutside) {
+									edges[i].erase(enext);
+									enext = eit;
+									++enext;
+									if (enext == edges[i].end())
+										break;
+								}
+							}
+							else if (inSolid != eit->second.nextOutside) {  // flip if necessary
+								auto swap = enext->second;
+								enext->second = eit->second;
+								eit->second = swap;
+							}
+							else
+								;
+						}
+						if (inSolid != eit->second.nextOutside)
+							throw(std::logic_error("Solid ordering error in getConnectedComponents()\n"));
+						inSolid = !inSolid;
+						eit = enext;
+						++enext;
+					}
+					eit = edges[i].begin();
+					assert(eit->second.nextOutside == inodes[nbegin] > -1);
+					enext = eit;
+					++enext;
+					while (enext != edges[i].end()) {
+						if (!eit->second.nextOutside && enext->second.nextOutside) {  // solid interval. Combine patches
+							if (eit->second.pptr != enext->second.pptr) {  // can be equal
+								std::list<patch*> pl;
+								pl.push_back(eit->second.pptr);
+								pl.push_back(enext->second.pptr);
+								combinePatches(pl);
 							}
 						}
-						else if (inSolid != eit->second.nextOutside) {  // flip if necessary
-							auto swap = enext->second;
-							enext->second = eit->second;
-							eit->second = swap;
+						eit = enext;
+						++enext;
+					}
+					assert(eit->second.nextOutside == inodes[nend] < 0);
+					auto et = edges[i].begin();
+					if (et->second.nextOutside) {
+						assert(inodes[nbegin] > -1);
+						et->second.pptr->tetNodes[nbegin] = inodes[nbegin];
+					}
+					else
+						assert(inodes[nbegin] < 0);
+					et = edges[i].end();
+					--et;
+					if (!et->second.nextOutside) {
+						assert(inodes[nend] > -1);
+						et->second.pptr->tetNodes[nend] = inodes[nend];
+					}
+					else
+						assert(inodes[nend] < 0);
+				}
+				else {
+					if (inodes[nbegin] > -1) {
+						assert(inodes[nend] > -1);
+						if (zeroEmpty) {
+							interiorLinks[0][nbegin] = true;
+							interiorLinks[0][nend] = true;
+							zeroEmpty = false;
+						}
+						else if (interiorLinks[0][nbegin] || interiorLinks[0][nend]) { // 3rd or 4th member
+							if (secondPair) {
+								for (int k = 0; k < 4; ++k)
+									interiorLinks[0][k] = true;
+								secondPair = false;
+							}
+							else {
+								interiorLinks[0][nbegin] = true;
+								interiorLinks[0][nend] = true;
+							}
+						}
+						else {  // can have 2 pairs
+							interiorLinks[1][nbegin] = true;
+							interiorLinks[1][nend] = true;
+							secondPair = true;
+						}
+					}
+				}
+			}
+			// add linked interior nodes to patches
+			for (auto& p : patches) {
+				if (p.noEdgeCut)
+					continue;
+				for (int i = 0; i < 4; ++i) {
+					if (p.tetNodes[i] > -1) {
+						if (interiorLinks[0][i]) {
+							for (int j = 0; j < 4; ++j) {
+								if (i == j)
+									continue;
+								if (interiorLinks[0][j])
+									p.tetNodes[j] = inodes[j];
+							}
+							if (!secondPair)
+								break;
+						}
+						else if (secondPair && interiorLinks[1][i]) {
+							for (int j = 0; j < 4; ++j) {
+								if (i == j)
+									continue;
+								if (interiorLinks[1][j]) {
+									p.tetNodes[j] = inodes[j];
+									break;
+								}
+							}
 						}
 						else
 							;
 					}
-					if (inSolid != eit->second.nextOutside)
-						throw(std::logic_error("Solid ordering error in getConnectedComponents()\n"));
-					inSolid = !inSolid;
-					eit = enext;
-					++enext;
-				}
-				eit = edges[i].begin();
-				assert(eit->second.nextOutside == inodes[nbegin] > -1);
-				enext = eit;
-				++enext;
-				while (enext != edges[i].end()) {
-					if (!eit->second.nextOutside && enext->second.nextOutside) {  // solid interval. Combine patches
-						if (eit->second.pptr != enext->second.pptr) {  // can be equal
-							std::list<patch*> pl;
-							pl.push_back(eit->second.pptr);
-							pl.push_back(enext->second.pptr);
-							combinePatches(pl);
-						}
-					}
-					eit = enext;
-					++enext;
-				}
-				assert(eit->second.nextOutside == inodes[nend] < 0);
-				auto et = edges[i].begin();
-				if (et->second.nextOutside) {
-					assert(inodes[nbegin] > -1);
-					et->second.pptr->tetNodes[nbegin] = inodes[nbegin];
-				}
-				else
-					assert(inodes[nbegin] < 0);
-				et = edges[i].end();
-				--et;
-				if (!et->second.nextOutside) {
-					assert(inodes[nend] > -1);
-					et->second.pptr->tetNodes[nend] = inodes[nend];
-				}
-				else
-					assert(inodes[nend] < 0);
-			}
-			else {
-				if (inodes[nbegin] > -1) {
-					assert(inodes[nend] > -1);
-					if (zeroEmpty) {
-						interiorLinks[0][nbegin] = true;
-						interiorLinks[0][nend] = true;
-						zeroEmpty = false;
-					}
-					else if (interiorLinks[0][nbegin] || interiorLinks[0][nend]) { // 3rd or 4th member
-						if (secondPair) {
-							for (int k = 0; k < 4; ++k)
-								interiorLinks[0][k] = true;
-							secondPair = false;
-						}
-						else {
-							interiorLinks[0][nbegin] = true;
-							interiorLinks[0][nend] = true;
-						}
-					}
-					else {  // can have 2 pairs
-						interiorLinks[1][nbegin] = true;
-						interiorLinks[1][nend] = true;
-						secondPair = true;
-					}
 				}
 			}
-		}
-		// add linked interior nodes to patches
-		for (auto& p : patches) {
+			// look for patches that combine due to shared interior node (ie solid span bridges more than one edge)
 			for (int i = 0; i < 4; ++i) {
-				if (p.tetNodes[i] > -1) {
-					if (interiorLinks[0][i]) {
-						for (int j = 0; j < 4; ++j) {
-							if (i == j)
-								continue;
-							if (interiorLinks[0][j])
-								p.tetNodes[j] = inodes[j];
-						}
-						if (!secondPair)
-							break;
+				if (inodes[i] < 0)
+					continue;
+				std::list<patch*> pl;
+				for (auto& p : patches) {
+					if (p.noEdgeCut)
+						continue;
+					if (p.tetNodes[i] > -1) {
+						assert(p.tetNodes[i] == inodes[i]);
+						pl.push_back(&p);
 					}
-					else if (secondPair && interiorLinks[1][i]) {
-						for (int j = 0; j < 4; ++j) {
-							if (i == j)
-								continue;
-							if (interiorLinks[1][j]) {
-								p.tetNodes[j] = inodes[j];
-								break;
-							}
-						}
+				}
+				if (pl.size() > 1)
+					combinePatches(pl);
+			}
+			// combine patches that enclose a solid
+			for (auto& cp : combineP) {
+				assert(cp.size() > 1);
+				auto cpfirst = cp.begin();
+				while (cpfirst != cp.end() && (*cpfirst)->tris.empty()) {
+					removePatch(*cpfirst);
+					++cpfirst;
+				}
+				if (cpfirst == cp.end())
+					continue;
+				auto cpnext = cpfirst;
+				++cpnext;
+				while (cpnext != cp.end()) {
+					if ((*cpnext)->tris.empty()) {
+						removePatch(*cpnext);
+						++cpnext;
+						continue;
 					}
-					else
-						;
-				}
-			}
-		}
-		// look for patches that combine due to shared interior node (ie solid span bridges more than one edge)
-		for (int i = 0; i < 4; ++i) {
-			if (inodes[i] < 0)
-				continue;
-			std::list<patch*> pl;
-			for (auto& p : patches) {
-				if (p.tetNodes[i] > -1) {
-					assert(p.tetNodes[i] == inodes[i]);
-					pl.push_back(&p);
-				}
-			}
-			if (pl.size() > 1)
-				combinePatches(pl);
-		}
-		// combine patches that enclose a solid
-		auto removePatch = [&](patch* p) {
-			for (auto pi = patches.begin(); pi != patches.end(); ++pi)
-				if (&(*pi) == p) {
-					patches.erase(pi);
-					break;
-				}
-		};
-		for (auto& cp : combineP) {
-			assert(cp.size() > 1);
-			auto cpfirst = cp.begin();
-			while (cpfirst != cp.end() && (*cpfirst)->tris.empty()) {
-				removePatch(*cpfirst);
-				++cpfirst;
-			}
-			if (cpfirst == cp.end())
-				continue;
-			auto cpnext = cpfirst;
-			++cpnext;
-			while (cpnext != cp.end()) {
-				if ((*cpnext)->tris.empty()) {
+					std::vector<int> mergeVec((*cpfirst)->tris.size() + (*cpnext)->tris.size());
+					std::merge((*cpfirst)->tris.begin(), (*cpfirst)->tris.end(), (*cpnext)->tris.begin(), (*cpnext)->tris.end(), mergeVec.begin());
+					(*cpfirst)->tris = std::move(mergeVec);
+					for (int i = 0; i < 4; ++i) {
+						if ((*cpnext)->tetNodes[i] > -1)
+							(*cpfirst)->tetNodes[i] = (*cpnext)->tetNodes[i];
+					}
 					removePatch(*cpnext);
 					++cpnext;
-					continue;
 				}
-				(*cpfirst)->tris.insert((*cpfirst)->tris.end(), (*cpnext)->tris.begin(), (*cpnext)->tris.end());
-				for (int i = 0; i < 4; ++i) {
-					if ((*cpnext)->tetNodes[i] > -1)
-						(*cpfirst)->tetNodes[i] = (*cpnext)->tetNodes[i];
-				}
-				removePatch(*cpnext);
-				++cpnext;
 			}
 		}
-		if (unsolvedInsidePatches.size() == patches.size()) {
-			if (inodes[0] < 0 || inodes[1] < 0 || inodes[2] < 0 || inodes[3] < 0)
-				throw(std::logic_error("An all inside node tet incorrectly processed in getConnectedComponents().\n"));
-			if (unsolvedInsidePatches.size() > 1) {
-				auto ui0 = unsolvedInsidePatches.begin();
-				auto uiNext = ui0;
-				++uiNext;
-				while (uiNext != unsolvedInsidePatches.end()) {
-					(*ui0)->tris.insert((*ui0)->tris.end(), (*uiNext)->tris.begin(), (*uiNext)->tris.end());
-					removePatch(*uiNext);
-				}
-				for (int i = 0; i < 4; ++i)
-					(*ui0)->tetNodes[i] = inodes[i];
-			}
-			unsolvedInsidePatches.clear();
-		}
-		for (auto ui : unsolvedInsidePatches) {  // these interior patches must be inside another solid
-			// must find point on patch guaranteed inside tet closest to node 0
-			Vec3d P((const unsigned short(&)[3])(*tt.tc.data())), centerP;
-			P *= 0.5;  // closest point to tet center
-			isInsidePatch(P, ui->tris, centerP);
-			double dsq, minD = DBL_MAX;
-			int connected = nearestRayPatchHit(tetNodes[0], centerP, ui->tris, P, dsq);
-			patch* enclosingPatch = nullptr;
-			for (auto pit = patches.begin(); pit != patches.end(); ++pit) {
-				if (&(*pit) == ui)
-					continue;
-				Vec3d hitP;
-				int connected = nearestRayPatchHit(P, tetNodes[0], pit->tris, hitP, dsq);  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
-				if (connected < 0 && dsq < minD) {
-					minD = dsq;
-					enclosingPatch = &(*pit);
-				}
-			}
-			if (enclosingPatch) {
-				enclosingPatch->tris.insert(enclosingPatch->tris.end(), ui->tris.begin(), ui->tris.end());
-				assert(ui->tetNodes[0] < 0 && ui->tetNodes[0] < 0 && ui->tetNodes[0] < 0 && ui->tetNodes[0] < 0);
-				removePatch(ui);
-			}
-		}
-		unsolvedInsidePatches.clear();
+		if (!tetFaceHoles.empty())
+			processHoles(patches, tetFaceHoles, tetNodes, inodes);
 	}
 	for (auto& cTet : patches) {
 		auto ntit = nt_vec.push_back(newTet());
@@ -1915,7 +1788,7 @@ void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::
 		cTet.tetIndex = ntit->tetIdx;
 		ntit->tc = tt.tc;
 		ntit->tetNodes = cTet.tetNodes;
-		ntit->tris.assign(cTet.tris.begin(), cTet.tris.end());
+		ntit->tris.assign(cTet.tris.begin(), cTet.tris.end());    // COURT change to move after new data structure
 	}
 	for (int i = 0; i < 4; ++i) {
 		bool enNotEntered = true;
@@ -1930,7 +1803,7 @@ void vnBccTetCutter_tbb::getConnectedComponents(const tetTriangles& tt, oneapi::
 				nodeTetSegment nts;
 				nts.tetNodeIndex = i;
 				nts.tetIdx = p.tetIndex;
-				nts.tetNodeTris.assign(p.tris.begin(), p.tris.end());
+				nts.tetNodeTris.assign(p.tris.begin(), p.tris.end());  // COURT nuke afternew data structure
 				acc->second.push_back(nts);
 			}
 		}
@@ -2054,7 +1927,7 @@ void vnBccTetCutter_tbb::zIntersectTriangleTbb(Vec3d(&tri)[3], const bool surfac
 			return false;
 		z = (tri[0][2] + tri[1][2] * R[0] + tri[2][2] * R[1]);
 		return true;
-		};
+	};
 	for (int i = xy[0]; i <= xy[1]; ++i) {
 		bool odd = i & 1;
 		for (int j = xy[2]; j <= xy[3]; ++j) {
@@ -2158,7 +2031,7 @@ void vnBccTetCutter_tbb::addCentroidMicronodesZ(const bccTetCentroid& tc) {
 
 void vnBccTetCutter_tbb::inputTriangleTetsTbb(const int& surfaceTriangle, CENTtris& centTris) {
 	int* tr = _mt->triangleVertices(surfaceTriangle);
-	Vec3f T[3];
+	Vec3d T[3];
 	bccTetCentroid tc[3];
 	for (int i = 0; i < 3; ++i) {
 		T[i] = _vMatCoords[tr[i]];
@@ -2186,15 +2059,15 @@ void vnBccTetCutter_tbb::inputTriangleTetsTbb(const int& surfaceTriangle, CENTtr
 				adjFace = _vbt->faceAdjacentMultiresTet(dtit->first, i, tAdj);
 				if (triTetsS.find(tAdj) != triTetsS.end()) // already found
 					continue;
-				Vec3f V0(gridLoci[i]), V1(gridLoci[(i + 1) & 3]), V2(gridLoci[(i + 2) & 3]);
+				Vec3d V0(gridLoci[i]), V1(gridLoci[(i + 1) & 3]), V2(gridLoci[(i + 2) & 3]);
 
-				if (tri_tri_intersect(V0.xyz, V1.xyz, V2.xyz, T[0].xyz, T[1].xyz, T[2].xyz))
+				if (tri_tri_intersectD(V0.xyz, V1.xyz, V2.xyz, T[0].xyz, T[1].xyz, T[2].xyz))
 					doTets.insert(std::make_pair(tAdj, adjFace));
 			}
 			doTets.erase(dtit);
 			dtit = doTets.begin();
 		}
-		};
+	};
 	if (triTetsS.size() > 2 || (triTetsS.size() > 1 && !_vbt->adjacentMicrotetCentroids(*triTetsS.begin(), *triTetsS.rbegin()))) {
 		triTetsS.clear();
 		recurseTriangleTets(tc[0]);
@@ -2480,3 +2353,62 @@ void vnBccTetCutter_tbb::fillNonVnTetCenter()
 	}
 }
 
+bool vnBccTetCutter_tbb::latticeTest() {
+
+	// COURT - finish me.  This could be more complete
+
+	bool ret = true;
+	for (int i = _vbt->_nMegatets; i < _vbt->tetNumber(); ++i) {
+		int* tn = _vbt->_tetNodes[i].data();
+		std::array<unsigned int, 3> ct = { 0, 0, 0 };
+		for (int j = 0; j < 4; ++j) {
+			for (int k = 0; k < 3; ++k)
+				ct[k] += _vbt->_nodeGridLoci[tn[j]][k];
+		}
+		bccTetCentroid tc = _vbt->_tetCentroids[i];
+		auto pr = _vbt->_tetHash.equal_range(tc);
+		while (pr.first != pr.second) {
+			if (pr.first->second == i)
+				break;
+			++pr.first;
+		}
+		if (pr.first == pr.second) {
+			std::cout << "Tet centroid not found for tet " << i << "\n";
+			ret = false;
+		}
+		for (int k = 0; k < 3; ++k) {
+			ct[k] >>= 1;
+			if (ct[k] != tc[k]) {
+				std::cout << "Bad tet centroid at tet " << i << "\n";
+				ret = false;
+			}
+		}
+	}
+	for (int i = _meganodeSize; i < _firstNewExteriorNode; ++i) {
+		bccTetCentroid cntrd[24];
+		_vbt->nodeMicroCentroids(_vbt->_nodeGridLoci[i], cntrd);  // for these routines a coordinate greater than 65533 indicates a centroid out of positive grid bounds
+		// an interior node should all be sourrounded by tets containing it
+		for (int k, j = 0; j < 24; ++j) {
+			auto pr = _vbt->_tetHash.equal_range(cntrd[j]);
+			while (pr.first != pr.second) {
+				int* tn = _vbt->_tetNodes[pr.first->second].data();
+				for (k = 0; k < 4; ++k) {
+					if (tn[k] == i)
+						break;
+				}
+				if (k<4)
+					break;
+				++pr.first;
+			}
+			if(pr.first == pr.second){  // OK if T junction
+				if (_vbt->_tJunctionConstraints.find(i) != _vbt->_tJunctionConstraints.end())
+					continue;
+				else {
+					std::cout << "Interior node " << i << " is not surrounded by tc " << cntrd[j][0] << ", " << cntrd[j][1] << ", " << cntrd[j][2] << "\n";
+					ret = false;
+				}
+			}
+		}
+	}
+	return ret;
+}

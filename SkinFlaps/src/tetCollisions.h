@@ -24,7 +24,7 @@ public:
 	bool empty() { return _fixedCollisionSets.empty() && _bedRays.empty(); }
 	inline void setPdTetPhysics(pdTetPhysics *ptp) { _ptp = ptp; }
 	tetCollisions() : _itCount(0), _initialized(false), _minTime((double)FLT_MAX), _maxTime(0.0){
-		_fixedCollisionSets.clear(); _flapBottomTris.clear();  // _bedVerts.clear(); _bedVerts.reserve(1024); 
+		_fixedCollisionSets.clear(); _flapBotTris.clear(); 
 	}
 	~tetCollisions() {}
 
@@ -43,17 +43,14 @@ private:
 		int restIdx;  // only 6 of these in bcc tets
 	};
 	std::vector<vertexRay> _bedRays;
-	std::vector<vertexRay> _flapBottomVerts;
-	std::vector<std::array<vertexRay*, 3> > _flapBottomTris;
-	std::vector<int> _topTets;
-	std::vector<Vec3f> _topBarys;
+	std::vector<int> _flapBotTris;
+
 	struct fixedCollisionSet {
 		std::string levelSetFilename;
 		std::vector<int> vertices;
 	};
 	std::list< fixedCollisionSet> _fixedCollisionSets;
 
-//	int parametricMTtriangleTet(const int mtTriangle, const float(&uv)[2], Vec3f& gridLocus, bccTetCentroid& tC);
 	float rayDepth(const Vec3f& Vtx, const Vec3f& nrm);
 
 	double _minTime, _maxTime;

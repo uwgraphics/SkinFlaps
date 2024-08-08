@@ -87,7 +87,7 @@ public:
 		v[2] = newCoord[2];
 	}
 
-	void getTriangleNormal(int triangle, Vec3f& normal, bool normalized=true);
+	void getTriangleNormal(int triangle, Vec3f& normal, bool normalized=false);
 	void getMeanVertexNormal(const int triangle, const int index, float(&normal)[3], int onlyMaterial = -1, bool normalize = true);  // if onlyMaterial>-1 only use neighbor triangles with material == onlyMaterial
 	inline int numberOfTriangles() const { return (int)_triPos.size(); }
 	inline int numberOfVertices() { return (int)_xyz.size(); }

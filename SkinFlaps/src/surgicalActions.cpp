@@ -142,14 +142,14 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 						break;
 					}
 				} */
-//				triangle = 18120;
-//				uv[0] = 0.33;
-//				uv[1] = 0.33;
+//				triangle = 375;
+//				uv[0] = 0.0;
+//				uv[1] = 0.999;
 
 		if ((hookNum = _hooks.addHook(tr, triangle, uv, _strongHooks)) > -1)
 		{
 
-			//			return true;  // for above debug use
+//						return true;  // for above debug use
 
 			if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook
 				_ffg->physicsDrag = true;
@@ -796,12 +796,7 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 		if (_selectedSurgObject.substr(0, 3) == "NP_") {	// fence post selected in viewer or incision mode
 			int postNum = atoi(_selectedSurgObject.c_str() + 3);
 			_fence.selectPost(postNum);
-//			if (postNum > 0 && !_incisions.inputCorrectFence(&_fence)) {  / changed to correcting fence problems on <enter> key
-//				_ffg->sendUserMessage("This post does not connect to the previous one-", "Try again");
-//				_fence.deleteLastPost();
-//				_incisions.popLastDeepPost();
-//				_selectedSurgObject = "";
-//			}
+			// changed to correcting fence problems on <enter> key
 		}
 	}
 	else
@@ -875,13 +870,11 @@ void surgicalActions::onKeyDown(int key)
 		else if (_toolState == 6) {
 			if (_fence.numberOfPosts() > 0) {
 				_fence.deleteLastPost();
-//				_incisions.popLastDeepPost();
 				_selectedSurgObject = "";
 			}
 			return;  // don't reset toolstate
 		}
 		else if (_toolState == 3){
-//			_incisions.clearCurrentUndermine(2);
 			_undermineTriangles.clear();
 			return;
 		}
@@ -942,7 +935,6 @@ void surgicalActions::onKeyDown(int key)
 	else if (key == GLFW_KEY_ENTER)	// <enter> key
 	{
 		// prevent user from doing a new op until previous one is finished
-//		assert(physicsDone);  // physics update thread must be complete before doing next op.
 		if (_toolState == 7){	//periosteal undermine mode
 			_bts.setPhysicsPause(true);  // should already be done
 			while (!physicsDone)
@@ -1364,7 +1356,6 @@ bool surgicalActions::setHistoryAttachPoint(const int triangle, const float(&uv)
 					// creator of a history file will usually have lots of physics iterations before applying a suture, but someone playing back history quickly may have very few.
 					if (vI.length2()*tetSizeSq > 0.0001f && !isBorderTriangle(nextTri)) {
 						// pull inside this triangle to ensure an insideTest() texture find on retrieval
-//						float edgeParam = -dLast / (dNow - dLast);
 						float edgeParam = -dNext / (dNow - dNext);
 						if (lastEdge < 1) {
 							if (edgeParam < 0.005f) {
@@ -2347,111 +2338,6 @@ void surgicalActions::nextHistoryAction()
 	}
 }
 
-bool surgicalActions::texturePickCode(const int triangle, const float (&uv)[2], float (&txUv)[2], float &triangleDuv, int &material)
-{ // texture seam triangles will have a large deltaUV in cylindrical or spherical texture mapping
-	// return true=user selected a top or bottom triangle, false if an edge triangle was selected
-	float *tx[3],mm[4]={1e30f,-1e30f,1e30f,-1e30f},p=1.0f-uv[0]-uv[1];
-
-	// COURT
-	materialTriangles *tri = NULL;  //  _bts.getElasticSkinGraphics()->getMaterialTriangles();
-
-	int *tr = tri->triangleTextures(triangle);
-	if(tri->triangleMaterial(triangle)<0)
-		return false;
-	for(int j,i=0; i<3; ++i) {
-		tx[i] = tri->getTexture(tr[i]);
-		for(j=0; j<2; ++j) {
-			if(mm[j<<1]>tx[i][j])
-				mm[j<<1]=tx[i][j];
-			if(mm[(j<<1)+1]<tx[i][j])
-				mm[(j<<1)+1]=tx[i][j];
-		}
-	}
-	for(int i=0; i<2; ++i)
-		txUv[i] = p*tx[0][i] + uv[0] * tx[1][i] + uv[1] * tx[2][i];
-	triangleDuv = mm[1]-mm[0] + mm[3]-mm[2];
-	material = tri->triangleMaterial(triangle);
-	return true;
-}
-
-bool surgicalActions::closestTexturePick(const float(&txUv)[2], const float triangleDuv, int &material, int &triangle, float(&uv)[2])
-{ // at present search limited to top and bottom triangles. May change later.
-	triangle = -1;
-
-	// COURT ?nuke
-	assert(false);
-
-/*	materialTriangles* tri = NULL;  //  _bts.getElasticSkinGraphics()->getMaterialTriangles();
-
-	std::vector<materialTriangles::matTriangle> *tArr = tri->getTriangleArray();
-	int i,j,n=(int)tArr->size();
-	int *tr;
-	float *tx[3],minErr=1e30f,minDuv=1000.0f;
-	float minimax[4];
-	for(i=0; i<n; ++i)	{
-		if(tri->triangleMaterial(i)!=material)
-			continue;
-		minimax[0] = 1e30f; minimax[1] = -1e30f; minimax[2] = 1e30f; minimax[3] = -1e30f;
-		tr = tri->triangleTextures(i);  // COURT - if we switch to allowing edge picks this will be wrong. Would use lipGraphicsMt vertices instead of materialTriangles verts.
-		for (j = 0; j<3; ++j) {
-			tx[j] = tri->getTexture(tr[j]);
-			if(minimax[0]>tx[j][0])
-				minimax[0]=tx[j][0];
-			if(minimax[1]<tx[j][0])
-				minimax[1]=tx[j][0];
-			if(minimax[2]>tx[j][1])
-				minimax[2]=tx[j][1];
-			if(minimax[3]<tx[j][1])
-				minimax[3]=tx[j][1];
-		}
-		if (txUv[0] + 1e-5f<minimax[0] || txUv[0] - 1e-5f>minimax[1])
-			continue;
-		if (txUv[1] + 1e-5f<minimax[2] || txUv[1] - 1e-5f>minimax[3])
-			continue;
-		float err=0.0f,u,v,det=(tx[1][0]-tx[0][0])*(tx[2][1]-tx[0][1]) - (tx[1][1]-tx[0][1])*(tx[2][0]-tx[0][0]);
-		if(fabs(det)<1e-16f)
-			continue;
-		u = (txUv[0] - tx[0][0])*(tx[2][1] - tx[0][1]) - (txUv[1] - tx[0][1])*(tx[2][0] - tx[0][0]);
-		u /= det;
-		v = (tx[1][0] - tx[0][0])*(txUv[1] - tx[0][1]) - (tx[1][1] - tx[0][1])*(txUv[0] - tx[0][0]);
-		v /= det;
-		if(u<-1e-4f)
-			err += u*u;
-		else if(u>1.0001f)
-			err += (u-1.0f)*(u-1.0f);
-		else ;
-		if(v<-1e-4f)
-			err += v*v;
-		else if(v>1.0001f)
-			err += (v-1.0f)*(v-1.0f);
-		else ;
-		if(err==0.0f) {
-			if(u+v<1.0001f) {
-				det = fabs(minimax[1]-minimax[0]+minimax[3]-minimax[2]-triangleDuv);
-				if(det<minDuv) {
-					minDuv = det;
-					triangle = i;
-					uv[0] = u;
-					uv[1] = v;
-				}
-			}
-			else {
-				err = 1.0001f - u - v;
-				err *= err;
-			}
-		}
-		if(err<minErr && minDuv>100.0f) {
-			minErr = err;
-			triangle = i;
-			uv[0] = u;
-			uv[1] = v;
-		}
-	}
-	if(minDuv>100.0f)
-		return false;
-	else */
-		return true;
-}
 
 bool surgicalActions::saveCurrentObj(const char* fullFilePath, const char* fileNamePrefix) {
 	materialTriangles* tr = _sg.getMaterialTriangles();

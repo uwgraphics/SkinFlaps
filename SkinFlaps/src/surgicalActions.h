@@ -94,8 +94,6 @@ private:
 	json::Array _historyArray;
 	json::Array::ValueVector::iterator _historyIt;	// current history command
 	std::string _sceneDir, _historyDir;
-	bool texturePickCode(const int triangle, const float(&uv)[2], float(&txUv)[2], float &triangleDuv, int &material);
-	bool closestTexturePick(const float(&txUv)[2], const float triangleDuv, int &material, int &triangle, float(&uv)[2]);
 	void historyAttachFailure(std::string& errorDescription);  // report failure and truncate history at just before this action.
 
 	// next are temporary move variables set by ascii keys

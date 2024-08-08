@@ -38,18 +38,8 @@ int main(int, char**)
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
-			if (FacialFlapsGui::physicsDrag) {
-//				if(ffg.loadFile.empty())
-					ffg.showHourglass();
-//				else {
-//					if (ffg.loadFile.rfind(".hst") != std::string::npos) {
-//						ffg.getSurgicalActions()->loadHistory(ffg.loadDir.c_str(), ffg.loadFile.c_str());
-//						ffg.physicsDrag = false;
-//					}
-//					ffg.loadDir.clear();
-//					ffg.loadFile.clear();
-//				}
-			}
+			if (FacialFlapsGui::physicsDrag)
+				ffg.showHourglass();
 			ffg.InstanceCleftGui();
 
 			// Rendering

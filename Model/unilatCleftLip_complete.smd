@@ -22,8 +22,8 @@
         }
     },
     "tetrahedralProperties" : {
-        "minStrain" : 0.6,
-        "maxStrain" : 1.8,
+        "minStrain" : 0.8,
+        "maxStrain" : 1.26,
         "lowTetWeight" : 500.0,
         "highTetWeight" : 1000.0,
         "TJunctionWeight" : 4000.0,

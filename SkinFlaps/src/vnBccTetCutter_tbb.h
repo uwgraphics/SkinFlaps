@@ -17,7 +17,7 @@
 #include "oneapi/tbb/blocked_range.h"
 #include "oneapi/tbb/parallel_for.h"
 
-// #include <atomic>  // no MP yet
+// #include <atomic>
 #include "materialTriangles.h"
 #include "vnBccTetrahedra.h"
 
@@ -76,36 +76,30 @@ private:
 		}
 	};
 	std::unordered_map<std::array<short, 3>, int, arrayShort3Hasher> _interiorNodes;
-	struct tetTriangles {
-		bccTetCentroid tc;
-		std::vector<int> tris;
-	};
-	std::unordered_set<bccTetCentroid, bccTetCentroidHasher> _surfaceCentroids;
-
+	std::unordered_map<bccTetCentroid, std::vector<int>, bccTetCentroidHasher> _surfaceCentroids;
 	std::atomic<int> _nSurfaceTets;
 	int _meganodeSize;  // size of largest macro nodes at beginning of node arrays. _megatetSize size of the largest macrotets at the beginning of the tet arrays is now kept in _vbt.
 	int _firstNewExteriorNode;  // Index of first new exterior micronode to be created. This is _meganodeSize plus size of new interior micronodes.
-	struct newTet{
-		int tetIdx;
-		bccTetCentroid tc;
-		std::array<int, 4> tetNodes;
-		std::vector<int> tris;
-	};
 	struct tetTris {
 		int tetIdx;
 		std::vector<int> tris;
 	};
-	std::unordered_map<bccTetCentroid, std::list<tetTris>, bccTetCentroidHasher> _centroidTriangles;
+	std::vector<tetTris> _surfaceTetTris;  // COURT could be expanded to handle megatet tris as well.
+	// COURT with new data structure is next variable necessary since is filled with empty tris as well.  Could add above variable to pack().
 	std::unordered_map<bccTetCentroid, tetTris, bccTetCentroidHasher> _megatetTetTris;  // megatets don't virtual node and may or may not have triangles passing through them.
 	typedef std::unordered_map<bccTetCentroid, tetTris, bccTetCentroidHasher>::const_iterator MTTIT;
 
 	std::vector<bccTetCentroid> _vertexTetCentroids;
 	struct boundingNodeTris {
 		int node;
-		std::vector<int> tris;
+		std::vector<tetTris*> megaTetTris;  // each is guaranteed to be a sorted vector
 	};
-	std::unordered_multimap<std::array<short, 3>, boundingNodeTris, arrayShort3Hasher> _boundingNodeData;
-
+	std::unordered_map<std::array<short, 3>, boundingNodeTris, arrayShort3Hasher> _boundingNodeData;
+	struct megatetFace {
+		std::array<int, 3> nodes;
+		std::vector<int> *tris;  // must be sorted
+	};
+	std::vector<megatetFace> _megatetBounds;
 
 	struct zIntersectFlags{
 		// will usually occupy 2 bytes:
@@ -123,18 +117,22 @@ private:
 	std::vector<std::vector<std::multimap<double, zIntersectFlags> > > evenXy, oddXy;  // Lines parallel to Z axis. First is Z intersect location along line, second 1 bit if solid interval start & 2 bit if border triangle intersect
 	// the 0th entry in evenXY will always be empty in i and j.
 
-	struct nodeTetSegment {
-		std::vector<int> tetNodeTris;
-		int tetIdx;
-		int tetNodeIndex;
+	struct patch {
+		std::vector<int> tris;
+		int tetIndex;
+		std::array<int, 4> tetNodes;
+		bool noEdgeCut;
+	};
+	struct hole {  // a patch that bounds a hole in a solid
+		patch* pptr;
+		Vec3d outerPoint;
+		int penetratedFace;
 	};
 	struct extNode {
 		std::array<short, 3> loc;
 		int node;
 		std::vector<std::pair<int, int> > tiPairs;  // first is tetrahedron number, second is its node index 0-3
 	};
-	std::unordered_map<int, std::pair<int, int> > _decimatedNodes;  // first is id of node decimated, second are the two nodes of the edge first node splits.
-	typedef std::unordered_map<int, std::pair<int, int> >::iterator DNIT;
 
 	struct ss3HashCompare {
 		static size_t hash(const std::array<short, 3>& ss3) {
@@ -162,13 +160,51 @@ private:
 			return x == y;
 		}
 	};
+	struct tetTriangles {
+		bccTetCentroid tc;
+		std::vector<int> tris;
+	};
 	typedef oneapi::tbb::concurrent_hash_map<bccTetCentroid, std::vector<int>, btcHashCompare> CENTtris;
 	CENTtris _centTris;
 	oneapi::tbb::concurrent_vector<zIntrsct> _zIntr;
+	struct nodeTetSegment {
+		std::vector<int> tetNodeTris;  // COURT convert to pointer
+		int tetIdx;
+		int tetNodeIndex;
+	};
 	typedef oneapi::tbb::concurrent_hash_map<std::array<short, 3>, std::list<nodeTetSegment>, ss3HashCompare> NTS_HASH;
 	NTS_HASH _ntsHash;
+
+	inline bool sortedVectorsIntersect(const std::vector<int>& v0, const std::vector<int>& v1) {
+		auto i0 = v0.begin();
+		auto i1 = v1.begin();
+		while (i0 != v0.end()) {
+			if (*i0 < *i1)
+				++i0;
+			else if (*i0 > *i1) {
+				do {
+					++i1;
+				} while (i1 != v1.end() && *i0 > *i1);
+				if (i1 == v1.end())
+					return false;
+				if (*i0 == *i1)
+					return true;
+			}
+			else
+				return true;
+		}
+		return false;
+	}
+
+	struct newTet {
+		int tetIdx;
+		bccTetCentroid tc;
+		std::array<int, 4> tetNodes;
+		std::vector<int> tris;
+	};
 	oneapi::tbb::concurrent_vector<newTet> _newTets;
 
+	bool latticeTest();
 	void macrotetRecutCore();
 	void createInteriorNodes();
 	void createInteriorMicronodes();
@@ -177,12 +213,13 @@ private:
 	void fillInteriorMicroTets(std::vector<bccTetCentroid>& recutMacrotets);
 	void assignExteriorTetNodes(std::array<short, 3>& locus, std::list<nodeTetSegment>& tetNodeIds, oneapi::tbb::concurrent_vector<extNode>& eNodes);
 	void getConnectedComponents(const tetTriangles& tt, oneapi::tbb::concurrent_vector<newTet>& nt_vec, NTS_HASH& local_nts);
-	bool isInsidePatch(const Vec3d& P, const std::vector<int>& tris, Vec3d& closestP);
+	void processHoles(std::list<patch>& patches, std::list<hole>& holes, const Vec3d (&tetNodes)[4], int(&inodes)[4]);
+	bool isHole(const patch* patch, const bccTetCentroid& tc, const Vec3d(&tetNodes)[4], Vec3d& patchPoint, int& tetFaceHit);
 	int nearestRayPatchHit(const Vec3d& rayBegin, Vec3d rayEnd, const std::vector<int>& tris, Vec3d& hitP, double& distanceSq);  // Return -1 is inside hit, 1 is outside hit and 0 is no hit.
 	void zIntersectTriangleTbb(Vec3d(&tri)[3], const bool surfaceTriangle, oneapi::tbb::concurrent_vector<zIntrsct>& zi_loc);
 	void inputTriangleTetsTbb(const int& surfaceTriangle, CENTtris& centTris);
 	void addCentroidMicronodesZ(const bccTetCentroid& tc);
-	void decimateInteriorMicroTets(int firstInteriorMicroTet, std::vector<std::array<int, 3> > &boundingTris);
+	void linkMicrotetsToMegatets();
 	void pack();
 
 };

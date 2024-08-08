@@ -171,7 +171,7 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 			_tetCol.addFixedCollisionSet(lsPath, vIdx);
 		}
 	}
-	int nTetSizeLevels = 4, maxDimMegatetSubdivs = 31;  // Multires settings initial tet count 11,587 tets while old single res was0.5 million tets for cleft model
+	int nTetSizeLevels = 4, maxDimMegatetSubdivs = 31;  // Multires settings initial tet count 11,587 tets while old single res was0.5 million tets for cleft model.  Now loaded in properties below.
 	if ((oit = scnObj.find("tetrahedralProperties")) != scnObj.end()) {
 		json::Object hullObj = oit->second.ToObject();
 		float lowTetWeight, highTetWeight, TJunctionWeight, strainMin, strainMax, collisionWeight, fixedWeight, periferalWeight, hookWeight, sutureWeight, autoSutureSpacing, selfCollisionWeight;
@@ -184,10 +184,8 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 				_lowTetWeight = lowTetWeight = suboit->second.ToFloat();
 			else if (suboit->first == "highTetWeight")
 				highTetWeight = suboit->second.ToFloat();
-
 			else if (suboit->first == "TJunctionWeight")
 				TJunctionWeight = suboit->second.ToFloat();
-
 			else if (suboit->first == "collisionWeight")
 				collisionWeight = suboit->second.ToFloat();
 			else if (suboit->first == "selfCollisionWeight")
@@ -304,10 +302,6 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 {
 	try {
 		_tetsModified = false;
-
-//		std::chrono::time_point<std::chrono::system_clock> start, end;
-//		start = std::chrono::system_clock::now();
-
 		_tc.setRemapTetPhysics(&_rtp);
 		_tc.createFirstMacroTets(_mt, &_vnTets, nTetSizeLevels, maxDimMegatetSubdivs);
 		_surgAct->getDeepCutPtr()->setVnBccTetrahedra(&_vnTets);
@@ -325,17 +319,6 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 		tetSizeMult.reserve(_vnTets.tetNumber());
 		for (int n = _vnTets.tetNumber(), i = 0; i < n; ++i) {
 			// COURT may do faster with just first 2 nodes
-/*			auto tn = _vnTets.tetNodes(i);  // 3 lookups vs one
-			auto v0 = _vnTets.nodeGridLocation(tn[0]);
-			auto v1 = _vnTets.nodeGridLocation(tn[1]);
-			uint8_t sizeBit1;
-			if (v0[0] != v1[0])
-				sizeBit1 = (v1[0] - v0[0])>>1;
-			else if (v0[1] != v1[1])
-				sizeBit1 = (v1[1] - v0[1]) >> 1;
-			else
-				sizeBit1 = (v1[2] - v0[2]) >> 1; */
-
 			uint8_t sizeBit = 1;
 			auto& c = _vnTets.tetCentroid(i);
 			while (true) {
@@ -343,9 +326,6 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 					break;
 				sizeBit <<= 1;
 			}
-
-//			assert(sizeBit == sizeBit1);
-
 			tetSizeMult.push_back(sizeBit);
 		}
 		std::array<float, 3>* nodeSpatialCoords = _ptp.createBccTetStructure_multires(_vnTets.getTetNodeArray(), tetSizeMult, (float)_vnTets.getTetUnitSize());
@@ -358,16 +338,6 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 		std::vector<std::vector<float> > macroBarys;
 		_vnTets.getTJunctionConstraints(subNodes, macroNodes, macroBarys);
 		_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys);
-
-//			end = std::chrono::system_clock::now();
-//			std::chrono::duration<double> elapsed_seconds = end - start;
-//			std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-//			std::string message("Physics initial creation took ");
-//			message += std::to_string(elapsed_seconds.count());
-//			message += " seconds for ";
-//			message += std::to_string(_vnTets.tetNumber());
-//			message += " tets.";
-//			_surgAct->sendUserMessage(message.c_str(), "Timer");
 
 		_tetsModified = false;
 		_physicsPaused = false;
@@ -524,7 +494,7 @@ void bccTetScene::createTetLatticeDrawing()
 		++ngp;
 	}
 	std::set<std::pair<int, int> > segs;
-	for (int n = _vnTets.tetNumber(), i=0; i<n; ++i){
+	for (int n = _vnTets.tetNumber(), i=0; i<n; ++i){  // numberOfMegaTets()
 		std::pair<int, int> ll;
 		const int* tetNodes = _vnTets.tetNodes(i);
 		for (int j = 0; j < 3; ++j){

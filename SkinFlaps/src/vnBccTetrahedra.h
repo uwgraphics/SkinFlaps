@@ -112,6 +112,7 @@ public:
 	// next set of routines traverse topological paths through the bcc data
 	int edgeCircumCentroids(bccTetCentroid tc, int edge, bccTetCentroid(&circumCentroids)[6]);  // gets centroids of same size as tc surrounding edge. Edges listed as sequential pairs from nodes 0 to 3, then 0 to 2, then 1 to 3.
 	int faceAdjacentMultiresTet(const bccTetCentroid tc, const int face, bccTetCentroid& tcAdj);
+	void nodeMicroCentroids(const std::array<short, 3>& node, bccTetCentroid (&cntrd)[24]);  // for these routines a coordinate greater than 65533 indicates a centroid out of positive grid bounds
 
 	inline void faceNodes(const int tet, const int face, int(&nodes)[3])
 	{
@@ -140,12 +141,12 @@ public:
 
 	void centroidToNodeLoci(const bccTetCentroid& centroid, short (&gridLoci)[4][3]);
 
-	void nodeMicroCentroids(std::array<short, 3>& node, bccTetCentroid cntrd[24]);  // for these routines a coordinate greater than 65533 indicates a centroid out of positive grid bounds
 	void unitCubeCentroids(const short(&minimumCorner)[3], bccTetCentroid(&cntrd)[6]);  // centroids whose tet is part of a unit cube
 	void unitCubeCentroids(const short(&minimumCorner)[3], Vec3f(&centroidLoci)[6]);
 	inline int firstInteriorTetrahedron() { return _firstInteriorTet;  }
 	bool insideTet(const bccTetCentroid& tc, const std::array<short, 3>& nodeLocus);  // material coords, not spatial
 	bool insideTet(const bccTetCentroid& tc, const Vec3f& gridLocus);
+	inline int numberOfMegaTets() { return _nMegatets; }
 
 	// multi resolution tet utility routines
 	const bccTetCentroid centroidUpOneLevel(const bccTetCentroid& tcIn);

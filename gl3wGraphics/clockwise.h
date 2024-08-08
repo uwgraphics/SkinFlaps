@@ -5,7 +5,7 @@
 #include "Vec2d.h"
 #include "Vec2f.h"
 
-int clockwise(std::vector<Vec2d>& polygon) {  // routine assumes non-self intersecting polygon.  No test is made.
+static int clockwise(std::vector<Vec2d>& polygon) {  // routine assumes non-self intersecting polygon.  No test is made.
 	// returns 0 if polygon is collinear, 1 if clockwise, and 2 if counterclockwise.
 	auto minCorner = polygon.begin();
 	for (auto pit = polygon.begin(); pit != polygon.end(); ++pit) {

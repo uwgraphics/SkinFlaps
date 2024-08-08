@@ -88,23 +88,6 @@ void vnBccTetrahedra::gridLocusToLowestTetCentroid(const Vec3f &gridLocus, bccTe
 		tc[i] = (short)std::floor(gridLocus[i]);
 		dxyz[i] = gridLocus[i] - tc[i];
 	}
-
-#ifdef _DEBUG
-	// get closest tet using centroids. Of course this works, but next version is faster.
-	Vec3f cLoc[6], found, newTC;
-	unitCubeCentroids(tc, cLoc);
-	float d, dMin = FLT_MAX;
-	for (int i = 0; i < 6; ++i) {
-		d = (gridLocus - cLoc[i]).length2();
-		if (d < dMin) {
-			dMin = d;
-			found = cLoc[i];
-		}
-	}
-	newTC = found * 2.0001f;
-	bccTetCentroid testCentroid = { (unsigned short)newTC[0], (unsigned short)newTC[1], (unsigned short)newTC[2] };
-#endif
-
 	// 4 different diagonal vectors in unit cubes give 4 different centroid patterns
 	Vec3f newC, center = Vec3f(tc[0] + 0.5f, tc[1] + 0.5f, tc[2] + 0.5f);
 	newC = center;
@@ -207,25 +190,6 @@ void vnBccTetrahedra::gridLocusToLowestTetCentroid(const Vec3f &gridLocus, bccTe
 	}
 	newC *= 2.0001f;
 	tetCentroid = { (unsigned short)newC[0], (unsigned short)newC[1], (unsigned short)newC[2] };
-
-#ifdef _DEBUG
-	tetCentroid = testCentroid;
-//	assert(tetCentroid == testCentroid);
-#endif
-
-//  veracity test
-//	if (newC != found) {
-//		assert(dxyz[0] == dxyz[1] || dxyz[0] == dxyz[2] || dxyz[1] == dxyz[2]);
-//		bccTetCentroid at, tn = { (unsigned short)newC[0], (unsigned short)newC[1], (unsigned short)newC[2] };
-//		int i;
-//		for (i = 0; i < 4; ++i) {
-//			faceAdjacentTet(tetCentroid, i, at);
-//			if (at == tetCentroid)
-//				break;
-//		}
-//		if (i > 3)
-//			int junk = 0;
-//	}
 }
 
 void vnBccTetrahedra::barycentricWeightToGridLocus(const int tet, const Vec3f& barycentricWeight, Vec3f& gridLocus) {
@@ -332,7 +296,7 @@ int vnBccTetrahedra::faceAdjacentMultiresTet(const bccTetCentroid tc, const int 
 	return adjFace;
 }
 
-void vnBccTetrahedra::nodeMicroCentroids(std::array<short, 3>& node, bccTetCentroid cntrd[24]) {
+void vnBccTetrahedra::nodeMicroCentroids(const std::array<short, 3>& node, bccTetCentroid (& cntrd)[24]) {
 	int count = 0;
 	for (int dim = 0; dim < 3; ++dim) {
 		for (int pos = -1; pos < 2; pos += 2) {
@@ -481,23 +445,6 @@ int vnBccTetrahedra::edgeCircumCentroids(bccTetCentroid tc, int edge, bccTetCent
 			}
 		}
 	}
-
-#ifdef _DEBUG
-	for (int i = 0; i < ret; ++i){
-		short g[4][3];
-		centroidToNodeLoci(circumCentroids[i], g);
-		int count = 0;
-		for (int j = 0; j < 4; ++j) {
-			if (g[j][0] == gl[N[0]][0] && g[j][1] == gl[N[0]][1] && g[j][2] == gl[N[0]][2])
-				++count;
-			if (g[j][0] == gl[N[1]][0] && g[j][1] == gl[N[1]][1] && g[j][2] == gl[N[1]][2])
-				++count;
-		}
-		if (count != 2)
-			throw(std::logic_error("Program error in edgeCircumCentroids().\n"));
-	}
-#endif
-
 	return ret;
 }
 
@@ -708,9 +655,6 @@ int vnBccTetrahedra::vertexSolidLinePath(const int vertex, const Vec3f materialT
 
 void vnBccTetrahedra::getTJunctionConstraints(std::vector<int>& subNodes, std::vector<std::vector<int> >& macroNodes, std::vector<std::vector<float> >& macroBarycentrics) {
 	size_t snSize = _tJunctionConstraints.size();
-
-	std::cout << "In updateOldPhysicsLattice() we have " << snSize << " tjunctions.\n";
-
 	subNodes.clear();
 	macroNodes.clear();
 	macroBarycentrics.clear();
@@ -1031,13 +975,6 @@ bool vnBccTetrahedra::subtetCentroids(const bccTetCentroid& macroCentroid, bccTe
 	else
 		subCentroids[6][c2] -= levelDown;
 	subCentroids[7][c2] += levelDown;
-#ifdef _DEBUG
-	for (int i = 0; i < 8; ++i) {
-		if (subCentroids[i][0] == USHRT_MAX)  // || subCentroids[i][1] == USHRT_MAX || subCentroids[i][2] == USHRT_MAX)
-			continue;
-		assert(centroidUpOneLevel(subCentroids[i]) == macroCentroid);
-	}
-#endif
 	return true;
 }
 

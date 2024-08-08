@@ -57,6 +57,10 @@ public:
 			m_solver.updateCollisionSutures(topTets.size(), topTets.data(), bottomTets.data(), topBarys[0].data(), bottomBarys[0].data(), collisionNormals[0].data());
 	}
 
+	inline void clearSoftCollisions() {
+		m_solver.clearCollisionSutures();
+	}
+
 	inline void setTetProperties(const float lowTetWeight, const float highTetWeight, const float TJunctionWeight, const float strainMin, const float strainMax, const float collisionWeight, const float selfCollisionWeight, const float fixedWeight, const float peripheralWeight) {
 		// guard against reset tetProperties
 		if (m_tetPropsSet)
