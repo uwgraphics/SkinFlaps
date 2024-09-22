@@ -37,28 +37,8 @@
         "nTetSizeLevels" : 4,
         "maxDimMegatetSubdivs" : 31
     },
-    "tetrahedralSubsets" : {
-        "cleftNasalCartilage.obj" : {
-          "minStrain" : 0.95,
-          "maxStrain" : 1.05,
-          "lowTetWeight" : 800.0,
-          "highTetWeight" : 2000.0
-        },
-        "membranousSeptum.obj" : {
-          "minStrain" : 0.4,
-          "maxStrain" : 4.0,
-          "lowTetWeight" : 150.0,
-          "highTetWeight" : 400.0
-        },
-        "leftCheekFat.obj" : {
-          "minStrain" : 0.4,
-          "maxStrain" : 4.0,
-          "lowTetWeight" : 150.0,
-          "highTetWeight" : 400.0
-        }
-    },
     "fixedCollisionSets" : {
-        "cleftAlveoliLevelset.obj" : [
+        "cleftAlveoliIncompleteLevelset.obj" : [
 2813,
 2905,
 2906,

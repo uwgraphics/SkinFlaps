@@ -247,6 +247,7 @@ protected:
 	friend class remapTetPhysics;
 	friend class skinCutUndermineTets;
 	friend class deepCut;
+	friend class tetSubset;
 };
 
 #endif // __VN_BCC_TETS__

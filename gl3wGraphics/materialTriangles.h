@@ -56,7 +56,7 @@ public:
 	// ray inputs below are 3 element array pointers. Outputs triangles intersected and parameters along line.
 	int findAdjacentTriangles(bool forceCompute=false);    // builds adjacency array for rapid neighbor searches
 	void triangleVertexNeighbors(const int triangle, const int vertexNumber, std::vector<int>& neighborTriangles, std::vector<int>& neighborVertices);
-	struct neighborNode{  // COURT - nuke this local variant
+	struct neighborNode{
 		int	vertex;
 		int triangle;
 	};

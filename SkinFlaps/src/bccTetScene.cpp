@@ -248,10 +248,8 @@ bool bccTetScene::loadScene(const char *dataDirectory, const char *sceneFileName
 		_surgAct->sendUserMessage("Undermine layer .bed file could not be found-", "Error Message");
 	}
 	if (!tetSubsets.empty()) {
-		// since multires tets added, this is flawed.  Rewrite later.
 		for (auto& ts : tetSubsets)
 			_tetSubsets.createSubset(&_vnTets, ts.objFile, ts.lowTetWeight, ts.highTetWeight, ts.strainMin, ts.strainMax);
-		_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
 	}
 	_gl3w->frameScene(true);  // computes bounding spheres
 	return true;
@@ -290,6 +288,7 @@ void bccTetScene::updateOldPhysicsLattice()
 	std::vector<std::vector<float> > macroBarys;
 	_vnTets.getTJunctionConstraints(subNodes, macroNodes, macroBarys);
 	_ptp.addInterNodeConstraints(subNodes, macroNodes, macroBarys);
+	_tetSubsets.sendTetSubsets(&_vnTets, _mt, &_ptp);
 
 	if (_forcesApplied) {  // _tetsModified not necessary as implied by calling this routine
 		initPdPhysics();

@@ -49,12 +49,6 @@
           "maxStrain" : 4.0,
           "lowTetWeight" : 150.0,
           "highTetWeight" : 400.0
-        },
-        "leftCheekFat.obj" : {
-          "minStrain" : 0.4,
-          "maxStrain" : 4.0,
-          "lowTetWeight" : 150.0,
-          "highTetWeight" : 400.0
         }
     },
     "fixedCollisionSets" : {

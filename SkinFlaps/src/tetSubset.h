@@ -13,17 +13,18 @@
 
 #include <vector>
 #include <list>
+#include "boundingBox.h"
+#include "materialTriangles.h"
 
 // forward declarations
 class vnBccTetrahedra;
-class materialTriangles;
+
+typedef std::array<unsigned short, 3> bccTetCentroid;
 
 class tetSubset
 {
 public:
 	bool createSubset(vnBccTetrahedra* vbt, const std::string objFile, float lowTetWeight, float highTetWeight, float strainMin, float strainMax);
-//	bool createSubset(vnBccTetrahedra* vbt, const std::string name,	float lowTetWeight,	float highTetWeight,
-//		float strainMin, float strainMax, const std::list<std::string> &objFiles);
 	void sendTetSubsets(vnBccTetrahedra* vbt, const materialTriangles* mt, pdTetPhysics* ptp);
 	tetSubset() { }
 	tetSubset(const tetSubset&) = delete;
@@ -37,9 +38,48 @@ private:
 		float highTetWeight;
 		float strainMin;
 		float strainMax;
+		materialTriangles mt;
 		std::vector<bccTetCentroid> subsetCentroids;
 	};
 	std::list<tetSub> _tetSubs;
+
+	struct centLine {
+		uint16_t C0;  // value at hc+1 %3
+		uint16_t C1;  // value at hc+2 %3
+		uint32_t hc;  // half coordinate axis
+	};
+	union centLineHash {
+		uint64_t ll;
+		centLine cl;
+	};
+	struct centroidLineHasher {
+		std::size_t operator()(const centLine& cntrL) const
+		{  // hash function
+			centLineHash clh;
+			clh.cl.C0 = cntrL.C0;
+			clh.cl.C1 = cntrL.C1;
+			clh.cl.hc = cntrL.hc;
+			std::hash<uint64_t> hash_funct;
+			return hash_funct(clh.ll);
+		}
+	};
+	struct centroidLineEquals {
+		bool operator()(const centLine& clL, const centLine& clR) const
+		{
+			if (clL.C0 != clR.C0)
+				return false;
+			else if (clL.C1 != clR.C1)
+				return false;
+			else if (clL.hc != clR.hc)
+				return false;
+			else
+				return true;
+		}
+	};
+	std::unordered_map<centLine, std::multimap<double, char>, centroidLineHasher, centroidLineEquals> _centroidLines;  // each centroid line keeps its intersects with whether or mot solid begins there
+
+
+	void centroidLineIntersectTriangle(Vec3f(&tri)[3]);
 };
 
 #endif  // __TET_SUBSET__
