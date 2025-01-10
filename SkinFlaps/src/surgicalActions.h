@@ -58,7 +58,8 @@ public:
 	void promoteFakeSutures();
 	void pausePhysics();
 	bool _strongHooks;  // COURT - hack for collision cheating purposes
-	std::atomic<bool> physicsDone, newTopology;
+	std::atomic<bool> physicsDone, newTopology, taskThreadError;
+	std::string taskThreadErrorStr;
 	bccTetScene _bts;
 
 	surgicalActions();

@@ -260,8 +260,6 @@ void bccTetScene::updateOldPhysicsLattice()
 	_rtp.getOldPhysicsData(&_vnTets);  // must be done before any new incisions.  Worst case example < 0.02 seconds - not worth multithreading.
 	_tc.addNewMultiresIncision();
 
-//	std::cout << "Tet number at this time is " << _vnTets.tetNumber() << "\n";
-
 #ifdef NO_PHYSICS
 	_firstSpatialCoords.assign(_vnTets.nodeNumber(), Vec3f());
 	_vnTets.setNodeSpatialCoordinatePointer(&_firstSpatialCoords[0]);  // for no physics debug
@@ -341,21 +339,22 @@ void bccTetScene::createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSize
 		_tetsModified = false;
 		_physicsPaused = false;
 	}  // end try block
-	catch (char *e) {
-		_surgAct->sendUserMessage(e, "Exception thrown", false);
+	catch (...) {
+		_surgAct->taskThreadError = true;
+		_surgAct->taskThreadErrorStr = "Couldn't create the initial physics lattice. Probable model error.";
 	}
 }
 
 void bccTetScene::initPdPhysics()
 {  // called after each new tet lattice created
-	fixPeriostealPeriferalVertices();
+	fixPeriostealPeriferalVertices();  // doesn't throw
 	if (!_tetCol.empty()) {
 		_tetCol.updateFixedCollisions(_mt, &_vnTets);
 		_tetCol.initSoftCollisions(_mt, &_vnTets);
 	}
 #ifndef NO_PHYSICS
-	if (_surgAct->getHooks()->getNumberOfHooks() < 1 && _surgAct->getSutures()->getNumberOfSutures() < 1)
-		throw(std::logic_error("Trying to initialize physics without applying any forces.\n"));
+//	if (_surgAct->getHooks()->getNumberOfHooks() < 1 && _surgAct->getSutures()->getNumberOfSutures() < 1)
+//		throw(std::logic_error("Trying to initialize physics without applying any forces.\n"));
 	_surgAct->getHooks()->setGroupPhysicsInit(true);  // instead of individual inits, add all hooks and sutures then initialize physics only once.
 	_surgAct->getSutures()->setGroupPhysicsInit(true);
 	_surgAct->getHooks()->updateHookPhysics();
@@ -370,10 +369,10 @@ void bccTetScene::updatePhysics()
 {
 	if (_vnTets.empty())
 		return;
-	if (!_tetsModified && _forcesApplied) {
-		_tetsModified = true;
-		initPdPhysics();
-	}
+//	if (!_tetsModified && _forcesApplied) {  // don't do this here anymore
+//		_tetsModified = true;
+//		initPdPhysics();
+//	}
 
 #ifndef NO_PHYSICS
 	if (_tetsModified || _forcesApplied) {

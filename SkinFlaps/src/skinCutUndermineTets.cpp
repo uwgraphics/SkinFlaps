@@ -591,7 +591,8 @@ bool skinCutUndermineTets::topDeepSplit_Sub(std::list<int> &topVerts, std::list<
 		++dvit;
 		++i;
 	}
-	_mt->findAdjacentTriangles(true);
+	if(_mt->findAdjacentTriangles(true))
+		throw(std::logic_error("Skin incision failed with a topological error.\n"));
 	// get all triangles on the edge of a skin cut.
 	_inExCisionTriangles.clear();
 	for (int n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
@@ -648,7 +649,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 		}
 	}
 	assert(tri > -1);
-	do{
+	do {
 		oppositeVertices[ovn] = _mt->addVertices(1);
 		Vec3f v;
 		_mt->getVertexCoordinate(*tvit, v.xyz);
@@ -664,7 +665,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 		if (dbit != _deepBed.end()) {  // is a flap top vertex
 			assert(dbit->second.deepMtVertex > -1);
 			auto dbDeep = _deepBed.insert(std::make_pair(oppositeVertices[ovn], dbit->second));  // careful of array syntax diagnostics
-			if(!dbDeep.second)
+			if (!dbDeep.second)
 				dbDeep.first->second = dbit->second;
 		}
 		assert(oppositeVertices[ovn] == _vbt->_vertexTets.size());
@@ -676,7 +677,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 		unsigned int adj;
 		lastV = *tvit;
 		++tvit;
-		while (tr[(vertIdx + 1) % 3] != *tvit) {
+		while (tvit != vertexCutLine.end() && tr[(vertIdx + 1) % 3] != *tvit) {
 			int at[3], ae[3];
 			_mt->triangleAdjacencies(tri, at, ae);
 			tri = at[vertIdx];
@@ -685,7 +686,7 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 			int* ttx = _mt->triangleTextures(tri);
 			assert(tr[vertIdx] == lastV);
 			tr[vertIdx] = oppositeVertices[ovn];
-			if (ttx[vertIdx] != lastTx) {  // crossed a texure seam
+			if (ttx[vertIdx] != lastTx) {  // crossed a texture seam
 				int twoTx[2];
 				twoTx[0] = txId;
 				fp = _mt->getTexture(ttx[vertIdx]);
@@ -695,8 +696,8 @@ void skinCutUndermineTets::flapSurfaceSplitter(const int startVertex, const int 
 				twoTx[1] = txId;
 				if (_mt->triangleMaterial(tri) != materialNow)
 					materialNow = _mt->triangleMaterial(tri);
-//				else  // this is a single material texture seam vertex  // COURT fix me
-//					_mt->addOneMaterialTextureSeamVertex(lastV, twoTx);
+				//				else  // this is a single material texture seam vertex  // COURT fix me
+				//					_mt->addOneMaterialTextureSeamVertex(lastV, twoTx);
 			}
 			_mt->triangleTextures(tri)[vertIdx] = txId;
 		}
@@ -1044,7 +1045,7 @@ void skinCutUndermineTets::collectOldUndermineData()
 	_prevEdge3.clear();
 	_prevBedSingles.clear();
 	// flap bottom has its reverse mirror image topology on the top
-	std::vector<int> bot4;
+	std::vector<std::pair<int, int> > bot4;  // first is the lower bot4 tri, second is its top tri
 	bot4.reserve(300);
 	for (int n = _mt->numberOfTriangles(), j, i = 0; i < n; ++i) {
 		if (_mt->triangleMaterial(i) != 2)
@@ -1073,14 +1074,14 @@ void skinCutUndermineTets::collectOldUndermineData()
 		if (nit == nei.end())
 			nit = nei.begin();
 		if (nit->vertex == deepV[1]) {
-			bot4.push_back(nit->triangle);
+			bot4.push_back(std::make_pair(nit->triangle, i));
 			_prevUnd2.push_back(i);
 		}
 	}
 	if (bot4.empty())
 		return;
 	std::vector<int> f3;
-	std::set<int> f4;
+	std::set<std::pair<int, int> > f4;
 	std::vector<int> emptyTex;
 	emptyTex.reserve(4);
 	auto addSingle = [&](int v, int tx) {
@@ -1095,12 +1096,12 @@ void skinCutUndermineTets::collectOldUndermineData()
 			pr.first->second.push_back(tx);
 	};
 	for (auto& bt : bot4) {
-		unsigned int* adjs = _mt->triAdjs(bt);
+		unsigned int* adjs = _mt->triAdjs(bt.first);
 		for (int j = 0; j < 3; ++j) {
 			if (_mt->triangleMaterial(adjs[j] >> 2) == 5) {  // potentially alterable flap bottom edge as contains unduplicated vertices
 				f4.insert(bt);
-				int* tr = _mt->triangleVertices(bt);
-				int* ttx = _mt->triangleTextures(bt);
+				int* tr = _mt->triangleVertices(bt.first);
+				int* ttx = _mt->triangleTextures(bt.first);
 				addSingle(tr[j], ttx[j]);
 				addSingle(tr[(j+1)%3], ttx[(j + 1) % 3]);
 			}
@@ -1119,7 +1120,7 @@ void skinCutUndermineTets::collectOldUndermineData()
 		}
 	}
 	for (auto& bt : bot4) {
-		int* tr = _mt->triangleVertices(bt);
+		int* tr = _mt->triangleVertices(bt.first);
 		for (int j = 0; j < 3; ++j) {
 			if (_prevBedSingles.find(tr[j]) != _prevBedSingles.end()) {
 				f4.insert(bt);
@@ -1297,7 +1298,11 @@ void skinCutUndermineTets::undermineSkin() {
 		}
 		_mt->addTriangle(vd, 5, dTx);
 	}
-	std::map<int, deepVtx*> bottomDoubles;
+	struct botD {
+		deepVtx *dvp;
+		int topV;
+	};
+	std::multimap<int, botD> bottomDoubles;
 	for (auto& uv : undV) {
 		if (oneDeepV.find(uv.first) == oneDeepV.end()) {  // should be doubled
 			float vtx[3];
@@ -1314,7 +1319,19 @@ void skinCutUndermineTets::undermineSkin() {
 			for (auto& dt : uv.second.deepTx) {
 				dt = cloneTexture(dt);
 			}
-			bottomDoubles.insert(std::make_pair(oldV, &uv.second));  // need these to fix old border tris from a previous undermine
+			// if a bottomDouble is at an incision edge, need top vertex to determine which side it connects to. Otherwise -1 for simple case.
+			auto pr = bottomDoubles.equal_range(oldV);
+			while (pr.first != pr.second) {
+				if (pr.first->second.topV == uv.first)
+					break;
+				++pr.first;
+			}
+			if (pr.first == pr.second) {
+				botD bd;
+				bd.topV = uv.first;
+				bd.dvp = &uv.second;
+				bottomDoubles.insert(std::make_pair(oldV, bd));  // need these to fix old border tris from a previous undermine
+			}
 		}
 	}
 	for (auto nt : newTris) {
@@ -1335,7 +1352,46 @@ void skinCutUndermineTets::undermineSkin() {
 		_mt->addTriangle(vb, 4, bTx);
 	}
 	// now fix old undermined tris with a single deep vertex needing to be doubled
-	auto fixEdgeTris = [&](int topT) {  // will also fix its lower successor per incision convention. Textures already assigned by incision process.
+	auto tri4vTopConnects = [&](int tri4TopTri, botD *bd) ->bool {
+		auto tr = _mt->triangleVertices(tri4TopTri);
+		for (int i = 0; i < 3; ++i) {
+			if(tr[i] == bd->topV)
+				return true;
+		}
+		return false;
+	};
+	for (auto b4 : _prevBot4) {
+		int* tr = _mt->triangleVertices(b4.first);
+		int* ttx = _mt->triangleTextures(b4.first);
+		for (int j, i = 0; i < 3; ++i) {
+			auto pr = bottomDoubles.equal_range(tr[i]);
+			if (pr.first != pr.second) {
+				if (std::distance(pr.first, pr.second) > 1) {
+					// this is an incision edge double. Check for connection to topV
+					while (pr.first != pr.second) {
+						if (tri4vTopConnects(b4.second, &pr.first->second))
+							break;
+						++pr.first;
+					}
+					if (pr.first == pr.second)
+						continue;
+				}
+				else {
+					if (!tri4vTopConnects(b4.second, &pr.first->second))
+						continue;
+				}
+				tr[i] = pr.first->second.dvp->deepV;
+				// texture seams are a terrible pain
+				int pt = findPrevTexture(ttx[i], pr.first->second.dvp->deepTx);
+				if (pt < 0) {
+					pt = cloneTexture(ttx[i]);
+					pr.first->second.dvp->deepTx.push_back(pt);
+				}
+				ttx[i] = pt;
+			}
+		}
+	}
+	for (auto& topT : underminedEdgeTris) {
 		int* tr = _mt->triangleVertices(topT);
 		int* trBot = _mt->triangleVertices(topT + 1);
 		int v0 = undV[tr[0]].deepV, v1 = undV[tr[1]].deepV;
@@ -1347,74 +1403,45 @@ void skinCutUndermineTets::undermineSkin() {
 			assert(_mt->triAdjs(topT)[2] >> 2 == topT + 1);
 			tr[2] = v1;
 		}
-	};
-	auto fixOldTris = [&](int tri) {
-		int *tr = _mt->triangleVertices(tri);
-		int* ttx = _mt->triangleTextures(tri);
-		for (int i = 0; i < 3; ++i) {
-			auto dd = bottomDoubles.find(tr[i]);
-			if (dd != bottomDoubles.end()) {
-				tr[i] = dd->second->deepV;
-				if (_mt->triangleMaterial(tri) == 4) {  // leave fat textures as they are
-					// texture seams are a terrible pain
-					int pt = findPrevTexture(ttx[i], dd->second->deepTx);
-					if (pt < 0) {
-						pt = cloneTexture(ttx[i]);
-						dd->second->deepTx.push_back(pt);
-					}
-					ttx[i] = pt;
-				}
-			}
-		}
-	};
-	for (auto &t : underminedEdgeTris)
-		fixEdgeTris(t);
-	for (auto t : _prevBot4)
-		fixOldTris(t);
-	for (auto t : _prevEdge3)
-		fixOldTris(t);
-
-//	testIncisionsDeepBed();  // COURT - nuke after debug
-
-	_mt->findAdjacentTriangles(true);
-	_prevUndermineTriangle = -1;
-
-// another test section
-/*	int validBot = 0, invalidBot = 0;
-	for (int j, k, n = _mt->numberOfTriangles(), i = 0; i < n; ++i) {
-		if (_mt->triangleMaterial(i) != 4)
-			continue;
-		const int* tr = _mt->triangleVertices(i);
-		std::set<int> tv;
-		int topV[3] = { -1,-1,-1 };
-		for (auto& db : _deepBed) {
-			for (j = 0; j < 3; ++j)
-				if (db.second.deepMtVertex == tr[j]) {
-					tv.insert(db.first);
-					topV[j] = db.first;
-				}
-		}
-		if (tv.size() < 3)
-			++invalidBot;
-		for (j = 0; j < n; ++j) {
-			if (_mt->triangleMaterial(j) != 2)
-				continue;
-			tr = _mt->triangleVertices(j);
-			for (k = 0; k < 3; ++k) {
-				if (tv.find(tr[k]) == tv.end())
-					break;
-			}
-			if (k < 3)
-				continue;
-			else
-				break;
-		}
-		if (j < n)
-			++validBot;
-		else
-			++invalidBot;
 	}
-	std::cout << "Found " << validBot << " valid bottom triangles and " << invalidBot << " invalid ones.\n"; */
+	auto edgeTopConnects = [&](int idx, int edgeTri, botD* bd) ->bool {
+		// from incision convention dictates this
+		int* topV;
+		if (idx < 2)  // must be a bottom edge
+			topV = _mt->triangleVertices(edgeTri - 1);
+		else
+			topV = _mt->triangleVertices(edgeTri);
+		if (topV[0] == bd->topV || topV[1] == bd->topV)
+			return true;
+		return false;
+		};
+	for (auto tri : _prevEdge3) {
+		int* tr = _mt->triangleVertices(tri);
+		for (int j, i = 0; i < 3; ++i) {
+			auto pr = bottomDoubles.equal_range(tr[i]);
+			if (pr.first != pr.second) {
+				if (std::distance(pr.first, pr.second) > 1) {
+					// this is an incision edge double. Check for connection to topV
+					while (pr.first != pr.second) {
+						if (edgeTopConnects(i, tri, &pr.first->second))
+							break;
+						++pr.first;
+					}
+					if (pr.first == pr.second)
+						continue;
+				}
+				else {
+					if (!edgeTopConnects(i, tri, &pr.first->second))
+						continue;
+				}
+				tr[i] = pr.first->second.dvp->deepV;
+				// leave fat textures as they are
+			}
+		}
+	}
+	if(_mt->findAdjacentTriangles(true))
+		throw(std::logic_error("Undermine operation failed with a topological error.\n"));
+	_prevUndermineTriangle = -1;
 }
 
 void skinCutUndermineTets::clearCurrentUndermine(const int underminedTissue){

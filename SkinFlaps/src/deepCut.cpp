@@ -376,7 +376,7 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 	auto addDeepTriangles = [&](std::vector<matTriangle>& tris) {
 		for(auto &t : tris){
 			int V[3], T[3];
-			// remove any degenrate triangles along straight line of non-duped vertices
+			// remove any degenerate triangles along straight line of non-duped vertices
 			V[0] = t.v[0];
 			V[1] = t.v[2];
 			V[2] = t.v[1];
@@ -404,7 +404,7 @@ bool deepCut::cutDeep()  // interpost connection data already loaded in _deepPos
 	if (_endPlanes[1].P.X < DBL_MAX)
 		addDeepTriangles(_endPlanes[1].quadTriangles);
 	if (_mt->findAdjacentTriangles(true))
-		return false;  // should throw
+		throw(std::logic_error("Topological connection error in deepCut()."));
 	return true;
 }
 
@@ -1995,10 +1995,6 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 	const bilinearPatch* bl, const endPlane* ep, const bool cutPath, surfaceCutLine& scl, double& minimumBilinearV){
 	// broken into a subroutine for use in finding holes.  We are still using minimumBilinearV to prevent deepPost crossover.
 	// To process holes will fill scl.deepUVs even when not cutPath looking for topological connections.  Delete these before calling cutPath == true subsequently.
-	if (cutPath) {
-		scl.deepUVs.clear();  // delete previous intermediate results used in path searching. Intentionally kept after a search for hole finding.
-		scl.deepVertsTris.clear();
-	}
 	double len = 0.0;
 	int nEdges = 0;
 	Vec3d E, nE, I, lastI;
@@ -2070,13 +2066,16 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 								if (tr[i] == nit->vertex) {
 									te = (nit->triangle << 2) + i;
 									if (cutPath) {
+										UinTe = te;
 										topTe.pop_back();  // don't cut this one. It will be cut by this skin split.
+										UinParam = topParams.back();
 										topParams.pop_back();
 										UinUV = topUVs.back();
 										topUVs.pop_back();
 										cutDeepSurface(deepStartV, deepUvStart, -1, deepUvStart, topTe, topParams, topUVs, scl);  // COURT - watch for deepUvStart
-										UinTe = _mt->triAdjs(nit->triangle)[i];
-										UinParam = 1.0f - (float)rayParams[0];
+										topTe.clear();
+										topParams.clear();
+										topUVs.clear();
 										Tin = false;
 										prevMat = 2;
 									}
@@ -2099,13 +2098,20 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 			if (prevMat == 2) {  // this is a T out
 				auto adjs = _mt->triAdjs(splitTri + 1);  // incision convention
 				if (_mt->triangleMaterial(adjs[0] >> 2) == 3) {  // non undermined incision edge
-
-					// COURT - write me
-
-					adjs = _mt->triAdjs((adjs[0] >> 2) - 1);  // incision convention again
+					auto newTin = (adjs[0] >> 2) - 1;
+					adjs = _mt->triAdjs(newTin);  // incision convention again
 					assert(_mt->triangleMaterial(adjs[0] >> 2) == 2);
 					te = adjs[0];
 					prevMat = 2;
+					if (cutPath) {
+						ToutTri = topTe.back() >> 2;
+						ToutParam = topParams.back();
+						deepStartV = -1;
+						deepUvStart.set(DBL_MAX, 0.0);
+						TinTri = newTin;
+						TinParam = 0.0f;
+						TinUV = topUVs.back();
+					}
 				}
 				else {
 					assert(_mt->triangleMaterial(adjs[0] >> 2) > 4);
@@ -2122,11 +2128,11 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 			else {  // Tin
 				assert(prevMat == 5);
 				if (cutPath) {
-					TinTri = (te >> 2) - 1;
-					TinParam = (float)rayParams[0];
-					TinUV = faceParams[0];
+					TinTri = (topTe.back() >> 2) - 1;
 					topTe.pop_back();
+					TinParam = 1.0 - topParams.back();
 					topParams.pop_back();
+					TinUV = topUVs.back();
 					topUVs.pop_back();
 				}
 				auto adjs = _mt->triAdjs((te >> 2) - 1);  // incision convention
@@ -2142,8 +2148,10 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 			for (i = 2; i < 4; ++i) {  // always find the next edge before cutting previous triangle
 				nE = _deepXyz[tr[(splitEdge + i) % 3]];
 				if (nE.X == DBL_MAX) {  // signals invalid triangle beyond an undermined edge
-					UoutTe = te;
-					UoutParam = 1.0f - (float)rayParams[0];
+					if (cutPath) {
+						UoutTe = te;
+						UoutParam = (float)rayParams[0];  // 1.0f -
+					}
 					int v50 = _deepBed[tr[splitEdge]].deepMtVertex;
 					int v51 = _deepBed[tr[(splitEdge + 1) % 3]].deepMtVertex;
 					assert(v50 > -1 && v51 > -1);
@@ -2174,16 +2182,6 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 					++nEdges;
 					if (cutPath) {
 						// do previous Tin or Tout only after next te secured as the T op will split the top edge triangle
-						if (TinTri > -1) {
-							cutDeepSurface(deepStartV, deepUvStart, -1, deepUvStart, topTe, topParams, topUVs, scl);
-							topStartV = TinSub(TinTri, TinParam);
-							topUvStart = TinUV;
-							topTe.clear();
-							topParams.clear();
-							topUVs.clear();
-							Tin = true;
-							TinTri = -1;
-						}
 						if (ToutTri > -1) {
 							topTe.pop_back();
 							topParams.pop_back();
@@ -2196,6 +2194,10 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 							if (!topTe.empty())
 								topTe.back() = _mt->triAdjs(ate >> 2)[ate & 3];
 							cutSkinLine(topStartV, topUvStart, tv, ToutUV, topTe, topParams, topUVs, Tin, true, scl);
+							if (TinTri > -1) {
+								scl.deepVertsTris.pop_back();
+								scl.deepUVs.pop_back();
+							}
 							if (mat2BorderVertex > -1) {
 								auto vit = scl.deepVertsTris.begin();
 								do {
@@ -2220,38 +2222,46 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 							ToutTri = -1;
 							Tin = false;
 						}
+						if (TinTri > -1) {
+							cutDeepSurface(deepStartV, deepUvStart, -1, deepUvStart, topTe, topParams, topUVs, scl);
+							topStartV = TinSub(TinTri, TinParam);
+							topUvStart = TinUV;
+							topTe.clear();
+							topParams.clear();
+							topUVs.clear();
+							Tin = true;
+							TinTri = -1;
+						}
 						if (UinTe != 3) {
-							unsigned int ate = _mt->triAdjs(UinTe >> 2)[UinTe & 3];
-							assert(_deepBed[_mt->triangleVertices(ate >> 2)[((ate & 3) + 2) % 3]].deepMtVertex < 0);
+							auto ate = _mt->triAdjs(UinTe >> 2)[UinTe & 3];
+							auto oppVert = _mt->triangleVertices(ate >> 2)[((ate & 3) + 2) % 3];
 							std::list<int> topVerts, deepVerts;
-							topVerts.push_back( _mt->triangleVertices(UinTe >> 2)[((UinTe&3)+2)%3]);
-							deepVerts.push_back(_deepBed[topVerts.back()].deepMtVertex);
-							float uv[2] = {0.333f, 0.333f};
-							int bottomVertex;
-							createFlapTopBottomVertices(UinTe >> 2, uv, topStartV, bottomVertex);
-							topVerts.push_back(topStartV);
-							deepVerts.push_back(bottomVertex);
-							if ((ate & 3) < 1) {
-								uv[0] = 1.0f - UinParam;
+							auto dvit = _deepBed.find(oppVert);
+							assert(dvit != _deepBed.end() && dvit->second.deepMtVertex > -1);
+							topVerts.push_back(oppVert);
+							deepVerts.push_back(dvit->second.deepMtVertex);
+							float uv[2] = { 0.33f, 0.33f };
+							int botMidV, topMidV;
+							createFlapTopBottomVertices(ate >> 2, uv, topMidV, botMidV);
+							topVerts.push_back(topMidV);
+							deepVerts.push_back(botMidV);
+							if ((UinTe & 3) < 1) {
+								uv[0] = UinParam;
 								uv[1] = 0.0f;
 							}
-							else if ((ate & 3) > 1) {
-								uv[1] = UinParam;
+							else if ((UinTe & 3) > 1) {
+								uv[1] = 1.0f - UinParam;
 								uv[0] = 0.0f;
 							}
 							else {
 								uv[0] = 1.0f - UinParam;
 								uv[1] = UinParam;
 							}
-							createFlapTopBottomVertices(ate >> 2, uv, topStartV, bottomVertex);
+							createFlapTopBottomVertices(UinTe >> 2, uv, topStartV, botMidV);
 							topVerts.push_back(topStartV);
-							deepVerts.push_back(bottomVertex);
+							deepVerts.push_back(botMidV);
 							topDeepSplit_Sub(topVerts, deepVerts, false, false);
-							topStartV = topVerts.back();
 							topUvStart = UinUV;
-							topTe.clear();
-							topParams.clear();
-							topUVs.clear();
 							Tin = true;
 							UinTe = 3;
 						}
@@ -2265,13 +2275,12 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 							createFlapTopBottomVertices(UoutTe >> 2, uv, topVertex, bottomVertex);
 							topVerts.push_back(topVertex);
 							deepVerts.push_back(bottomVertex);
-							UoutTe = _mt->triAdjs(ate >> 2)[ate & 3];
-							if ((UoutTe & 3) < 1) {
-								uv[0] = 1.0f - UoutParam;
+							if ((ate & 3) < 1) {
+								uv[0] = UoutParam;
 								uv[1] = 0.0f;
 							}
-							else if ((UoutTe & 3) > 1) {
-								uv[1] = UoutParam;
+							else if ((ate & 3) > 1) {
+								uv[1] = 1.0f - UoutParam;
 								uv[0] = 0.0f;
 							}
 							else {
@@ -2283,7 +2292,7 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 							auto UoutUV = topUVs.back();
 							topUVs.pop_back();
 							unsigned int teEnd = _mt->triAdjs(topTe.back() >> 2)[topTe.back() & 3];
-							createFlapTopBottomVertices(UoutTe >> 2, uv, topVertex, bottomVertex);
+							createFlapTopBottomVertices(ate >> 2, uv, topVertex, bottomVertex);
 							topVerts.push_back(topVertex);
 							deepVerts.push_back(bottomVertex);
 							topDeepSplit_Sub(topVerts, deepVerts, false, false);
@@ -2370,7 +2379,6 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 							Vec3f gridLocus, bw;
 							int* st = _mt->triangleVertices(lastTe >> 2);
 							int tet = _vbt->parametricEdgeTet(st[lastTe & 3], st[((lastTe & 3) + 1) % 3], lastParam, gridLocus);
-//							int tet = parametricMTedgeTet(lastTe >> 2, lastTe & 3, lastParam, gridLocus);
 							_vbt->gridLocusToBarycentricWeight(gridLocus, _vbt->tetCentroid(tet), bw);
 							int newV = _mt->splitTriangleEdge(lastTe >> 2, lastTe & 3, lastParam);
 							int newTx = _mt->numberOfTextures() - 1;  // added in above call
@@ -2408,6 +2416,57 @@ double deepCut::surfacePathSub(int topStartV, int deepStartV, int topEndV, int d
 		}
 	}while ((te >> 2) != endTriangle && nEdges < 500);
 	if (cutPath) {
+		// It is possible that Tin, Tout, or both has not executed yet in the case where no triangle edge cut follows it.  If not, do it here.
+		if (ToutTri > -1) {
+			topTe.pop_back();
+			topParams.pop_back();
+			auto ToutUV = topUVs.back();
+			topUVs.pop_back();
+			unsigned int ate;
+			if (!topTe.empty())
+				ate = _mt->triAdjs(topTe.back() >> 2)[topTe.back() & 3];
+			int tv = TinSub(ToutTri, ToutParam);
+			if (!topTe.empty())
+				topTe.back() = _mt->triAdjs(ate >> 2)[ate & 3];
+			cutSkinLine(topStartV, topUvStart, tv, ToutUV, topTe, topParams, topUVs, Tin, true, scl);
+			if (TinTri > -1) {
+				scl.deepVertsTris.pop_back();
+				scl.deepUVs.pop_back();
+			}
+			if (mat2BorderVertex > -1) {
+				auto vit = scl.deepVertsTris.begin();
+				do {
+					++vit;
+				} while (*vit != mat2BorderVertex);
+				++vit;
+				int topV = -1;
+				for (auto dp : _deepBed) {
+					if (dp.second.deepMtVertex == *vit)
+						topV = dp.first;
+				}
+				if (topV < 0)
+					throw(std::logic_error("Program error at material 2-border vertex.\n"));
+				mat2BorderSplit(mat2BorderVertex, mat2BorderTexture, topV);
+				mat2BorderVertex = -1;
+			}
+			topTe.clear();
+			topParams.clear();
+			topUVs.clear();
+			deepStartV = -1;
+			deepUvStart.set(-DBL_MAX, 0.0);
+			ToutTri = -1;
+			Tin = false;
+		}
+		if (TinTri > -1) {
+			cutDeepSurface(deepStartV, deepUvStart, -1, deepUvStart, topTe, topParams, topUVs, scl);
+			topStartV = TinSub(TinTri, TinParam);
+			topUvStart = TinUV;
+			topTe.clear();
+			topParams.clear();
+			topUVs.clear();
+			Tin = true;
+			TinTri = -1;
+		}
 		Vec2d toUV(DBL_MAX, 0.0);
 		if (prevMat == 2) {
 			cutSkinLine(topStartV, topUvStart, topEndV, toUV, topTe, topParams, topUVs, Tin, false, scl);

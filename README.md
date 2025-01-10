@@ -13,9 +13,9 @@ This open source project provides a soft tissue surgical simulation program whic
 ### **Installation**
 
 ----------
-This C++ project uses a highly efficient implementation of *[projective dynamics][2]* to drive the physics of soft tissue surgical simulation. This physics library also has a limited collision handling capability. The library was written by Qisi Wang and Yutian Tao under the direction of their dissertation advisor Eftychios Sifakis at the Computer Graphics Laboratory, Department of Computer Science, University of Wisconsin (Madison). That implementation is described in detail in a *[paper by Wang Q, et al][3]*. The ability of this library to support half a million tetrahedra at interactive frame rates requires the avx instruction set of the Intel CPU and the the Intel “Math Kernel”, and “Threading Building Blocks” libraries.  As these elements are no longer hardware components of MacOS computers, that platform is not currently supported. Compilation intructions for 64 bit Windows 10 Visual Studio and for Ubuntu Linux can be found in the Build directory.  Prerequisites for these builds are the *[Intel oneAPI math kernel library (ie mkl) and threading building blocks (ie tbb)][4]* as well as the *[GLFW library][5]*.  These prerequisites must be installed before compiling the project.  In the latest version of the software (version 1.2.0) multiresolution tetrahedral physics has been added.  This reduces the initial tetrahedron count for the facial flaps model from 620,000 to 17,000 dramatically increasing execution speed.  As the surgeon operates on part of the model, only that subvolume is promoted to high resolution allowing fine incision detail to be rendered with high accuracy, while the less important, periferal parts of the model are rendered at lower resolution.
+This C++ project uses a highly efficient implementation of *[projective dynamics][2]* to drive the physics of soft tissue surgical simulation. This physics library also has a limited collision handling capability. The library was written by Qisi Wang under the direction of her dissertation advisor Eftychios Sifakis at the Computer Graphics Laboratory, Department of Computer Science, University of Wisconsin (Madison). That implementation is described in detail in a *[paper by Wang Q, et al][3]*. The ability of this library to support half a million tetrahedra at interactive frame rates requires the avx instruction set of the Intel CPU and the the Intel “Math Kernel”, and “Threading Building Blocks” libraries.  As these elements are no longer hardware components of MacOS computers, that platform is not currently supported. Compilation intructions for 64 bit Windows 10 Visual Studio and for Ubuntu Linux can be found in the Build directory.  Prerequisites for these builds are the *[Intel oneAPI math kernel library (ie mkl) and threading building blocks (ie tbb)][4]* as well as the *[GLFW library][5]*.  These prerequisites must be installed before compiling the project.  In the latest version of the software (version 1.2.1) multiresolution tetrahedral physics has been added.  This reduces the initial tetrahedron count for the facial flaps model from 620,000 to 17,000 dramatically increasing execution speed.  As the surgeon operates on part of the model, only that subvolume is promoted to high resolution allowing fine incision detail to be rendered with high accuracy, while the less important, periferal parts of the model are rendered at lower physics resolution.
 
-The surgical interface, models and graphics for the project were written by Court Cutting MD of the Department of Plastic Surgery, NYU - Grossman School of Medicine as an extension of previous *[surgical animation][6]* work in conjunction with the Smile Train charity and a more recent attempt at a *[finite element implementation][7]* of skin flap surgery. With the exception of GLFW and tbb all of the surgical aspects of the code are self contained within this project.
+The surgical interface, models and graphics for the project were written by Court Cutting MD of the Department of Plastic Surgery, NYU - Grossman School of Medicine as an extension of previous *[surgical animation][6]* work in conjunction with the Smile Train charity and a more recent attempt at a *[finite element implementation][7]* of skin flap surgery. With the exception of GLFW, mkl and tbb all of the surgical aspects of the code are self contained within this project.
 
 ### **Examples**
 
@@ -38,14 +38,14 @@ This software has been augmented to allow simulation of cleft lip repair.  Demon
  - cleft_RoseThompson.hst - Rose/Thompson repair of cleft lip
  - cleft_TennisonRandall.hst - Tennison/Randall repair of cleft lip
 
-A YouTube video by Dr. Cutting will demonstrate how to use the program in *[Users Guide][8]*.
+A YouTube video by Dr. Cutting will demonstrate basic use the program to simulate facial flap closure of skin defects in *[Users Guide][8]*. A second more advanced tutorial on use of SkinFlaps to simulate cleft lip/nose repair can be found in *[Cleft lip tutorial][9]*
 
 ### **Known Issues for Future Work**
 
 ----------
 
  1. All flap stretch limits are currently set to the same parameter. This is certainly untrue as it is known that flaps in different parts of the face have different stretch characteristics (e.g. cheek and eyelid skin stretches much more than scalp and forehead.
- 2. Collision response may be inadequate in areas where a tight flap closure is done over a very convex surface. Increased collision density is planned in future iterations.
+ 2. Collision response may be inadequate in areas where a tight flap closure is done over a very convex surface. Increased collision density is planned in future iterations of the code.
 
 ### **Code Owners**
 
@@ -97,3 +97,4 @@ A YouTube video by Dr. Cutting will demonstrate how to use the program in *[User
   [6]: https://www.tandfonline.com/doi/abs/10.3109/10929080209146521
   [7]: http://pages.cs.wisc.edu/~sifakis/papers/surgery_simulator_JRS.pdf
   [8]: https://youtu.be/xuKLgMS5gzk
+  [9]: https://youtu.be/CzBiVJ5Q508

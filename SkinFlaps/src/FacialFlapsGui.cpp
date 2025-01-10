@@ -42,7 +42,7 @@ using namespace gl;
 #endif
 
 bool FacialFlapsGui::powerHooks = false, FacialFlapsGui::showToolbox = true, FacialFlapsGui::viewPhysics = false, FacialFlapsGui::viewSurface = true,
-	FacialFlapsGui::wheelZoom = true, FacialFlapsGui::user_message_flag = false, FacialFlapsGui::except_thrown_flag = false;
+	FacialFlapsGui::wheelZoom = true, FacialFlapsGui::user_message_flag = false, FacialFlapsGui::except_thrown_flag = false, FacialFlapsGui::getTextInput = false;
 int FacialFlapsGui::nextCounter = 0;
 int FacialFlapsGui::csgToolstate, FacialFlapsGui::FileDlgMode = 0;
 std::string FacialFlapsGui::modelDirectory, FacialFlapsGui::historyDirectory, FacialFlapsGui::objDirectory, FacialFlapsGui::modelFile, FacialFlapsGui::historyFile, FacialFlapsGui::user_message, FacialFlapsGui::user_message_title;

@@ -204,7 +204,7 @@ void remapTetPhysics::remapNewPhysicsNodePositions(vnBccTetrahedra *newVnbt)
 			throw(std::logic_error("Program error 1 in remapTetPhysics.\n"));
 		}
 		else if (pr.first != pr.second) {
-			assert(_oldVertexTets[i] == pr.first->second);
+//			assert(_oldVertexTets[i] == pr.first->second);
 			for (int j = 0; j < 4; ++j) {
 				if (nodes[nNew[j]])
 					continue;

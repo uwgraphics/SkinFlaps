@@ -17,8 +17,6 @@ class tetCollisions
 public:
 	void initSoftCollisions(materialTriangles *mt, vnBccTetrahedra *vnt);  // call after every topo change
 	void findSoftCollisionPairs();  // call every physics iteration
-//	void addSphereSet(const float radius, const float (&center)[3], const std::vector<Vec2f> &txPoly );
-	void addFixedCollisionSet(materialTriangles* mt, const std::string& levelSetFile, std::vector<Vec2f>& txPoly);
 	void addFixedCollisionSet(const std::string& levelSetFile, std::vector<int>& vertexIndices);  // call once at load
 	void updateFixedCollisions(materialTriangles *mt, vnBccTetrahedra *vnt);  // must be done after every topo change
 	bool empty() { return _fixedCollisionSets.empty() && _bedRays.empty(); }

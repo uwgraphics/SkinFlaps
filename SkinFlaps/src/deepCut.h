@@ -139,7 +139,6 @@ protected:
 	bool getDeepSpatialCoordinates();  // used in new version.  Must have physics paused until deepCut complete or will be invalid.
 	bool updateDeepSpatialCoordinates();
 	bool rayIntersectMaterialTriangles(const Vec3d& rayStart, const Vec3d& rayDirection, std::vector<rayTriangleIntersect>& intersects);
-//	bool connectToPreviousPost(int postNum);
 	double surfacePath(rayTriangleIntersect& from, const rayTriangleIntersect& to, const bool cutPath, double& minimumBilinearV);
 	void cutSkinLine(int startV, Vec2d& startUV, int endV, Vec2d& endUV, std::vector<unsigned int>& te, std::vector<float>& params, std::vector<Vec2d>& UVs, bool Tin, bool Tout, surfaceCutLine& scl);
 	void cutDeepSurface(int startV, Vec2d& startUV, int endV, Vec2d& endUV, std::vector<unsigned int>& te, std::vector<float>& params, std::vector<Vec2d>& UVs, surfaceCutLine& scl);
@@ -156,7 +155,6 @@ protected:
 	void mat2BorderSplit(int borderV, int borderTx, int incisionTopV);
 	bool planeRayIntersection(const Vec3d P, const Vec3d R, const endPlane* ep, double& rayParam, Vec2d& faceParam);
 	void makePolygonTriangles(const std::list<int>& polyVerts, const std::list<Vec2d>& polyUV, const bilinearPatch* blp, const endPlane* ep, std::vector<matTriangle>& polyTriangles);
-//	void makePolygonTriangles(const std::list<int>& polyVerts, const std::list<Vec2d>& polyUV, const bilinearPatch* blp, const endPlane* ep, std::vector<materialTriangles::matTriangle>& polyTriangles);
 	bool deepCutEndPlane(int endPlane);
 	double surfacePathSub(int topStartV, int deepStartV, int topEndV, int deepEndV, const unsigned int startTE, const double &startParam, const Vec2d& startUV, const int endTriangle,
 		const bilinearPatch* bl, const endPlane* ep, const bool cutPath, surfaceCutLine& scl, double& minimumBilinearV);

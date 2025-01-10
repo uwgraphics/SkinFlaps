@@ -14,9 +14,7 @@
 #include "FacialFlapsGui.h"
 #include "surgicalActions.h"
 
-// ReadyPileType ReadyPile;
-
-surgicalActions::surgicalActions() : _toolState(0), _originalTriangleNumber(0), _sceneDir("0"), _historyDir("0"), _strongHooks(false), physicsDone(true), newTopology(false)
+surgicalActions::surgicalActions() : _toolState(0), _originalTriangleNumber(0), _sceneDir("0"), _historyDir("0"), _strongHooks(false), physicsDone(true), newTopology(false), taskThreadError(false)
 {
 	_bts.setSurgicalActions(this);
 	_historyArray.Clear();
@@ -37,10 +35,14 @@ bool surgicalActions::saveSurgicalHistory(const char *fullFilePath)
 		json::Array htmp;
 		size_t idx = 0;
 		auto hit = _historyArray.begin();
-		do {
+		if (hit == _historyIt)
 			htmp.insert(idx++, *hit);
-			++hit;
-		} while (hit != _historyIt);
+		else {
+			do {
+				htmp.insert(idx++, *hit);
+				++hit;
+			} while (hit != _historyIt);
+		}
 		hstStr = Serialize(htmp);
 	}
 	else
@@ -77,8 +79,8 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 	if (_toolState > 0) {  // active tool requested by user
 		_bts.setPhysicsPause(true);  // stop doing physics updates
 		// prevent user from doing a new op until previous one is finished
-		while (!physicsDone)  // any previously enqueued physics thread must be complete before doing next op.
-			;
+		while (!physicsDone)  // physics update thread must be complete before doing next op.
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
 	if(_toolState==0)	//viewer
 	{
@@ -130,7 +132,7 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 				for (int j, i = 0; i < tr->numberOfTriangles(); ++i) {
 					int* trp = tr->triangleVertices(i);
 					for (j = 0; j < 3; ++j)
-						if (trp[j] == 3486)
+						if (trp[j] == 8736)
 							break;
 					if (j < 3) {
 						triangle = i;
@@ -142,9 +144,9 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 						break;
 					}
 				} */
-//				triangle = 375;
-//				uv[0] = 0.0;
-//				uv[1] = 0.999;
+//				triangle = 7646;
+//				uv[0] = 0.33;
+//				uv[1] = 0.33;
 
 		if ((hookNum = _hooks.addHook(tr, triangle, uv, _strongHooks)) > -1)
 		{
@@ -152,16 +154,23 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 //						return true;  // for above debug use
 
 			if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook
-				_ffg->physicsDrag = true;
 				_bts.setForcesAppliedFlag();
 				physicsDone = false;
-//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-					_bts.updatePhysics();
-					physicsDone = true;
-//					}
-//				);
+				_ffg->physicsDrag = true;
+				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+					try {
+						_bts.initPdPhysics();
+						physicsDone = true;
+					}
+					catch (...) {
+						physicsDone = true;
+						_ffg->physicsDrag = false;
+						taskThreadError = true;
+						taskThreadErrorStr = "Couldn't initialize physics after adding hook.";
+					}
+					}
+				);
 			}
-
 			_sutures.selectSuture(-1);
 			_hooks.selectHook(hookNum);
 			char s[80];
@@ -435,10 +444,18 @@ bool surgicalActions::rightMouseDown(std::string objectHit, float (&position)[3]
 		_incisions.excise(triangle);
 		physicsDone = false;
 		_ffg->physicsDrag = true;
-		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-			_bts.updateOldPhysicsLattice();
-			newTopology = true;
-			physicsDone = true;
+		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+			try {
+				_bts.updateOldPhysicsLattice();
+				newTopology = true;
+				physicsDone = true;
+			}
+			catch (...) {
+				physicsDone = true;
+				_ffg->physicsDrag = false;
+				taskThreadError = true;
+				taskThreadErrorStr = "Topological error following excision.";
+			}
 			}
 		);
 		_bts.setPhysicsPause(false);
@@ -652,6 +669,23 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 		}
 		int sRet = _sutures.setSecondEdge(i, tr, eTri, edge, param);
 		_bts.setForcesAppliedFlag();
+		if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a suture
+			physicsDone = false;
+			_ffg->physicsDrag = true;
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+				try {
+					_bts.initPdPhysics();
+					physicsDone = true;
+				}
+				catch (...) {
+					physicsDone = true;
+					_ffg->physicsDrag = false;
+					taskThreadError = true;
+					taskThreadErrorStr = "Couldn't initialize physics after adding hook.";
+				}
+				}
+			);
+		}
 		if (sRet < 1){
 			float pos[3], uv[2] = {0.0f, 0.0f};
 			if (edge < 1)
@@ -663,15 +697,23 @@ bool surgicalActions::rightMouseUp(std::string objectHit, float (&position)[3], 
 				uv[1] = param;
 			}
 			tr->getBarycentricPosition(eTri, uv, pos);
-			if (!physicsDone)  // physics update thread must be complete before doing next op.
-				throw(std::logic_error("Trying to add a suture while a physics thread is active.\n"));
+			while (!physicsDone)  // physics update thread must be complete before doing next op.
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			_sutures.setSecondVertexPosition(i, pos);
 			if (_sutures.isLinked(i)) {
 				physicsDone = false;
 				_ffg->physicsDrag = true;
 				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
-					_sutures.laySutureLine(i);
-					physicsDone = true;
+					try {
+						_sutures.laySutureLine(i);
+						physicsDone = true;
+					}
+					catch (...) {
+						physicsDone = true;
+						_ffg->physicsDrag = false;
+						taskThreadError = true;
+						taskThreadErrorStr = "Error in placing a linked suture line";
+					}
 					}
 				);
 			}
@@ -839,8 +881,8 @@ bool surgicalActions::mouseMotion(float dScreenX, float dScreenY)
 		if (!_bts.isPhysicsPaused() || !physicsDone) {
 			_bts.setPhysicsPause(true);  // stop doing physics updates
 			// prevent user from doing a new op until previous one is finished
-			while (!physicsDone)  // any previously enqueued physics thread must be complete before doing next op.
-				;
+			while (!physicsDone)  // physics update thread must be complete before doing next op.
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 		}
 		_hooks.setHookPosition(hookNum, xyz.xyz);
 		_bts.setPhysicsPause(false);
@@ -884,7 +926,7 @@ void surgicalActions::onKeyDown(int key)
 			// prevent user from doing a new op until previous one is finished
 			_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
 			while (!physicsDone)  // physics update thread must be complete before doing next op.
-				;
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			_hooks.deleteHook(hookNum);
 			_bts.setPhysicsPause(false);
 			if (_historyIt != _historyArray.end()) {
@@ -914,7 +956,7 @@ void surgicalActions::onKeyDown(int key)
 			_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
 			// prevent user from doing a new op until previous one is finished
 			while (!physicsDone)  // physics update thread must be complete before doing next op.
-				;
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			int linkNum = _sutures.deleteSuture(sutNum);
 			if (userNum < 0) {
 				json::Object lObj;
@@ -937,8 +979,8 @@ void surgicalActions::onKeyDown(int key)
 		// prevent user from doing a new op until previous one is finished
 		if (_toolState == 7){	//periosteal undermine mode
 			_bts.setPhysicsPause(true);  // should already be done
-			while (!physicsDone)
-				;
+			while (!physicsDone)  // physics update thread must be complete before doing next op.
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			materialTriangles *mt = _sg.getMaterialTriangles();
 			for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i){
 				if (mt->triangleMaterial(i) == 10)
@@ -946,14 +988,22 @@ void surgicalActions::onKeyDown(int key)
 			}
 			_bts.updateSurfaceDraw();
 			while (!physicsDone)  // physics update thread must be complete before doing next op.
-				;
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			physicsDone = false;
 			_ffg->physicsDrag = true;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-				_bts.fixPeriostealPeriferalVertices();
-				_bts.nonTetPhysicsUpdate();
-				newTopology = true;
-				physicsDone = true;
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+				try {
+					_bts.fixPeriostealPeriferalVertices();
+					_bts.nonTetPhysicsUpdate();
+					newTopology = true;
+					physicsDone = true;
+				}
+				catch (...) {
+					physicsDone = true;
+					_ffg->physicsDrag = false;
+					taskThreadError = true;
+					taskThreadErrorStr = "Periosteal undermine error.";
+				}
 				}
 			);
 			_bts.setPhysicsPause(false);
@@ -1056,15 +1106,24 @@ void surgicalActions::onKeyDown(int key)
 					if (_incisions.physicsRecutRequired()){
 						_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
 						while (!physicsDone)  // physics update thread must be complete before doing next op.
-							;
-//						physicsDone = false;
-//						_ffg->physicsDrag = true;
-//						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-							_bts.updateOldPhysicsLattice();
-							newTopology = true;
-							physicsDone = true;
-//							}
-//						);
+							std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+						physicsDone = false;
+						_ffg->physicsDrag = true;
+						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+							try {
+								_bts.updateOldPhysicsLattice();
+								newTopology = true;
+								physicsDone = true;
+							}
+							catch (...) {
+								physicsDone = true;
+								_ffg->physicsDrag = false;
+								taskThreadErrorStr = "An incision requiring physics recut failed.";
+								taskThreadError = true;
+							}
+							}
+						);
 					}
 					else {
 						newTopology = true;
@@ -1111,19 +1170,28 @@ void surgicalActions::onKeyDown(int key)
 			_historyArray.push_back(uObj);
 			_historyIt = _historyArray.end();
 			_bts.setPhysicsPause(true);  // should already be done
-			while (!physicsDone)
-				;
+			while (!physicsDone)  // physics update thread must be complete before doing next op.
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			_bts.updateSurfaceDraw();
 			_incisions.undermineSkin();
 			_undermineTriangles.clear();
-//			physicsDone = false;
-//			_ffg->physicsDrag = true;
-//			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-				_bts.updateOldPhysicsLattice();
-				newTopology = true;
-				physicsDone = true;
-//				}
-//			);
+
+			physicsDone = false;
+			_ffg->physicsDrag = true;
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+				try {
+					_bts.updateOldPhysicsLattice();
+					newTopology = true;
+					physicsDone = true;
+				}
+				catch (...) {
+					physicsDone = true;
+					_ffg->physicsDrag = false;
+					taskThreadErrorStr = "Topology error after undermine operation.";
+					taskThreadError = true;
+				}
+				}
+			);
 			_bts.setPhysicsPause(false);
 		}
 		else if (_toolState == 6)	// deep cut mode
@@ -1184,20 +1252,29 @@ void surgicalActions::onKeyDown(int key)
 			_historyIt = _historyArray.end();
 			if (!_bts.isPhysicsPaused())
 				throw(std::logic_error("Physics must be paused before deep cut."));
-			while (!physicsDone)
-				;
+			while (!physicsDone)  // physics update thread must be complete before doing next op.
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			_bts.updateSurfaceDraw();
 			if (!_incisions.cutDeep()) {
 				sendUserMessage("Attempted deepCut failed. Save history to debug.", "PROGRAM ERROR");
 				return;
 			}
+			_ffg->user_message_flag = false;
+
 			physicsDone = false;
 			_ffg->physicsDrag = true;
-			_ffg->user_message_flag = false;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-				_bts.updateOldPhysicsLattice();
-				newTopology = true;
-				physicsDone = true;
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+				try {
+					_bts.updateOldPhysicsLattice();
+					newTopology = true;
+					physicsDone = true;
+				}
+				catch (...) {
+					physicsDone = true;
+					_ffg->physicsDrag = false;
+					taskThreadErrorStr = "Deep cut failure.";
+					taskThreadError = true;
+				}
 				}
 			);
 			_fence.clear();
@@ -1731,613 +1808,661 @@ void surgicalActions::pausePhysics()
 
 void surgicalActions::nextHistoryAction()
 {
-	try {
-		if (_historyIt == _historyArray.end())
-		{
-			sendUserMessage("There are no more actions found in this history file-", "SURGICAL HISTORY INFORMATION", false);
+	if (_historyIt == _historyArray.end()) {
+		sendUserMessage("There are no more actions found in this history file-", "SURGICAL HISTORY INFORMATION", false);
+		return;
+	}
+	_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
+	// prevent user from doing a new op until previous one is finished
+	while (!physicsDone)  // physics update thread must be complete before doing next op.
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	_gl3w->drawAll();
+	if (_historyIt->HasKey("loadSceneFile"))
+	{
+		const json::Object& fObj = _historyIt->ToObject();
+		if (!loadScene(_sceneDir.c_str(), fObj.begin()->second.ToString().c_str())) {
+			sendUserMessage("The scene file in the history file can't be loaded-", "SURGICAL HISTORY INFORMATION", false);
+			_historyArray.Clear();
+		}
+		else {
+			_ffg->setModelFile(fObj.begin()->second.ToString());
+			++_historyIt;
+		}
+	}
+	else if (_historyIt->HasKey("addHook"))
+	{
+		materialTriangles *tr = _sg.getMaterialTriangles();
+		if (tr == NULL)
+			return;
+		json::Object hookObj = (*_historyIt)["addHook"].ToObject();
+		int hookNum, triangle;
+		int material;
+		float uv[2], historyTx[2];
+		assert(hookObj.HasKey("material"));
+		material = hookObj["material"].ToInt();
+		hookNum = hookObj["hookNum"].ToInt();
+		assert(hookObj.HasKey("historyTexture"));
+		json::Array vArr = hookObj["historyTexture"];
+		historyTx[0] = vArr[0];
+		historyTx[1] = vArr[1];
+		Vec3f V;
+		vArr.Clear();
+		vArr = hookObj["displacement"];
+		V[0] = vArr[0].ToFloat();
+		V[1] = vArr[1].ToFloat();
+		V[2] = vArr[2].ToFloat();
+		if (!getHistoryAttachPoint(material, historyTx, V, triangle, uv, false)) {
+			std::string msg = "History file attachment failure at hook number ";
+			msg.append(std::to_string(hookNum));
+			historyAttachFailure(msg);
 			return;
 		}
-		_bts.setPhysicsPause(true);  // don't spawn another physics update till complete
-		// prevent user from doing a new op until previous one is finished
-		while (!physicsDone)  // physics update thread must be complete before doing next op.
-			;
-		_gl3w->drawAll();
-		if (_historyIt->HasKey("loadSceneFile"))
-		{
-			const json::Object& fObj = _historyIt->ToObject();
-			if (!loadScene(_sceneDir.c_str(), fObj.begin()->second.ToString().c_str())) {
-				sendUserMessage("The scene file in the history file can't be loaded-", "SURGICAL HISTORY INFORMATION", false);
-				_historyArray.Clear();
-			}
-			else {
-				_ffg->setModelFile(fObj.begin()->second.ToString());
-				++_historyIt;
-			}
+		if (_hooks.getNumberOfHooks() < 1) {	// initialize hooks
+			_hooks.setHookSize(_sg.getSceneNode()->getRadius()*0.02f);
+			_hooks.setShapes(_gl3w->getShapes());
+			_hooks.setGLmatrices(_gl3w->getGLmatrices());
+			_hooks.setPhysicsLattice(_bts.getPdTetPhysics_2());
+			_hooks.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
 		}
-		else if (_historyIt->HasKey("addHook"))
+		hookNum = -1;
+		bool strongHook = false;
+		if(hookObj.HasKey("strongHook"))
+			strongHook = true;
+		int newHookNum;
+		if ((newHookNum = _hooks.addHook(tr, triangle, uv, strongHook)) > -1)
 		{
-			materialTriangles *tr = _sg.getMaterialTriangles();
-			if (tr == NULL)
+			if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook. Done once.
+				_bts.setForcesAppliedFlag();
+				physicsDone = false;
+				_ffg->physicsDrag = true;
+				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+					try {
+						_bts.initPdPhysics();
+						physicsDone = true;
+					}
+					catch (...) {
+						physicsDone = true;
+						_ffg->physicsDrag = false;
+						taskThreadError = true;
+						taskThreadErrorStr = "Couldn't initialize physics after adding hook.";
+					}
+					}
+				);
+			}
+			_sutures.selectSuture(-1);
+			_hooks.selectHook(hookNum);
+			char s[20];
+#ifdef _WINDOWS
+			sprintf_s(s, 19, "H_%d", hookNum);
+#else
+			sprintf(s, "H_%d", hookNum);
+#endif
+			_selectedSurgObject = s;
+		}
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("moveHook"))
+	{
+		Vec3f xyz;
+		int hookNum;
+		const json::Array& hArr = (*_historyIt)["moveHook"];
+		hookNum = hArr[0].ToInt();
+		xyz.xyz[0] = hArr[1].ToFloat();
+		xyz.xyz[1] = hArr[2].ToFloat();
+		xyz.xyz[2] = hArr[3].ToFloat();
+		_hooks.setHookPosition(hookNum, xyz.xyz);
+		_bts.setForcesAppliedFlag();
+		char s[20];
+		sprintf(s, "H_%d", hookNum);
+		_sutures.selectSuture(-1);
+		_hooks.selectHook(hookNum);	// deselect hooks
+		_selectedSurgObject = s;
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("deleteHook"))
+	{
+		int hookNum = (*_historyIt)["deleteHook"].ToInt();
+		_hooks.deleteHook(hookNum);
+		_sutures.selectSuture(-1);
+		_hooks.selectHook(-1);
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("makeIncision"))
+	{
+		json::Array iArr = (*_historyIt)["makeIncision"].ToArray();
+		json::Object iObj = iArr[0].ToObject();
+		int i, incisPointNum;
+		bool startIncis, endIncis;
+		// for now ignore "incisedObject"] as there is only one incisable object.  May change this later.
+		startIncis = iObj["Tin"].ToBool();
+		endIncis = iObj["Tout"].ToBool();
+		incisPointNum = iObj["pointNumber"].ToInt();
+		std::vector<Vec3f> positions, normals;
+		positions.assign(incisPointNum, Vec3f());
+		normals.assign(incisPointNum, Vec3f());
+		materialTriangles *mtp = _sg.getMaterialTriangles();
+		for (i = 0; i < incisPointNum; ++i)
+		{
+			iObj = iArr[i + 1].ToObject();
+			if (!iObj.HasKey("incisionPoint")) {
+				sendUserMessage("There is an error in this history file.  Truncating from this point forward-", "", false);
+				if (_historyIt != _historyArray.end()) {
+					json::Array tarr;
+					for (json::Array::ValueVector::iterator it = _historyArray.begin(); it != _historyIt; ++it)
+						tarr.push_back(*it);
+					_historyArray.Clear();
+					_historyArray = tarr;
+					_historyIt = _historyArray.end();
+				}
+				_bts.setPhysicsPause(false);
 				return;
-			json::Object hookObj = (*_historyIt)["addHook"].ToObject();
-			int hookNum, triangle;
+			}
+			json::Object ipObj = iObj["incisionPoint"].ToObject();
+			int tri;
 			int material;
-			float uv[2], historyTx[2];
-			assert(hookObj.HasKey("material"));
-			material = hookObj["material"].ToInt();
-			hookNum = hookObj["hookNum"].ToInt();
-			assert(hookObj.HasKey("historyTexture"));
-			json::Array vArr = hookObj["historyTexture"];
-			historyTx[0] = vArr[0];
-			historyTx[1] = vArr[1];
-			Vec3f V;
-			vArr.Clear();
-			vArr = hookObj["displacement"];
-			V[0] = vArr[0].ToFloat();
-			V[1] = vArr[1].ToFloat();
-			V[2] = vArr[2].ToFloat();
-			if (!getHistoryAttachPoint(material, historyTx, V, triangle, uv, false)) {
-				std::string msg = "History file attachment failure at hook number ";
-				msg.append(std::to_string(hookNum));
+			float hTx[2], uv[2];
+			material = ipObj["material"].ToInt();
+			json::Array sArr = ipObj["historyTexture"].ToArray();
+			hTx[0] = sArr[0].ToFloat();
+			hTx[1] = sArr[1].ToFloat();
+			Vec3f hV;
+			sArr.Clear();
+			sArr = ipObj["displacement"];
+			hV[0] = sArr[0].ToFloat();
+			hV[1] = sArr[1].ToFloat();
+			hV[2] = sArr[2].ToFloat();
+			if (!getHistoryAttachPoint(material, hTx, hV, tri, uv, false)) {
+				std::string msg = "History file incision point location failure.";
 				historyAttachFailure(msg);
 				return;
 			}
-			if (_hooks.getNumberOfHooks() < 1) {	// initialize hooks
-				_hooks.setHookSize(_sg.getSceneNode()->getRadius()*0.02f);
-				_hooks.setShapes(_gl3w->getShapes());
-				_hooks.setGLmatrices(_gl3w->getGLmatrices());
-				_hooks.setPhysicsLattice(_bts.getPdTetPhysics_2());
-				_hooks.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-			}
-			hookNum = -1;
-			bool strongHook = false;
-			if(hookObj.HasKey("strongHook"))
-				strongHook = true;
-			int newHookNum;
-			if ((newHookNum = _hooks.addHook(tr, triangle, uv, strongHook)) > -1)
-			{
-				if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a hook. Done once.
-					_bts.setForcesAppliedFlag();
-					physicsDone = false;
-					_ffg->physicsDrag = true;
-					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-						_bts.updatePhysics();
-						physicsDone = true;
-						}
-					);
-				}
-				_sutures.selectSuture(-1);
-				_hooks.selectHook(hookNum);
-				char s[20];
-#ifdef _WINDOWS
-				sprintf_s(s, 19, "H_%d", hookNum);
-#else
-				sprintf(s, "H_%d", hookNum);
-#endif
-				_selectedSurgObject = s;
-			}
-			++_historyIt;
+			assert(mtp->triangleMaterial(tri) == 2);
+			mtp->getBarycentricPosition(tri, uv, positions[i].xyz);
+			mtp->getBarycentricNormal(tri, uv, normals[i].xyz);
 		}
-		else if (_historyIt->HasKey("moveHook"))
-		{
-			Vec3f xyz;
-			int hookNum;
-			const json::Array& hArr = (*_historyIt)["moveHook"];
-			hookNum = hArr[0].ToInt();
-			xyz.xyz[0] = hArr[1].ToFloat();
-			xyz.xyz[1] = hArr[2].ToFloat();
-			xyz.xyz[2] = hArr[3].ToFloat();
-			_hooks.setHookPosition(hookNum, xyz.xyz);
-			_bts.setForcesAppliedFlag();
-			char s[20];
-			sprintf(s, "H_%d", hookNum);
-			_sutures.selectSuture(-1);
-			_hooks.selectHook(hookNum);	// deselect hooks
-			_selectedSurgObject = s;
-			++_historyIt;
+		if (!_incisions.skinCut(positions, normals, startIncis, endIncis)) {
+			sendUserMessage("Incision in history file failed.", "Program error", false);
 		}
-		else if (_historyIt->HasKey("deleteHook"))
-		{
-			int hookNum = (*_historyIt)["deleteHook"].ToInt();
-			_hooks.deleteHook(hookNum);
-			_sutures.selectSuture(-1);
-			_hooks.selectHook(-1);
-			++_historyIt;
-		}
-		else if (_historyIt->HasKey("makeIncision"))
-		{
-			json::Array iArr = (*_historyIt)["makeIncision"].ToArray();
-			json::Object iObj = iArr[0].ToObject();
-			int i, incisPointNum;
-			bool startIncis, endIncis;
-			// for now ignore "incisedObject"] as there is only one incisable object.  May change this later.
-			startIncis = iObj["Tin"].ToBool();
-			endIncis = iObj["Tout"].ToBool();
-			incisPointNum = iObj["pointNumber"].ToInt();
-			std::vector<Vec3f> positions, normals;
-			positions.assign(incisPointNum, Vec3f());
-			normals.assign(incisPointNum, Vec3f());
-			materialTriangles *mtp = _sg.getMaterialTriangles();
-			for (i = 0; i < incisPointNum; ++i)
-			{
-				iObj = iArr[i + 1].ToObject();
-				if (!iObj.HasKey("incisionPoint")) {
-					sendUserMessage("There is an error in this history file.  Truncating from this point forward-", "", false);
-					if (_historyIt != _historyArray.end()) {
-						json::Array tarr;
-						for (json::Array::ValueVector::iterator it = _historyArray.begin(); it != _historyIt; ++it)
-							tarr.push_back(*it);
-						_historyArray.Clear();
-						_historyArray = tarr;
-						_historyIt = _historyArray.end();
-					}
-					_bts.setPhysicsPause(false);
-					return;
-				}
-				json::Object ipObj = iObj["incisionPoint"].ToObject();
-				int tri;
-				int material;
-				float hTx[2], uv[2];
-				material = ipObj["material"].ToInt();
-				json::Array sArr = ipObj["historyTexture"].ToArray();
-				hTx[0] = sArr[0].ToFloat();
-				hTx[1] = sArr[1].ToFloat();
-				Vec3f hV;
-				sArr.Clear();
-				sArr = ipObj["displacement"];
-				hV[0] = sArr[0].ToFloat();
-				hV[1] = sArr[1].ToFloat();
-				hV[2] = sArr[2].ToFloat();
-				if (!getHistoryAttachPoint(material, hTx, hV, tri, uv, false)) {
-					std::string msg = "History file incision point location failure.";
-					historyAttachFailure(msg);
-					return;
-				}
-				assert(mtp->triangleMaterial(tri) == 2);
-				mtp->getBarycentricPosition(tri, uv, positions[i].xyz);
-				mtp->getBarycentricNormal(tri, uv, normals[i].xyz);
-			}
-			if (!_incisions.skinCut(positions, normals, startIncis, endIncis)) {
-				sendUserMessage("Incision in history file failed.", "Program error", false);
-			}
-			else {
-				if (_incisions.physicsRecutRequired()) {
-//					physicsDone = false;
-//					_ffg->physicsDrag = true;
-//					tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+		else {
+			if (_incisions.physicsRecutRequired()) {
+				_bts.setForcesAppliedFlag();
+				// Unfortunately this recurring code block doesn't work if put into a lambda. Only Intel knows-
+				physicsDone = false;
+				_ffg->physicsDrag = true;
+				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+					try {
 						_bts.updateOldPhysicsLattice();
 						newTopology = true;
 						physicsDone = true;
-//						}
-//					);
-				}
-				else
-					newTopology = true;
+					}
+					catch (...) {
+						physicsDone = true;
+						_ffg->physicsDrag = false;
+						taskThreadErrorStr = "Couldn't update physics after incision requiring recut.";
+						taskThreadError = true;
+					}
+					}
+				);
 			}
-			++_historyIt;
-		}
-		else if (_historyIt->HasKey("undermine"))
-		{
-			_bts.updateSurfaceDraw();
-			json::Array pArr, uArr = (*_historyIt)["undermine"].ToArray();
-			float hTx[2], uv[2];
-			int tri;
-			int material;
-			Vec3f hVec;
-			json::Object uObj, pObj;
-			for (int n = (int)uArr.size(), i = 0; i < n; ++i) {
-				uObj = uArr[i].ToObject();
-				pObj = uObj["underminePoint"].ToObject();
-				material = pObj["material"].ToInt();
-				bool ic = true;  // compatibility with old history files
-				if(pObj.HasKey("incisionConnect"))
-					ic = pObj["incisionConnect"].ToBool();
-				pArr = pObj["historyTexture"].ToArray();
-				hTx[0] = pArr[0].ToFloat();
-				hTx[1] = pArr[1].ToFloat();
-				pArr = pObj["displacement"].ToArray();
-				hVec[0] = pArr[0].ToFloat();
-				hVec[1] = pArr[1].ToFloat();
-				hVec[2] = pArr[2].ToFloat();
-				if (!getHistoryAttachPoint(material, hTx, hVec, tri, uv, false)) {
-					std::string msg = "History file undermine point location failure.";
-					historyAttachFailure(msg);
-					return;
-				}
-				_incisions.addUndermineTriangle(tri, 2, ic);
-			}
-			_gl3w->drawAll();
-			glfwSwapBuffers(_ffg->FFwindow);
-			std::this_thread::sleep_for(std::chrono::milliseconds(800));
-			_incisions.undermineSkin();
-			_undermineTriangles.clear();
-			physicsDone = false;
-			_ffg->physicsDrag = true;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-				_bts.updateOldPhysicsLattice();
+			else
 				newTopology = true;
-				physicsDone = true;
-				}
-			);
-			++_historyIt;
 		}
-		else if (_historyIt->HasKey("excise"))
-		{
-			json::Object exciseObj = (*_historyIt)["excise"].ToObject();
-			json::Array pArr;
-			float hTx[2], uv[2];
-			int tri;
-			int material;
-			Vec3f hVec;
-			material = exciseObj["material"].ToInt();
-			pArr = exciseObj["historyTexture"].ToArray();
-			hTx[0] = pArr[0];
-			hTx[1] = pArr[1];
-			pArr.Clear();
-			pArr = exciseObj["displacement"].ToArray();
-			hVec[0] = pArr[0];
-			hVec[1] = pArr[1];
-			hVec[2] = pArr[2];
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("undermine"))
+	{
+		_bts.updateSurfaceDraw();
+		json::Array pArr, uArr = (*_historyIt)["undermine"].ToArray();
+		float hTx[2], uv[2];
+		int tri;
+		int material;
+		Vec3f hVec;
+		json::Object uObj, pObj;
+		for (int n = (int)uArr.size(), i = 0; i < n; ++i) {
+			uObj = uArr[i].ToObject();
+			pObj = uObj["underminePoint"].ToObject();
+			material = pObj["material"].ToInt();
+			bool ic = true;  // compatibility with old history files
+			if(pObj.HasKey("incisionConnect"))
+				ic = pObj["incisionConnect"].ToBool();
+			pArr = pObj["historyTexture"].ToArray();
+			hTx[0] = pArr[0].ToFloat();
+			hTx[1] = pArr[1].ToFloat();
+			pArr = pObj["displacement"].ToArray();
+			hVec[0] = pArr[0].ToFloat();
+			hVec[1] = pArr[1].ToFloat();
+			hVec[2] = pArr[2].ToFloat();
 			if (!getHistoryAttachPoint(material, hTx, hVec, tri, uv, false)) {
-				std::string msg = "History file excise point location failure.";
+				std::string msg = "History file undermine point location failure.";
 				historyAttachFailure(msg);
 				return;
 			}
-			_incisions.excise(tri);
-			physicsDone = false;
-			_ffg->physicsDrag = true;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+			_incisions.addUndermineTriangle(tri, 2, ic);
+		}
+		_gl3w->drawAll();
+		glfwSwapBuffers(_ffg->FFwindow);
+		std::this_thread::sleep_for(std::chrono::milliseconds(800));
+		_incisions.undermineSkin();
+		_undermineTriangles.clear();
+		physicsDone = false;
+		_ffg->physicsDrag = true;
+		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+			try {
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
 				physicsDone = true;
-				}
-			);
-			++_historyIt;
+			}
+			catch (...) {
+				physicsDone = true;
+				_ffg->physicsDrag = false;
+				taskThreadErrorStr = "Topology error following an undermine.";
+				taskThreadError = true;
+			}
+			}
+		);
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("excise"))
+	{
+		json::Object exciseObj = (*_historyIt)["excise"].ToObject();
+		json::Array pArr;
+		float hTx[2], uv[2];
+		int tri;
+		int material;
+		Vec3f hVec;
+		material = exciseObj["material"].ToInt();
+		pArr = exciseObj["historyTexture"].ToArray();
+		hTx[0] = pArr[0];
+		hTx[1] = pArr[1];
+		pArr.Clear();
+		pArr = exciseObj["displacement"].ToArray();
+		hVec[0] = pArr[0];
+		hVec[1] = pArr[1];
+		hVec[2] = pArr[2];
+		if (!getHistoryAttachPoint(material, hTx, hVec, tri, uv, false)) {
+			std::string msg = "History file excise point location failure.";
+			historyAttachFailure(msg);
+			return;
 		}
-		else if (_historyIt->HasKey("addSuture"))
-		{
-			json::Object sutureObj = (*_historyIt)["addSuture"].ToObject();
-			int edge, sutNum = sutureObj["sutureNum"].ToInt();
+		_incisions.excise(tri);
 
-			std::cout << "Last suture was " << sutNum << "\n";
-
-			float param, uv[2], xyz[3];
-			if (_sutures.getNumberOfSutures() < 1) {	// initialize sutures
-				_sutures.setSutureSize(_sg.getSceneNode()->getRadius()*0.003f);
-				_sutures.setShapes(_gl3w->getShapes());
-				_sutures.setGLmatrices(_gl3w->getGLmatrices());
-				_sutures.setPhysicsLattice(_bts.getPdTetPhysics_2());
-				_sutures.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
-				_sutures.setSurgicalActions(this);
+		physicsDone = false;
+		_ffg->physicsDrag = true;
+		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+			try {
+				_bts.updateOldPhysicsLattice();
+				newTopology = true;
+				physicsDone = true;
 			}
-			materialTriangles *tr = _sg.getMaterialTriangles();
-			int material;
-			float hTx[2];
-			Vec3f hVec;
-			json::Array pArr = sutureObj["historyTexture0"].ToArray();
-			hTx[0] = pArr[0].ToFloat();
-			hTx[1] = pArr[1].ToFloat();
-			pArr.Clear();
-			pArr = sutureObj["displacement0"].ToArray();
-			hVec[0] = pArr[0].ToFloat();
-			hVec[1] = pArr[1].ToFloat();
-			hVec[2] = pArr[2].ToFloat();
-			material = sutureObj["material0"].ToInt();
-			int eTri;
-			if (!getHistoryAttachPoint(material, hTx, hVec, eTri, uv, material == 2 ? true : false)) {
-				std::string msg = "Attempted attachment of suture number ";
-				msg.append(std::to_string(sutNum));
-				msg.append(" in history file failed.");
-				historyAttachFailure(msg);
-				return;
+			catch (...) {
+				physicsDone = true;
+				_ffg->physicsDrag = false;
+				taskThreadErrorStr = "Topology error found after excision.";
+				taskThreadError = true;
 			}
-			assert(material == tr->triangleMaterial(eTri));
-			if (material == 2) {
-				if (uv[1] == 0.0f) {
-					edge = 0;
-					param = uv[0];
-				}
-				else if (uv[0] == 0.0f) {
-					edge = 2;
-					param = 1.0f - uv[1];
-				}
-				else if (uv[0] + uv[1] > 0.998f) {
-					edge = 1;
-					param = uv[1];
-				}
-				else
-					assert(false);
 			}
-			else {
-				if (uv[0] + uv[1] > 0.67f) {  // force to an edge
-					edge = 1;
-					param = uv[1] / (uv[0] + uv[1]);
-				}
-				else if (uv[0] > uv[1]) {
-					edge = 0;
-					param = uv[0];
-				}
-				else {
-					edge = 2;
-					param = 1.0f - uv[1];
-				}
+		);
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("addSuture"))
+	{
+		json::Object sutureObj = (*_historyIt)["addSuture"].ToObject();
+		int edge, sutNum = sutureObj["sutureNum"].ToInt();
+		float param, uv[2], xyz[3];
+		if (_sutures.getNumberOfSutures() < 1) {	// initialize sutures
+			_sutures.setSutureSize(_sg.getSceneNode()->getRadius()*0.003f);
+			_sutures.setShapes(_gl3w->getShapes());
+			_sutures.setGLmatrices(_gl3w->getGLmatrices());
+			_sutures.setPhysicsLattice(_bts.getPdTetPhysics_2());
+			_sutures.setVnBccTetrahedra(_bts.getVirtualNodedBccTetrahedra());
+			_sutures.setSurgicalActions(this);
+		}
+		materialTriangles *tr = _sg.getMaterialTriangles();
+		int material;
+		float hTx[2];
+		Vec3f hVec;
+		json::Array pArr = sutureObj["historyTexture0"].ToArray();
+		hTx[0] = pArr[0].ToFloat();
+		hTx[1] = pArr[1].ToFloat();
+		pArr.Clear();
+		pArr = sutureObj["displacement0"].ToArray();
+		hVec[0] = pArr[0].ToFloat();
+		hVec[1] = pArr[1].ToFloat();
+		hVec[2] = pArr[2].ToFloat();
+		material = sutureObj["material0"].ToInt();
+		int eTri;
+		if (!getHistoryAttachPoint(material, hTx, hVec, eTri, uv, material == 2 ? true : false)) {
+			std::string msg = "Attempted attachment of suture number ";
+			msg.append(std::to_string(sutNum));
+			msg.append(" in history file failed.");
+			historyAttachFailure(msg);
+			return;
+		}
+		assert(material == tr->triangleMaterial(eTri));
+		if (material == 2) {
+			if (uv[1] == 0.0f) {
+				edge = 0;
+				param = uv[0];
 			}
-			int sn = _sutures.addUserSuture(tr, eTri, edge, param);
-			assert(_sutures.baseToUserSutureNumber(sn) == sutNum);
-			pArr.Clear();
-			pArr = sutureObj["historyTexture1"].ToArray();
-			hTx[0] = pArr[0].ToFloat();
-			hTx[1] = pArr[1].ToFloat();
-			pArr.Clear();
-			pArr = sutureObj["displacement1"].ToArray();
-			hVec[0] = pArr[0].ToFloat();
-			hVec[1] = pArr[1].ToFloat();
-			hVec[2] = pArr[2].ToFloat();
-			material = sutureObj["material1"].ToInt();
-			if (!getHistoryAttachPoint(material, hTx, hVec, eTri, uv, material == 2 ? true : false)) {
-				std::string msg = "Attempted attachment of suture number ";
-				msg.append(std::to_string(sutNum));
-				msg.append(" in history file failed.");
-				historyAttachFailure(msg);
-				return;
+			else if (uv[0] == 0.0f) {
+				edge = 2;
+				param = 1.0f - uv[1];
 			}
-			tr->getBarycentricPosition(eTri, uv, xyz);
-			assert(material == tr->triangleMaterial(eTri));
-			if (material == 2) {
-				if (uv[1] == 0.0f) {
-					edge = 0;
-					param = uv[0];
-				}
-				else if (uv[0] == 0.0f) {
-					edge = 2;
-					param = 1.0f - uv[1];
-				}
-				else if (uv[0] + uv[1] > 0.998f) {
-					edge = 1;
-					param = uv[1];
-				}
-				else
-					assert(false);
-			}
-			else {
-				if (uv[0] + uv[1] > 0.67f) {  // force to an edge
-					edge = 1;
-					param = uv[1] / (uv[0] + uv[1]);
-				}
-				else if (uv[0] > uv[1]) {
-					edge = 0;
-					param = uv[0];
-				}
-				else {
-					edge = 0;
-					param = 1.0f - uv[1];
-				}
-			}
-			if (sutureObj["linked"].ToBool())
-				_sutures.setLinked(sn, true);
-			int sRet = _sutures.setSecondEdge(sn, tr, eTri, edge, param);
-			_bts.setForcesAppliedFlag();
-			if (sRet < 1)
-				_sutures.setSecondVertexPosition(sn, xyz);
-			else if (sRet < 2) {
-				sendUserMessage("Trying to suture to same side of incision is not allowed-", "USER ERROR", false);
-				_selectedSurgObject = "";
-				setToolState(0);
-				++_historyIt;
-				return;
+			else if (uv[0] + uv[1] > 0.998f) {
+				edge = 1;
+				param = uv[1];
 			}
 			else
 				assert(false);
-			if(_sutures.isLinked(sn)){
-				physicsDone = false;
- 				_ffg->physicsDrag = true;
-//				tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
-					_sutures.laySutureLine(sn);
-					physicsDone = true;
-//					}
-//				);
-			}
-			else
-				_sutures.setLinked(sn, false);
-			_hooks.selectHook(-1);	// deselect hooks
-			_sutures.selectSuture(sn);
-			char s[20];
-#ifdef _WINDOWS
-			sprintf_s(s, 19, "S_%d", sn);
-#else
-			sprintf(s, "S_%d", sn);
-#endif
-			_selectedSurgObject = s;
-			++_historyIt;
-			if (_historyIt == _historyArray.end()) {  // automatically promote any fake sutures if this is the last one
-				while (!physicsDone)
-					;
-				_bts.promoteSutures();
-			}
 		}
-		else if (_historyIt->HasKey("deleteSuture"))
-		{
-			int sutNum;
-			if ((*_historyIt)["deleteSuture"].GetType() == json::ObjectVal) {
-				sutNum = (*_historyIt)["deleteSuture"]["autoSuturesFor"].ToInt();
-				sutNum = _sutures.userToBaseSutureNumber(sutNum);
-				++sutNum;
-				if (_sutures.baseToUserSutureNumber(sutNum) < 0)
-					_sutures.deleteSuture(sutNum);
+		else {
+			if (uv[0] + uv[1] > 0.67f) {  // force to an edge
+				edge = 1;
+				param = uv[1] / (uv[0] + uv[1]);
+			}
+			else if (uv[0] > uv[1]) {
+				edge = 0;
+				param = uv[0];
 			}
 			else {
-				sutNum = (*_historyIt)["deleteSuture"].ToInt();
-				sutNum = _sutures.userToBaseSutureNumber(sutNum);
-				_sutures.deleteSuture(sutNum);
+				edge = 2;
+				param = 1.0f - uv[1];
 			}
-			_sutures.selectSuture(-1);
-			_hooks.selectHook(-1);
-			++_historyIt;
 		}
-		else if (_historyIt->HasKey("makeDeepCut"))
-		{
-			// COURT - this is somewhat flawed. If physics state on creation is different than that on execution, the deep side of the normal may have very different outcomes.
-			// consider assuring a certain number of physics iterations before execution.  Could also put position of deep post point in history and compute N.  Intermediate
-			// incision intersections would still be different.
-			json::Array pArr, iArr = (*_historyIt)["makeDeepCut"].ToArray();
-			json::Object iObj = iArr[0].ToObject();
-			assert(iObj["deepCutObject"].ToInt() == 0);	// for now only one object incisable
-			bool startOpen, endOpen;
-			startOpen = iObj["openIn"].ToBool();
-			endOpen = iObj["openOut"].ToBool();
-			int pointNum = iObj["pointNumber"].ToInt();
-			materialTriangles* tr = _sg.getMaterialTriangles();
-			_incisions.clearDeepCutter();
-			if (!_fence.isInitialized()) {	// initialize fence
-				_fence.setFenceSize(tr->getDiameter() * 0.01f);
-				_fence.setGl3wGraphics(_gl3w);
+		int sn = _sutures.addUserSuture(tr, eTri, edge, param);
+		assert(_sutures.baseToUserSutureNumber(sn) == sutNum);
+		pArr.Clear();
+		pArr = sutureObj["historyTexture1"].ToArray();
+		hTx[0] = pArr[0].ToFloat();
+		hTx[1] = pArr[1].ToFloat();
+		pArr.Clear();
+		pArr = sutureObj["displacement1"].ToArray();
+		hVec[0] = pArr[0].ToFloat();
+		hVec[1] = pArr[1].ToFloat();
+		hVec[2] = pArr[2].ToFloat();
+		material = sutureObj["material1"].ToInt();
+		if (!getHistoryAttachPoint(material, hTx, hVec, eTri, uv, material == 2 ? true : false)) {
+			std::string msg = "Attempted attachment of suture number ";
+			msg.append(std::to_string(sutNum));
+			msg.append(" in history file failed.");
+			historyAttachFailure(msg);
+			return;
+		}
+		tr->getBarycentricPosition(eTri, uv, xyz);
+		assert(material == tr->triangleMaterial(eTri));
+		if (material == 2) {
+			if (uv[1] == 0.0f) {
+				edge = 0;
+				param = uv[0];
 			}
-			_fence.clear();
-			float hTx[2], uv[2];
-			int tri;
-			int material;
-			Vec3f hVec, postN, xyz;
-			json::Object uObj, pObj;
-			for (int i = 0; i < pointNum; ++i) {
-				uObj = iArr[i + 1].ToObject();
-				if (!uObj.HasKey("deepCutPoint")) {
-					sendUserMessage("There is an error in this history file.  Truncating from this point forward-", "", false);
-					if (_historyIt != _historyArray.end()) {
-						json::Array tarr;
-						for (json::Array::ValueVector::iterator it = _historyArray.begin(); it != _historyIt; ++it)
-							tarr.push_back(*it);
-						_historyArray.Clear();
-						_historyArray = tarr;
-						_historyIt = _historyArray.end();
-					}
-					return;
-				}
-				pObj = uObj["deepCutPoint"].ToObject();
-				material = pObj["material"].ToInt();
-				pArr = pObj["historyTexture"].ToArray();
-				hTx[0] = pArr[0].ToFloat();
-				hTx[1] = pArr[1].ToFloat();
-				pArr = pObj["displacement"].ToArray();
-				hVec[0] = pArr[0].ToFloat();
-				hVec[1] = pArr[1].ToFloat();
-				hVec[2] = pArr[2].ToFloat();
-				if (!getHistoryAttachPoint(material, hTx, hVec, tri, uv, false)) {
-					std::string msg = "Can't retrieve deep cut point from history file.";
-					historyAttachFailure(msg);
-					return;
-				}
-				tr->getBarycentricPosition(tri, uv, xyz.xyz);
-				pArr = pObj["postNormal"].ToArray();
-				postN.X = pArr[0].ToFloat();
-				postN.Y = pArr[1].ToFloat();
-				postN.Z = pArr[2].ToFloat();
-				if (i == pointNum - 1)
-					startOpen = endOpen;
-				else if (i > 0)
-					startOpen = false;
-				else
-					;
-				_fence.addPost(tr, tri, xyz.xyz, postN.xyz, false, true, startOpen);
+			else if (uv[0] == 0.0f) {
+				edge = 2;
+				param = 1.0f - uv[1];
 			}
-			if (!_incisions.inputCorrectFence(&_fence, _ffg)) {
-				sendUserMessage("The deepCut in this history file failed.", "PROGRAM ERROR");
-				_fence.clear();
-				_incisions.clearDeepCutter();
-				_ffg->setToolState(0);
-				setToolState(0);
-				_bts.setPhysicsPause(false);
-				physicsDone = true;
-				_ffg->physicsDrag = false;
-				return;
+			else if (uv[0] + uv[1] > 0.998f) {
+				edge = 1;
+				param = uv[1];
 			}
-			_bts.updateSurfaceDraw();
-			if (!_incisions.cutDeep()) {
-				sendUserMessage("Attempted deepCut failed. Save history to debug.", "PROGRAM ERROR");
-				_fence.clear();
-				_incisions.clearDeepCutter();
-				_ffg->setToolState(0);
-				setToolState(0);
-				_bts.setPhysicsPause(false);
-				physicsDone = true;
-				_ffg->physicsDrag = false;
-				return;
+			else
+				assert(false);
+		}
+		else {
+			if (uv[0] + uv[1] > 0.67f) {  // force to an edge
+				edge = 1;
+				param = uv[1] / (uv[0] + uv[1]);
 			}
+			else if (uv[0] > uv[1]) {
+				edge = 0;
+				param = uv[0];
+			}
+			else {
+				edge = 0;
+				param = 1.0f - uv[1];
+			}
+		}
+		if (sutureObj["linked"].ToBool())
+			_sutures.setLinked(sn, true);
+		int sRet = _sutures.setSecondEdge(sn, tr, eTri, edge, param);
+		_bts.setForcesAppliedFlag();
+		if (!_bts.getPdTetPhysics_2()->solverInitialized()) {  // solver must be initialized to add a suture
 			physicsDone = false;
 			_ffg->physicsDrag = true;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+				try {
+					_bts.initPdPhysics();
+					physicsDone = true;
+				}
+				catch (...) {
+					physicsDone = true;
+					_ffg->physicsDrag = false;
+					taskThreadError = true;
+					taskThreadErrorStr = "Couldn't initialize physics after adding hook.";
+				}
+				}
+			);
+		}
+		if (sRet < 1)
+			_sutures.setSecondVertexPosition(sn, xyz);
+		else if (sRet < 2) {
+			sendUserMessage("Trying to suture to same side of incision is not allowed-", "USER ERROR", false);
+			_selectedSurgObject = "";
+			setToolState(0);
+			++_historyIt;
+			return;
+		}
+		else
+			assert(false);
+		if(_sutures.isLinked(sn)){
+			physicsDone = false;
+			_ffg->physicsDrag = true;
+			_sutures.laySutureLine(sn);
+			physicsDone = true;
+		}
+		else
+			_sutures.setLinked(sn, false);
+		_hooks.selectHook(-1);	// deselect hooks
+		_sutures.selectSuture(sn);
+		char s[20];
+#ifdef _WINDOWS
+		sprintf_s(s, 19, "S_%d", sn);
+#else
+		sprintf(s, "S_%d", sn);
+#endif
+		_selectedSurgObject = s;
+		++_historyIt;
+		if (_historyIt == _historyArray.end()) {  // automatically promote any fake sutures if this is the last one
+			while (!physicsDone)  // physics update thread must be complete before doing next op.
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			_bts.promoteSutures();
+		}
+	}
+	else if (_historyIt->HasKey("deleteSuture"))
+	{
+		int sutNum;
+		if ((*_historyIt)["deleteSuture"].GetType() == json::ObjectVal) {
+			sutNum = (*_historyIt)["deleteSuture"]["autoSuturesFor"].ToInt();
+			sutNum = _sutures.userToBaseSutureNumber(sutNum);
+			++sutNum;
+			if (_sutures.baseToUserSutureNumber(sutNum) < 0)
+				_sutures.deleteSuture(sutNum);
+		}
+		else {
+			sutNum = (*_historyIt)["deleteSuture"].ToInt();
+			sutNum = _sutures.userToBaseSutureNumber(sutNum);
+			_sutures.deleteSuture(sutNum);
+		}
+		_sutures.selectSuture(-1);
+		_hooks.selectHook(-1);
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("makeDeepCut"))
+	{
+		// COURT - this is somewhat flawed. If physics state on creation is different than that on execution, the deep side of the normal may have very different outcomes.
+		// consider assuring a certain number of physics iterations before execution.  Could also put position of deep post point in history and compute N.  Intermediate
+		// incision intersections would still be different.
+		json::Array pArr, iArr = (*_historyIt)["makeDeepCut"].ToArray();
+		json::Object iObj = iArr[0].ToObject();
+		assert(iObj["deepCutObject"].ToInt() == 0);	// for now only one object incisable
+		bool startOpen, endOpen;
+		startOpen = iObj["openIn"].ToBool();
+		endOpen = iObj["openOut"].ToBool();
+		int pointNum = iObj["pointNumber"].ToInt();
+		materialTriangles* tr = _sg.getMaterialTriangles();
+		_incisions.clearDeepCutter();
+		if (!_fence.isInitialized()) {	// initialize fence
+			_fence.setFenceSize(tr->getDiameter() * 0.01f);
+			_fence.setGl3wGraphics(_gl3w);
+		}
+		_fence.clear();
+		float hTx[2], uv[2];
+		int tri;
+		int material;
+		Vec3f hVec, postN, xyz;
+		json::Object uObj, pObj;
+		for (int i = 0; i < pointNum; ++i) {
+			uObj = iArr[i + 1].ToObject();
+			if (!uObj.HasKey("deepCutPoint")) {
+				sendUserMessage("There is an error in this history file.  Truncating from this point forward-", "", false);
+				if (_historyIt != _historyArray.end()) {
+					json::Array tarr;
+					for (json::Array::ValueVector::iterator it = _historyArray.begin(); it != _historyIt; ++it)
+						tarr.push_back(*it);
+					_historyArray.Clear();
+					_historyArray = tarr;
+					_historyIt = _historyArray.end();
+				}
+				return;
+			}
+			pObj = uObj["deepCutPoint"].ToObject();
+			material = pObj["material"].ToInt();
+			pArr = pObj["historyTexture"].ToArray();
+			hTx[0] = pArr[0].ToFloat();
+			hTx[1] = pArr[1].ToFloat();
+			pArr = pObj["displacement"].ToArray();
+			hVec[0] = pArr[0].ToFloat();
+			hVec[1] = pArr[1].ToFloat();
+			hVec[2] = pArr[2].ToFloat();
+			if (!getHistoryAttachPoint(material, hTx, hVec, tri, uv, false)) {
+				std::string msg = "Can't retrieve deep cut point from history file.";
+				historyAttachFailure(msg);
+				return;
+			}
+			tr->getBarycentricPosition(tri, uv, xyz.xyz);
+			pArr = pObj["postNormal"].ToArray();
+			postN.X = pArr[0].ToFloat();
+			postN.Y = pArr[1].ToFloat();
+			postN.Z = pArr[2].ToFloat();
+			if (i == pointNum - 1)
+				startOpen = endOpen;
+			else if (i > 0)
+				startOpen = false;
+			else
+				;
+			_fence.addPost(tr, tri, xyz.xyz, postN.xyz, false, true, startOpen);
+		}
+		if (!_incisions.inputCorrectFence(&_fence, _ffg)) {
+			sendUserMessage("The deepCut setup in this history file failed. You may try again-", "PROGRAM ERROR");
+			_fence.clear();
+			_incisions.clearDeepCutter();
+			_ffg->setToolState(0);
+			setToolState(0);
+			_bts.setPhysicsPause(false);
+			physicsDone = true;
+			_ffg->physicsDrag = false;
+			return;
+		}
+		_bts.updateSurfaceDraw();
+		if (!_incisions.cutDeep()) {
+			taskThreadError = true;
+			taskThreadErrorStr = "Attempted deep cut failed.";
+		}
+
+		physicsDone = false;
+		_ffg->physicsDrag = true;
+		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+			try {
 				_bts.updateOldPhysicsLattice();
 				newTopology = true;
 				physicsDone = true;
-				}
-			);
-			_fence.clear();
-			++_historyIt;
-		}
-		else if (_historyIt->HasKey("periostealUndermine")) {
-			_bts.updateSurfaceDraw();
-			json::Array pArr, uArr = (*_historyIt)["periostealUndermine"].ToArray();
-			float hTx[2], uv[2];
-			int tri;
-			int material;
-			Vec3f hVec;
-			json::Object uObj, pObj;
-			for (int n = (int)uArr.size(), i = 0; i < n; ++i) {
-				uObj = uArr[i].ToObject();
-				pObj = uObj["periostealTriangle"].ToObject();
-				material = pObj["material"].ToInt();
-				pArr = pObj["historyTexture"].ToArray();
-				bool ic = true;
-				if (pObj.HasKey("incisionConnect"))
-					ic = pObj["incisionConnect"].ToBool();
-				hTx[0] = pArr[0].ToFloat();
-				hTx[1] = pArr[1].ToFloat();
-				pArr = pObj["displacement"].ToArray();
-				hVec[0] = pArr[0].ToFloat();
-				hVec[1] = pArr[1].ToFloat();
-				hVec[2] = pArr[2].ToFloat();
-				if (!getHistoryAttachPoint(material, hTx, hVec, tri, uv, false)) {
-					std::string msg = "Can't retrieve periosteal undermine point from history file.";
-					historyAttachFailure(msg);
-					return;
-				}
-				_incisions.addPeriostealUndermineTriangle(tri, hVec, ic);
 			}
-			// all periosteal undermine triangles now marked as material 10
-			_incisions.clearCurrentUndermine(8);  // set all periosteal undermined triangles to material 8 and reset.
-			_bts.fixPeriostealPeriferalVertices();
-			physicsDone = false;
-			_ffg->physicsDrag = true;
-			tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
+			catch (...) {
+				physicsDone = true;
+				_ffg->physicsDrag = false;
+				taskThreadError = true;
+				taskThreadErrorStr = "Topology error found after deepCut.";
+			}
+			}
+		);
+		_fence.clear();
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("periostealUndermine")) {
+		_bts.updateSurfaceDraw();
+		json::Array pArr, uArr = (*_historyIt)["periostealUndermine"].ToArray();
+		float hTx[2], uv[2];
+		int tri;
+		int material;
+		Vec3f hVec;
+		json::Object uObj, pObj;
+		for (int n = (int)uArr.size(), i = 0; i < n; ++i) {
+			uObj = uArr[i].ToObject();
+			pObj = uObj["periostealTriangle"].ToObject();
+			material = pObj["material"].ToInt();
+			pArr = pObj["historyTexture"].ToArray();
+			bool ic = true;
+			if (pObj.HasKey("incisionConnect"))
+				ic = pObj["incisionConnect"].ToBool();
+			hTx[0] = pArr[0].ToFloat();
+			hTx[1] = pArr[1].ToFloat();
+			pArr = pObj["displacement"].ToArray();
+			hVec[0] = pArr[0].ToFloat();
+			hVec[1] = pArr[1].ToFloat();
+			hVec[2] = pArr[2].ToFloat();
+			if (!getHistoryAttachPoint(material, hTx, hVec, tri, uv, false)) {
+				std::string msg = "Can't retrieve periosteal undermine point from history file.";
+				historyAttachFailure(msg);
+				return;
+			}
+			_incisions.addPeriostealUndermineTriangle(tri, hVec, ic);
+		}
+		// all periosteal undermine triangles now marked as material 10
+		_incisions.clearCurrentUndermine(8);  // set all periosteal undermined triangles to material 8 and reset.
+		_bts.fixPeriostealPeriferalVertices();
+		physicsDone = false;
+		_ffg->physicsDrag = true;
+		tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+			try {
 				_bts.nonTetPhysicsUpdate();
 				newTopology = true;
 				physicsDone = true;
-				}
-			);
-			++_historyIt;
-		}
-		else if (_historyIt->HasKey("promoteSutureApproximations"))
-		{
-			_bts.promoteSutures();
-			++_historyIt;
-		}
-		else if (_historyIt->HasKey("pausePhysics"))
-		{
-			_bts.setPhysicsPause(true);
-			++_historyIt;
-			return;  // don't setToolState(0) as will unpause physics
-		}
-		else
-			++_historyIt;
-		_ffg->setToolState(0);
-		setToolState(0);
-		_bts.setPhysicsPause(false);
-	}  // end try block
-	catch (std::exception &e) {
-		sendUserMessage(e.what(), "Program error", false);
-//		throw(std::logic_error("Program error in executing next history action"));
+			}
+			catch (...) {
+				physicsDone = true;
+				_ffg->physicsDrag = false;
+				taskThreadError = true;
+				taskThreadErrorStr = "Error occurred after a periosteal undermine";
+			}
+			}
+		);
+		++_historyIt;
 	}
+	else if (_historyIt->HasKey("promoteSutureApproximations"))
+	{
+		_bts.promoteSutures();
+		++_historyIt;
+	}
+	else if (_historyIt->HasKey("pausePhysics"))
+	{
+		_bts.setPhysicsPause(true);
+		++_historyIt;
+		return;  // don't setToolState(0) as will unpause physics
+	}
+	else
+		++_historyIt;
+	_ffg->setToolState(0);
+	setToolState(0);
+	_bts.setPhysicsPause(false);
 }
-
 
 bool surgicalActions::saveCurrentObj(const char* fullFilePath, const char* fileNamePrefix) {
 	materialTriangles* tr = _sg.getMaterialTriangles();

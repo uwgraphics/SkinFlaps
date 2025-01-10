@@ -25,6 +25,7 @@ int main(int, char**)
 	surgicalActions* sa = ffg.getSurgicalActions();
 	bccTetScene* bts = sa->getBccTetScene();
 	sa->physicsDone = true;
+	bool updateThrow = false;
 	while (!glfwWindowShouldClose(ffg.FFwindow))
 	{
 		try {
@@ -47,6 +48,13 @@ int main(int, char**)
 			ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);
 			glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			glClear(GL_COLOR_BUFFER_BIT);
+
+			if (sa->taskThreadError) {
+				sa->taskThreadError = false;
+				std::string err = sa->taskThreadErrorStr;
+				ffg.handleThrow(err.c_str());
+				throw(std::logic_error(err));
+			}
 
 			if (sa->physicsDone) {
 				// draw last physics result before starting a new solve
@@ -75,9 +83,16 @@ int main(int, char**)
 				// below is from: https://www.intel.com/content/www/us/en/develop/documentation/onetbb-documentation/top/onetbb-developer-guide/design-patterns/gui-thread.html
 					if (bts->forcesApplied() && !bts->isPhysicsPaused()) {  // physicsDone recheck necessary since nextHistoryAction() may have spawned a task that this one would collide with
 						sa->physicsDone = false;
-						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {  // enqueue
-							bts->updatePhysics();
-							sa->physicsDone = true;
+						tbb::task_arena(tbb::task_arena::attach()).enqueue([&]() {
+							try {
+								bts->updatePhysics();
+								sa->physicsDone = true;
+							}
+							catch (...) {
+								updateThrow = true;
+								sa->taskThreadError = true;
+								sa->taskThreadErrorStr = "Couldn't update physics after last action.";
+							}
 							}
 						);
 					}
@@ -87,32 +102,32 @@ int main(int, char**)
 
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());  // Always do this last so it prints GUI on top of your scene
 		}
-		catch (const std::runtime_error& re)
-		{
+		catch (const std::runtime_error& re) {
+			ffg.nextCounter = 0;
 			std::string err = "Program runtime error occurred.\n";
 			err += re.what();
 			ffg.handleThrow(err.c_str());
 		}
-		catch (const std::logic_error& le)
-		{
+		catch (const std::logic_error& le){
+			ffg.nextCounter = 0;
 			std::string err = "Program logic error occurred.\n";
 			err += le.what();
 			ffg.handleThrow(err.c_str());
 		}
-		catch (const std::bad_alloc& ba)
-		{
+		catch (const std::bad_alloc& ba) {
+			ffg.nextCounter = 0;
 			std::string err = "Not enough memory in this machine to handle this program.\n";
 			err += ba.what();
 			ffg.handleThrow(err.c_str());
 		}
-		catch (...)
-		{
+		catch (...) {
+			ffg.nextCounter = 0;
 			// catch any other errors
 			ffg.handleThrow("Unspecified program error occurred.\n");
 		}
 		glfwSwapBuffers(ffg.FFwindow);
 	}
-	while (!sa->physicsDone)  // waiting for any running physics thread to complete before destroying its data
+	while (!updateThrow && !sa->physicsDone)
 		;
 	ffg.destroyImguiGlfw();
     return 0;

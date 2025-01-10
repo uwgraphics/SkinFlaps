@@ -32,6 +32,7 @@ public:
 	void createNewPhysicsLattice(int maxDimMegatetSubdivs, int nTetSizeLevels);
 	void updateOldPhysicsLattice();
 	inline void nonTetPhysicsUpdate() {_ptp.initializePhysics();}
+	void initPdPhysics();
 	void updatePhysics();
 	void fixPeriostealPeriferalVertices();
 	void updateSurfaceDraw();
@@ -70,7 +71,6 @@ private:
 
 	std::vector<Vec3f> _firstSpatialCoords;
 
-	void initPdPhysics();
 };
 
 #endif // __BCC_TET_SCENE__

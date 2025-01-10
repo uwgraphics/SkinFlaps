@@ -408,6 +408,7 @@ public:
 			FileDlgMode = 2;
 			dialogTitle = "Please select a directory for your blend shapes -";
 			suffix.clear();
+			ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
 			ImGuiFileDialog::Instance()->OpenDialog("FileDialogKey", dialogTitle.c_str(), nullptr, "C:\\");
 			return;
 		}
@@ -429,6 +430,7 @@ public:
 			}
 			flags = ImGuiFileDialogFlags_DisableCreateDirectoryButton | ImGuiFileDialogFlags_ConfirmOverwrite;
 		}
+		ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
 		ImGuiFileDialog::Instance()->OpenDialog("FileDialogKey", dialogTitle.c_str(), suffix.c_str(), startDirectory.c_str(), "", 1, nullptr, flags);
 	}
 
@@ -442,7 +444,7 @@ public:
 		user_message = message;
 		std::string errHist = historyDirectory + "ERROR.hst";
 		igSurgAct.saveSurgicalHistory(errHist.c_str());
-		user_message.append("History to this point has been saved in ERROR.hst\n");
+		user_message.append("\n\nHistory to this point has been saved in ERROR.hst\n");
 		user_message_title = "Program exception thrown";
 		user_message_flag = true;
 		except_thrown_flag = true;
@@ -585,6 +587,35 @@ public:
 
 	static void InstanceCleftGui()
 	{
+		if (getTextInput) {
+
+			ImGui::SetNextWindowPos(ImVec2(150., 54.), 0, ImVec2(0.0, 0.0));
+			ImGui::Begin("Enter your subdirectory name-", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);   // &user_message_flag  Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+			ImGui::Text("Don't use spaces or special characters.");
+			char buf[255]{};
+			if (ImGui::InputText("Your directory name", buf, sizeof(buf), 32 | 8)) {  // flag are imgui.INPUT_TEXT_ENTER_RETURNS_TRUE = 32, imgui.INPUT_TEXT_CHARS_NO_BLANK = 8
+				if (historyDirectory.empty())
+					setDefaultDirectories();
+				std::string r = historyDirectory, s;
+				s.assign(buf);
+				r += s;
+				if (mkdir(r.c_str()) != 0) {
+					sendUserMessage("Sorry that directory either already exists,\nor could not be created.\n\nTry again-", "User subdirectory create failed-");
+				}
+				else {
+					sendUserMessage("Your new History subdirectory was successfully created.", "User subdirectory creation succeeded");
+				}
+				getTextInput = false;
+				for (int i = 0; i < 255; ++i)
+					buf[i] = '\0';
+			}
+			if (ImGui::Button("  Cancel  ")) {
+				getTextInput = false;
+				for (int i = 0; i < 255; ++i)
+					buf[i] = '\0';
+			}
+			ImGui::End();
+		}
 		if (ImGui::BeginMainMenuBar())
 		{
 			if (ImGui::BeginMenu("File"))
@@ -619,6 +650,9 @@ public:
 						++nextCounter;
 				}
 				ImGui::Separator();
+				if (ImGui::MenuItem("Create user subdirectory")) {
+					getTextInput = true;
+				}
 				if (ImGui::MenuItem("Output blend shape file")) {
 					if (modelFile.empty())
 						sendUserMessage("A model file must be loaded before a blend shape file can be created.", "User error");
@@ -641,7 +675,6 @@ public:
 				if (ImGui::MenuItem("Excise", NULL, csgToolstate == 5, true)) { csgToolstate = 5; igSurgAct.setToolState(5); }
 				if (ImGui::MenuItem("Deep cut", NULL, csgToolstate == 6, true)) { csgToolstate = 6; igSurgAct.setToolState(6); }
 				if (ImGui::MenuItem("Periosteal", NULL, csgToolstate == 7, true)) { csgToolstate = 7; igSurgAct.setToolState(7); }
-//				if (ImGui::MenuItem("Collision proxy", NULL, csgToolstate == 8, true)) { csgToolstate = 8; igSurgAct.setToolState(8); }
 				if (ImGui::MenuItem("Promote sutures")) { igSurgAct.promoteFakeSutures();  csgToolstate = 0; igSurgAct.setToolState(0); }
 				if (ImGui::MenuItem("Pause physics")) { igSurgAct.pausePhysics();  csgToolstate = 0; igSurgAct.setToolState(0); }
 				ImGui::Separator();
@@ -824,14 +857,14 @@ public:
 	FacialFlapsGui(){
 		igSurgAct.setFacialFlapsGui(this);
 		user_message_flag = false;
+		getTextInput = false;
 	}
 
 	~FacialFlapsGui(){}
 
 	static GLFWwindow* FFwindow;
 	static int nextCounter;
-	static bool user_message_flag, physicsDrag;
-//	static std::string loadDir, loadFile;
+	static bool user_message_flag, physicsDrag, getTextInput;
 
 private:
 	static bool powerHooks, showToolbox, viewPhysics, viewSurface, wheelZoom, except_thrown_flag;

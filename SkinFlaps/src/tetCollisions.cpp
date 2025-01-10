@@ -146,7 +146,7 @@ void tetCollisions::findSoftCollisionPairs() {
 	tbb::parallel_for(tbb::blocked_range<size_t>(0, _bedRays.size()),
 		[&](const tbb::blocked_range<size_t>& r) {
 			for (size_t j = r.begin(); j != r.end(); ++j) {
-//	for (int n = _bedRays.size(), j = 0; j < n; ++j) {  // serial version
+				//	for (int n = _bedRays.size(), j = 0; j < n; ++j) {  // serial version
 				float nearT = FLT_MAX;
 				vertexRay& b = _bedRays[j];
 				boundingBox<float> bedBox;
@@ -239,30 +239,6 @@ float tetCollisions::inverse_rsqrt(float number)
 	// 1st iteration 
 	y = y * (threehalfs - (x2 * y * y));
 	return y;
-}
-
-void tetCollisions::addFixedCollisionSet(materialTriangles* mt, const std::string& levelSetFile, std::vector<Vec2f>& txPoly) {  // call once at load
-	// make polygon slightly bigger to capture border vertices
-
-	return;  // COURT put back in after Qisi fix
-
-	insidePolygon ip;
-	std::set<int> collisionVertices;
-	for (int n = mt->numberOfTriangles(), i = 0; i < n; ++i) {
-		if (mt->triangleMaterial(i) != 2)
-			continue;
-		const int* tr = mt->triangleTextures(i);
-		for (int j = 0; j < 3; ++j) {
-			const float* fp = mt->getTexture(tr[j]);
-			Vec2f V(fp[0], fp[1]);
-			if (ip.insidePolygon2f(V, txPoly))
-				collisionVertices.insert(tr[j]).second;
-		}
-	}
-	fixedCollisionSet fc;
-	fc.levelSetFilename = levelSetFile;
-	fc.vertices.assign(collisionVertices.begin(), collisionVertices.end());
-	_fixedCollisionSets.push_back(fc);
 }
 
 void tetCollisions::addFixedCollisionSet(const std::string& levelSetFile, std::vector<int>& vertexIndices) {  // call once at load

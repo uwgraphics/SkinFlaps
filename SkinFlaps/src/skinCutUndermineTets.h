@@ -64,7 +64,8 @@ protected:
 	static std::unordered_map<int, deepPoint> _deepBed;
 	// next is data of previously undermined triangles. _prevUnd2 are all previouslu undermined top triangles. Rest are previous undermines containing a non-duplicated deep vertex.  All are sorted vectors except _prevBot5.
 	// filled before each undermine by collectOldUndermineData()
-	std::vector<int> _prevUnd2, _prevBot4, _prevEdge3;
+	std::vector<int> _prevUnd2, _prevEdge3;
+	std::vector<std::pair<int, int> > _prevBot4;  // first is the mat 4 bottom triangle, second is the mat 2 top triangle that created it either by an incision or an undermine. Remember vert order reversed.
 	std::map<int, std::vector<int> > _prevBedSingles;
 	std::vector<bool> _trisUnderminedNow;  // triangles turned on in current undermine
 	std::vector<int> _inExCisionTriangles;  // material 2 triangles at the edge of an incision or excision
