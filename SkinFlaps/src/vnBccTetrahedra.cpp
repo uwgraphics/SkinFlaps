@@ -1025,6 +1025,7 @@ const bccTetCentroid vnBccTetrahedra::centroidUpOneLevel(const bccTetCentroid& t
 
 vnBccTetrahedra::vnBccTetrahedra() : _nodeSpatialCoords(nullptr), _firstInteriorTet(-1)
 {
+	_tJunctionConstraints.clear();
 }
 
 

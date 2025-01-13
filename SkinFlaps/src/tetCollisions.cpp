@@ -54,7 +54,6 @@ void tetCollisions::initSoftCollisions(materialTriangles* mt, vnBccTetrahedra* v
 			if (j < 3)
 				continue;
 			int* tr = _mt->triangleVertices(i);
-			int tet = _vnt->getVertexTetrahedron(tr[j]);
 			for (j = 0; j < 3; ++j)
 				tets.insert(_vnt->getVertexTetrahedron(tr[j]));
 			_flapBotTris.push_back(i);

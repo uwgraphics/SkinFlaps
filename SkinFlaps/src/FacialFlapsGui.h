@@ -21,6 +21,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "ImGuiFileDialog.h"
+#include "ImGuiFileDialogConfig.h"
 #include <string>
 #include <fstream>
 #include <tbb/task_arena.h>
