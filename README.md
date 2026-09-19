@@ -8,12 +8,12 @@
 ### **Purpose**
 
 ----------
-This open source project provides a soft tissue surgical simulation program which allows a surgeon to experiment with his/her own surgical designs to solve a soft tissue surgery problem.  The technical details regarding the inner workings of the code as well as the motivations for its use may be found in this *[paper][1]*.
+This open source project provides a soft tissue surgical simulation program which allows a surgeon to experiment with his/her own surgical designs to solve a soft tissue surgical problem.  The technical details regarding the inner workings of the code as well as the motivations for its use may be found in this *[paper][1]*.
 
 ### **Installation**
 
 ----------
-This C++ project uses a highly efficient implementation of *[projective dynamics][2]* to drive the physics of soft tissue surgical simulation. This physics library also has a limited collision handling capability. The library was written by Qisi Wang under the direction of her dissertation advisor Eftychios Sifakis at the Computer Graphics Laboratory, Department of Computer Science, University of Wisconsin (Madison). That implementation is described in detail in a *[paper by Wang Q, et al][3]*. The ability of this library to support half a million tetrahedra at interactive frame rates requires the avx instruction set of the Intel CPU and the the Intel “Math Kernel”, and “Threading Building Blocks” libraries.  As these elements are no longer hardware components of MacOS computers, that platform is not currently supported. Compilation intructions for 64 bit Windows 10 Visual Studio and for Ubuntu Linux can be found in the Build directory.  Prerequisites for these builds are the *[Intel oneAPI math kernel library (ie mkl) and threading building blocks (ie tbb)][4]* as well as the *[GLFW library][5]*.  These prerequisites must be installed before compiling the project.  In the latest version of the software (version 1.2.2) multiresolution tetrahedral physics has been added *[see paper by Wang Q, et al][6]*.  This reduces the initial tetrahedron count for the facial flaps model from 620,000 to 17,000 dramatically increasing execution speed.  As the surgeon operates on part of the model, only that subvolume is promoted to high resolution allowing fine incision detail to be rendered with high accuracy, while the less important, periferal parts of the model are rendered at lower physics resolution.
+This C++ project uses a highly efficient implementation of *[projective dynamics][2]* to drive the physics of soft tissue surgical simulation. The *[physics library][1]* was written by Qisi Wang under the direction of her dissertation advisor Eftychios Sifakis at the Computer Graphics Laboratory, Department of Computer Science, University of Wisconsin (Madison). This physics library also has a limited collision handling capability. The collision implementation is described in detail in a *[paper by Wang Q, et al][3]*. The ability of this library to support half a million tetrahedra at interactive frame rates requires the AVX instruction set of the Intel CPU and the the Intel “Math Kernel”, and “Threading Building Blocks” libraries.  As these elements are not components of macOS computers, a separate *[macOS version has been created][12]*. Compilation intructions for 64 bit Windows 10 Visual Studio can be found in the Build directory.  Prerequisites for these builds are the *[Intel oneAPI math kernel library (ie mkl) and threading building blocks (ie tbb)][4]* as well as the *[GLFW library][5]*.  These prerequisites must be installed before compiling the project.  In the latest version of the software (version 1.2.2) multiresolution tetrahedral physics has been added *[see paper by Wang Q, et al][6]*.  This reduces the initial tetrahedron count for the facial flaps model from 620,000 to 17,000 dramatically increasing execution speed.  As the surgeon operates on part of the model, only that subvolume is promoted to high resolution allowing fine incision detail to be rendered with high accuracy, while the less important, periferal parts of the model are rendered at lower physics resolution.
 
 The surgical interface, models and graphics for the project were written by Court Cutting MD of the Department of Plastic Surgery, NYU - Grossman School of Medicine as an extension of previous *[surgical animation][7]* work in conjunction with the Smile Train charity and a more recent attempt at a *[finite element implementation][8]* of skin flap surgery. With the exception of GLFW, mkl and tbb all of the surgical aspects of the code are self contained within this project.
 
@@ -24,21 +24,26 @@ The surgical interface, models and graphics for the project were written by Cour
 Surgical examples of various facial skin flap procedures can be run by pressing the **NEXT** button after program load then selecting a file from the History directory:
 
  - AbbeEstlanderLip.hst - reconstruction of upper lip defect
+ - AntiaBuch_ear.hst - reductive ear reconstruction method
  - cervicoFacialFlap.hst - rotation flap closure of upper cheek defect
- - cheekSplasty.hst - scalp defect closed with two flaps
- - scalpDoubleRotation.hst - scalp defect closed with two flaps
+ - cheekSplasty.hst - cheek defect with Splasty closure.
  - foreheadFlapToNose.hst - paramedian forehead flap closure of nasal defect
- - lowerEyelidCanthotomy.hst - eyelid defect closed with lateral canthotomy/ inferior cantholysis
  - postAuricularEar.hst - ear defect closed with postauricular flap and skin graft
+ - scalpDoubleRotation.hst - scalp defect closed with two rotation flaps
+ - Tenzel.hst - eyelid defect closed with lateral canthotomy + inferior cantholysis
+
 
 This software has been augmented to allow simulation of cleft lip repair.  Demonstrations of several of these repairs can also be found in the History directory:
 
  - cleft_CuttingRepair.hst - Dr. Cutting's repair of a complete unilateral cleft lip
- - cleft_FisherRepair.hst - David Fisher's repair of cleft lip
+ - cleft_FisherRepair.hst - David Fisher's repair of an incomplete cleft lip
  - cleft_RoseThompson.hst - Rose/Thompson repair of cleft lip
  - cleft_TennisonRandall.hst - Tennison/Randall repair of cleft lip
 
 In *[Dr. Cutting's YouTube channel][9]* there are two video tutorials on the use of the software. The first demonstrates basic use the program to simulate facial flap closure of skin defects in *[Users Guide][10]*. A second more advanced tutorial on use of SkinFlaps to simulate cleft lip/nose repair can be found in *[Cleft lip tutorial][11]*
+
+### **Mackintosh Users:**
+A port of this original Windows software has been created for macOS.  This was done by the newest member of our software development team, Christian Arcelona.  Christian is an engineer - future plastic surgeon who has extended the user base of this software to Mac users.  The initial version of his Mac port, vetted by Dr. Cutting, can be found in Releases.  This version is likely not the latest update.  The most recent release of the Mac version can be found at [Dr. Arcelona's Github site][12] in /Releases.  Operation of the Mac version is identical to the Windows version except for the Pan function in the viewer.  This is done with a middleMouse drag on Windows.  As non-Logitech Apple mice don't have a middleMouse button, Shift or Ctrl + leftMouse drag performs the Pan function on the Mac.  Other differences are described in detail on *[Dr. Arcelona's site][12]*.
 
 ### **Known Issues for Future Work**
 
@@ -51,7 +56,9 @@ In *[Dr. Cutting's YouTube channel][9]* there are two video tutorials on the use
 
 ##### Surgical physics library - Qisi Wang and Eftychios Sifakis
 
-##### Surgical interface, tools and graphics - @ccuttingmd
+##### Surgical interface, tools and graphics - Court Cutting - (@ccuttingmd)
+
+##### MacOS version - Christian Arcelona - (@christian-arcelona)
 
 #### The authors wish to thank the team at AdvancedInstaller Inc. for the use of their excellent Windows software installer.
 
@@ -100,3 +107,4 @@ In *[Dr. Cutting's YouTube channel][9]* there are two video tutorials on the use
   [9]: https://www.youtube.com/@courtcutting2872
   [10]: https://www.youtube.com/watch?v=wXR3m3JQvo8&t=5s
   [11]: https://youtu.be/CzBiVJ5Q508
+  [12]: https://github.com/christian-arcelona/SkinFlaps-MacOS-Port
